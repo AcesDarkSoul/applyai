@@ -123,6 +123,7 @@ export default function ProfileScreen() {
             <View>
               <InfoRow label="Name" value={profile?.name || 'Not set'} />
               <InfoRow label="Phone" value={profile?.phone || 'Not set'} />
+              <InfoRow label="LinkedIn" value={profile?.linkedin || 'Not connected (tap Edit to add URL)'} />
               <InfoRow label="Location" value={profile?.preferredLocation || 'Not set'} />
               <InfoRow label="Salary" value={profile?.expectedSalary || 'Not set'} />
               <InfoRow label="Authorization" value={profile?.workAuthorization || 'Not set'} />

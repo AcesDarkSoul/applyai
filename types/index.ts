@@ -63,6 +63,16 @@ export interface Job {
   matchScore?: JobMatchScore;
 }
 
+export interface AIJobAnalysis {
+  matchedSkills: string[];
+  missingSkills: string[];
+  strengths: string[];
+  recommendations: string[];
+  atsKeywords: string[];
+  outreachStrategy: string;
+  summary: string;
+}
+
 export interface JobMatchScore {
   overall: number;
   skills: number;
@@ -70,6 +80,7 @@ export interface JobMatchScore {
   education: number;
   location: number;
   salary: number;
+  analysis?: AIJobAnalysis;
 }
 
 export interface Application {
@@ -92,4 +103,40 @@ export interface DashboardStats {
   offers: number;
   rejections: number;
   profileCompleteness: number;
+}
+
+export interface OutreachEmail {
+  id: string;
+  userId: string;
+  recruiterEmail: string;
+  recruiterName?: string;
+  jobTitle: string;
+  company: string;
+  subject: string;
+  body: string;
+  status: 'sent' | 'failed';
+  sentAt?: string;
+}
+
+export interface JobFilterParams {
+  query?: string;
+  platform?: string; // 'all' | 'linkedin' | 'indeed' | 'naukri' | 'other'
+  remote?: boolean;
+  workMode?: 'all' | 'remote' | 'hybrid' | 'onsite';
+  employmentType?: 'all' | 'full-time' | 'part-time' | 'contract' | 'internship';
+  seniority?: 'all' | 'entry' | 'mid' | 'senior' | 'lead';
+  minSalary?: number;
+  minMatchScore?: number;
+  datePosted?: 'any' | '24h' | 'week' | 'month';
+  location?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface PaginatedJobsResponse {
+  jobs: Job[];
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
+  total: number;
 }

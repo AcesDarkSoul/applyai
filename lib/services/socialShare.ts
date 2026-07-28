@@ -1,10 +1,56 @@
 import { Linking, Platform, Alert } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import type { GeneratedPost } from '@/lib/firebase/functions';
+import type { Job } from '@/types';
+
+export function buildShareMessage(job: Job): string {
+  return (
+    `🎯 Job Opportunity: ${job.title} at ${job.company}\n` +
+    `📍 ${job.location}${job.remote ? ' (Remote)' : ''}\n` +
+    (job.salary ? `💰 Salary: ${job.salary}\n` : '') +
+    (job.matchScore ? `⚡ Match Score: ${job.matchScore.overall}%\n` : '') +
+    `\nApply directly on ${job.source} here:\n${job.url}`
+  );
+}
+
+export async function shareToWhatsApp(job: Job): Promise<void> {
+  const message = buildShareMessage(job);
+  const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+  try {
+    if (Platform.OS === 'web') {
+      window.open(whatsappUrl, '_blank');
+      return;
+    }
+    const canOpen = await Linking.canOpenURL(whatsappUrl);
+    if (canOpen) {
+      await Linking.openURL(whatsappUrl);
+    } else {
+      await Linking.openURL(`whatsapp://send?text=${encodeURIComponent(message)}`);
+    }
+  } catch {
+    Alert.alert('Notice', 'Opening WhatsApp in browser...');
+    if (typeof window !== 'undefined') {
+      window.open(whatsappUrl, '_blank');
+    }
+  }
+}
+
+export async function shareToSMS(job: Job): Promise<void> {
+  const message = buildShareMessage(job);
+  const smsUrl = Platform.OS === 'ios'
+    ? `sms:&body=${encodeURIComponent(message)}`
+    : `sms:?body=${encodeURIComponent(message)}`;
+  try {
+    await Linking.openURL(smsUrl);
+  } catch {
+    await copyPostToClipboard(message);
+    Alert.alert('Copied to Clipboard', 'Text messaging could not be opened directly. Message copied to clipboard!');
+  }
+}
 
 export async function copyPostToClipboard(text: string): Promise<void> {
   await Clipboard.setStringAsync(text);
-  Alert.alert('Copied!', 'Post copied to clipboard. Paste it on the platform.');
+  Alert.alert('Copied!', 'Content copied to clipboard.');
 }
 
 export function openLinkedInWithPost(content: string, jobUrl?: string): void {

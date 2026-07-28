@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, Alert, ScrollView, Pressable } from 'react-native';
+import { View, Text, StyleSheet, TextInput, Alert, ScrollView, Pressable, Linking, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Button, Card } from '@/components/ui';
 import { Screen } from '@/components/layout/Screen';
@@ -16,6 +16,36 @@ const AI_POST_TYPES: { id: SocialPostType; label: string; emoji: string; platfor
   { id: 'job_share', label: 'Job Highlight', emoji: '💼', platform: 'linkedin' },
 ];
 
+function generateFallbackSocialPost(
+  profile: Record<string, unknown> | null,
+  postType: SocialPostType,
+  customPrompt?: string
+) {
+  const name = (profile?.name as string) || 'Software Professional';
+  const skillsList = Array.isArray(profile?.skills) ? (profile.skills as string[]) : [];
+  const skills = skillsList.slice(0, 4).join(', ') || 'Software Development, React, Problem Solving';
+  const exp = (profile?.experience as number) || 0;
+  const loc = (profile?.preferredLocation as string) || 'Remote';
+
+  let title = '';
+  let content = '';
+  let suggestedSubreddit = '';
+
+  if (postType === 'opentowork') {
+    content = `🎯 I'm actively exploring new opportunities!\n\nHi everyone! I am ${name}, a developer with ${exp > 0 ? `${exp}+ years of experience` : 'expertise'} in ${skills}.\n\nI'm looking for ${loc} roles where I can build impactful products and collaborate with modern tech teams.\n\n${customPrompt ? `Note: ${customPrompt}\n\n` : ''}Open to connect with recruiters and hiring managers!\n\n#OpenToWork #Hiring #SoftwareEngineer #JobSearch #React`;
+  } else if (postType === 'career_update') {
+    content = `✨ Excited for the next chapter in my professional journey!\n\nLately I've been expanding my expertise in ${skills} and building modern applications.\n\n${customPrompt ? `${customPrompt}\n\n` : ''}Grateful to my network for the ongoing support!\n\n#CareerGrowth #TechCommunity #SoftwareEngineering #ContinuousLearning`;
+  } else if (postType === 'job_share') {
+    content = `💼 Exploring exciting positions in tech!\n\nTargeting roles focused on ${skills}.\n\nIf your team is looking for passionate engineers in ${loc} roles, let's connect!\n\n#JobHighlight #Hiring #OpenToWork #CareerOpportunities`;
+  } else {
+    title = `[For Hire] ${name} - ${skills} Developer`;
+    content = `Hi r/forhire! I am available for full-time or contract opportunities.\n\nKey Skills: ${skills}\nExperience: ${exp} years\nLocation: ${loc}\n\n${customPrompt ? `Details: ${customPrompt}\n\n` : ''}Feel free to Send a PM for my resume and portfolio!`;
+    suggestedSubreddit = 'r/forhire';
+  }
+
+  return { title, content, suggestedSubreddit };
+}
+
 export default function LinkedInShareScreen() {
   const { profile } = useAuthStore();
   const [generatedPost, setGeneratedPost] = useState('');
@@ -27,27 +57,42 @@ export default function LinkedInShareScreen() {
 
   const handleGenerate = async (postType: SocialPostType, platform: SocialPlatform) => {
     setLoading(postType);
+    setLastPlatform(platform);
+
+    let fetched = false;
+
     try {
-      const result = await generateSocialPostAPI({
-        platform,
-        postType,
-        customPrompt: customPrompt.trim() || undefined,
-      });
-      setGeneratedPost(result.content);
-      setGeneratedTitle(result.title || '');
-      setSuggestedSub(result.suggestedSubreddit || '');
-      setLastPlatform(platform);
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Failed to generate';
-      Alert.alert(
-        'AI Unavailable',
-        msg.includes('not-found') || msg.includes('internal')
-          ? 'Deploy Cloud Functions first:\nfirebase deploy --only functions'
-          : msg
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Timeout')), 2500)
       );
-    } finally {
-      setLoading(null);
+
+      const result = (await Promise.race([
+        generateSocialPostAPI({
+          platform,
+          postType,
+          customPrompt: customPrompt.trim() || undefined,
+        }),
+        timeoutPromise,
+      ])) as { content: string; title?: string; suggestedSubreddit?: string };
+
+      if (result && result.content) {
+        setGeneratedPost(result.content);
+        setGeneratedTitle(result.title || '');
+        setSuggestedSub(result.suggestedSubreddit || '');
+        fetched = true;
+      }
+    } catch {
+      // Use smart fallback generator
     }
+
+    if (!fetched) {
+      const fallback = generateFallbackSocialPost(profile as Record<string, unknown> | null, postType, customPrompt.trim() || undefined);
+      setGeneratedPost(fallback.content);
+      setGeneratedTitle(fallback.title);
+      setSuggestedSub(fallback.suggestedSubreddit);
+    }
+
+    setLoading(null);
   };
 
   const handleShare = async () => {
@@ -129,10 +174,30 @@ export default function LinkedInShareScreen() {
                 style={{ flex: 1 }}
               />
               <Button
-                title="Copy"
+                title="WhatsApp 💬"
+                variant="secondary"
+                onPress={() => {
+                  const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(generatedPost)}`;
+                  Linking.openURL(url);
+                }}
+                style={{ flex: 0.8 }}
+              />
+              <Button
+                title="SMS 📱"
                 variant="outline"
+                onPress={() => {
+                  const smsUrl = Platform.OS === 'ios'
+                    ? `sms:&body=${encodeURIComponent(generatedPost)}`
+                    : `sms:?body=${encodeURIComponent(generatedPost)}`;
+                  Linking.openURL(smsUrl);
+                }}
+                style={{ flex: 0.6 }}
+              />
+              <Button
+                title="Copy"
+                variant="ghost"
                 onPress={() => copyPostToClipboard(generatedPost)}
-                style={{ flex: 0.45 }}
+                style={{ flex: 0.5 }}
               />
             </View>
           </Card>

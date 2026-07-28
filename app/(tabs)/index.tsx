@@ -2,29 +2,38 @@ import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Card, StatCard, Badge, SectionHeader, useResponsive } from '@/components/ui';
+import { Card, StatCard, Badge, SectionHeader, JobCardSkeleton, useResponsive } from '@/components/ui';
 import { Screen, ResponsiveGrid } from '@/components/layout/Screen';
 import { FadeInView, AnimatedProgress } from '@/components/AnimatedView';
 import { useAuthStore } from '@/stores/authStore';
 import { useResumeStore, userHasResume } from '@/stores/resumeStore';
 import { getApplications, calculateProfileCompleteness } from '@/lib/firebase/profile';
-import { getRecommendedJobs } from '@/lib/services/jobs';
+import { searchJobsPaginated } from '@/lib/services/jobs';
 import { detectPlatform, getPlatformConfig } from '@/lib/services/platforms';
 import { Colors, Spacing, FontSize, BorderRadius, PlatformConfig } from '@/constants/theme';
 import type { Application, Job } from '@/types';
+import { useJobStore } from '@/stores/jobStore';
 
 export default function DashboardScreen() {
   const router = useRouter();
   const { user, profile } = useAuthStore();
   const { hasResume } = useResumeStore();
+  const addJobs = useJobStore((s) => s.addJobs);
+  const setSelectedJob = useJobStore((s) => s.setSelectedJob);
   const { isTablet, columns } = useResponsive();
   const [applications, setApplications] = useState<Application[]>([]);
   const [topJobs, setTopJobs] = useState<Job[]>([]);
+  const [loadingJobs, setLoadingJobs] = useState(true);
 
   useEffect(() => {
-    if (user) getApplications(user.uid).then(setApplications);
-    getRecommendedJobs(profile?.skills || []).then((jobs) => setTopJobs(jobs.slice(0, columns === 1 ? 3 : 6)));
-  }, [user, profile, columns]);
+    getApplications(user?.uid || 'local_user').then(setApplications);
+    searchJobsPaginated({ page: 1, pageSize: columns === 1 ? 4 : 6 }, profile?.skills || [])
+      .then((res) => {
+        addJobs(res.jobs);
+        setTopJobs(res.jobs);
+      })
+      .finally(() => setLoadingJobs(false));
+  }, [user, profile, columns, addJobs]);
 
   const stats = {
     applicationsSent: applications.filter((a) => a.status !== 'pending').length,
@@ -42,7 +51,9 @@ export default function DashboardScreen() {
         <LinearGradient colors={Colors.gradientHero} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
           <Text style={styles.greeting}>Hello, {profile?.name?.split(' ')[0] || 'there'} 👋</Text>
           <Text style={styles.heroSubtitle}>
-            {hasResumeSaved ? 'Your AI assistant found new matches!' : 'Save resume locally to unlock smart apply'}
+            {hasResumeSaved
+              ? 'Your AI assistant found personalized platform matches!'
+              : 'Save resume locally to unlock automated candidate matching'}
           </Text>
           <View style={styles.heroActions}>
             {!hasResumeSaved && (
@@ -63,7 +74,7 @@ export default function DashboardScreen() {
             <View style={styles.profileRow}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.profileTitle}>Profile Strength</Text>
-                <Text style={styles.profileSubtitle}>Complete for better matches</Text>
+                <Text style={styles.profileSubtitle}>Complete for enhanced match score accuracy</Text>
               </View>
               <Text style={styles.profilePercent}>{profileCompleteness}%</Text>
             </View>
@@ -103,27 +114,34 @@ export default function DashboardScreen() {
 
       <FadeInView direction="up" delay={200}>
         <SectionHeader title="Top Matches" action={{ label: 'See all →', onPress: () => router.push('/(tabs)/jobs') }} />
-        <ResponsiveGrid>
-          {topJobs.map((job) => {
-            const platform = detectPlatform(job.url, job.source);
-            const pConfig = getPlatformConfig(platform);
-            return (
-              <Card key={job.id} style={styles.jobCard} onPress={() => router.push(`/job/${job.id}`)}>
-                <View style={styles.jobHeader}>
-                  <View style={[styles.jobLogo, { backgroundColor: pConfig.color }]}>
-                    <Text style={styles.jobLogoText}>{job.company.charAt(0)}</Text>
+        {loadingJobs ? (
+          <View>
+            <JobCardSkeleton />
+            <JobCardSkeleton />
+          </View>
+        ) : (
+          <ResponsiveGrid>
+            {topJobs.map((job) => {
+              const platform = detectPlatform(job.url, job.source);
+              const pConfig = getPlatformConfig(platform);
+              return (
+                <Card key={job.id} style={styles.jobCard} onPress={() => { setSelectedJob(job); router.push(`/job/${job.id}`); }}>
+                  <View style={styles.jobHeader}>
+                    <View style={[styles.jobLogo, { backgroundColor: pConfig.color }]}>
+                      <Text style={styles.jobLogoText}>{job.company.charAt(0)}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.jobTitle} numberOfLines={1}>{job.title}</Text>
+                      <Text style={styles.jobCompany} numberOfLines={1}>{job.company}</Text>
+                    </View>
+                    <Badge text={`${job.matchScore?.overall}%`} backgroundColor={Colors.primary + '18'} color={Colors.primary} />
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.jobTitle} numberOfLines={1}>{job.title}</Text>
-                    <Text style={styles.jobCompany} numberOfLines={1}>{job.company}</Text>
-                  </View>
-                  <Badge text={`${job.matchScore?.overall}%`} backgroundColor={Colors.primary + '18'} color={Colors.primary} />
-                </View>
-                <Text style={styles.jobMetaText}>📍 {job.location}</Text>
-              </Card>
-            );
-          })}
-        </ResponsiveGrid>
+                  <Text style={styles.jobMetaText}>📍 {job.location}</Text>
+                </Card>
+              );
+            })}
+          </ResponsiveGrid>
+        )}
       </FadeInView>
     </Screen>
   );

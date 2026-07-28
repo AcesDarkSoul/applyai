@@ -6,6 +6,7 @@ import type { UserProfile } from '@/types';
 export interface ProfileFormData {
   name: string;
   phone: string;
+  linkedin: string;
   preferredLocation: string;
   expectedSalary: string;
   workAuthorization: string;
@@ -20,6 +21,7 @@ export function profileToFormData(profile: UserProfile | null): ProfileFormData 
   return {
     name: profile?.name || '',
     phone: profile?.phone || '',
+    linkedin: profile?.linkedin || '',
     preferredLocation: profile?.preferredLocation || '',
     expectedSalary: profile?.expectedSalary || '',
     workAuthorization: profile?.workAuthorization || '',
@@ -43,6 +45,7 @@ export function parsedToFormData(
   return {
     name: (parsed.name as string) || base.name,
     phone: (parsed.phone as string) || base.phone,
+    linkedin: (parsed.linkedin as string) || base.linkedin,
     preferredLocation:
       (parsed.location as string) ||
       (parsed.preferredLocation as string) ||
@@ -70,6 +73,7 @@ export function formDataToProfileUpdate(form: ProfileFormData): Partial<UserProf
   return {
     name: form.name.trim(),
     phone: form.phone.trim() || undefined,
+    linkedin: form.linkedin.trim() || undefined,
     preferredLocation: form.preferredLocation.trim() || 'Remote',
     expectedSalary: form.expectedSalary.trim() || undefined,
     workAuthorization: form.workAuthorization.trim() || undefined,
@@ -118,6 +122,7 @@ export function ProfileReviewForm({
       <Text style={styles.groupTitle}>Personal Information</Text>
       <Input label="Full Name *" icon="👤" value={form.name} onChangeText={(v) => set('name', v)} placeholder="From resume or enter manually" />
       <Input label="Phone" icon="📞" value={form.phone} onChangeText={(v) => set('phone', v)} placeholder="+91 98765 43210" keyboardType="phone-pad" />
+      <Input label="LinkedIn Profile URL" icon="💼" value={form.linkedin} onChangeText={(v) => set('linkedin', v)} placeholder="https://linkedin.com/in/yourname" autoCapitalize="none" keyboardType="url" />
       <Input label="Location" icon="📍" value={form.preferredLocation} onChangeText={(v) => set('preferredLocation', v)} placeholder="City, Remote, Hybrid..." />
       <Input label="Expected Salary" icon="💰" value={form.expectedSalary} onChangeText={(v) => set('expectedSalary', v)} placeholder="e.g. 15-20 LPA" />
       <Input label="Work Authorization" icon="🛂" value={form.workAuthorization} onChangeText={(v) => set('workAuthorization', v)} placeholder="e.g. Authorized to work in India" />

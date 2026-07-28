@@ -52,6 +52,13 @@ async function assetToBlob(file: PickerAsset): Promise<Blob> {
   if (Platform.OS === 'web' && file.file instanceof Blob) {
     return file.file;
   }
+  if (Platform.OS !== 'web') {
+    const mimeType = getMimeType(file.name, file.mimeType);
+    const base64 = await FileSystem.readAsStringAsync(file.uri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    return base64ToBlob(base64, mimeType);
+  }
   const response = await fetch(file.uri);
   if (!response.ok) {
     throw new Error(`Could not read file (HTTP ${response.status})`);

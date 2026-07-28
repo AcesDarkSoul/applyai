@@ -396,4 +396,23 @@ const styles = StyleSheet.create({
   sectionTitle: { color: Colors.text, fontSize: FontSize.lg, fontWeight: '800' },
   sectionSubtitle: { color: Colors.textMuted, fontSize: FontSize.sm, marginTop: 2 },
   sectionAction: { color: Colors.primary, fontSize: FontSize.sm, fontWeight: '700' },
+  skeletonBox: { backgroundColor: Colors.surfaceLight, borderRadius: BorderRadius.lg, overflow: 'hidden' },
+  skeletonLogo: { width: 48, height: 48, borderRadius: BorderRadius.lg, backgroundColor: Colors.borderLight },
+  skeletonLine: { height: 14, backgroundColor: Colors.borderLight, borderRadius: 4, marginBottom: 8 },
 });
+
+export function JobCardSkeleton() {
+  return (
+    <View style={[styles.card, { marginBottom: Spacing.md, opacity: 0.7 }]}>
+      <View style={{ flexDirection: 'row', gap: Spacing.sm, marginBottom: Spacing.sm, alignItems: 'center' }}>
+        <View style={styles.skeletonLogo} />
+        <View style={{ flex: 1 }}>
+          <View style={[styles.skeletonLine, { width: '70%', height: 16 }]} />
+          <View style={[styles.skeletonLine, { width: '40%', height: 12 }]} />
+        </View>
+      </View>
+      <View style={[styles.skeletonLine, { width: '90%', height: 12 }]} />
+      <View style={[styles.skeletonLine, { width: '60%', height: 12 }]} />
+    </View>
+  );
+}

@@ -9,47 +9,91 @@ const index_1 = require("./index");
 const firestore_1 = require("firebase-admin/firestore");
 const openai_1 = __importDefault(require("openai"));
 const secrets_1 = require("./secrets");
-const RESUME_PARSE_PROMPT = `You are a professional resume parser. Extract ALL personal and professional information from the resume text.
+const RESUME_PARSE_PROMPT = `You are a world-class AI ATS Resume Parser and Career Intelligence Engine.
+Your goal is to accurately extract, estimate, and structure ALL information from candidate resume content regardless of non-standard section titles, formatting variations, or layout styles.
+
+FLEXIBLE HEADING ESTIMATION & MAPPING INSTRUCTIONS:
+1. Candidate Name: Extract from the header, top of document, or infer from email/filename if missing.
+2. Skills: Map ANY section related to "Skills", "Technical Skills", "Technologies", "Tech Stack", "Tools & Frameworks", "Core Competencies", "Proficiencies", "Domain Knowledge", "Key Strengths", "Expertise", "What I Do", or inline in job descriptions. Extract technical skills, tools, frameworks, and key soft skills.
+3. Total Experience (years): Calculate total professional experience in years by summing date ranges across "Experience", "Work History", "Employment", "Professional Journey", "Career History", "Roles", "Positions", "Assignments", "Internships", "Where I've Worked". If dates are missing, estimate intelligently based on seniority & role dates (e.g. 0 for fresher/student, 3-5 mid, 6+ senior).
+4. Education: Map "Education", "Academic Background", "Qualifications", "Degrees", "Academic History", "Schooling", "Studies", "Training". Extract institution, degree, field of study, startYear, and endYear.
+5. Certifications: Map "Certifications", "Licenses", "Credentials", "Courses", "Certificates", "Accreditations", "Professional Development".
+6. Projects: Map "Projects", "Key Projects", "Portfolio", "Personal Projects", "Highlights", "Work Samples", "Building".
+7. Languages: Spoken/written languages listed anywhere in document.
+8. Summary: Extract from "Summary", "Profile", "About Me", "Objective", "Executive Summary", "Bio", "Overview", or synthesize a 2-3 sentence summary based on their role and background.
+9. ATS Score (0-100): Estimate ATS compliance based on layout clarity, contact details completeness, clear timeline, and skill density.
+
 Return ONLY valid JSON with this exact structure:
 {
-  "name": "full name from resume",
-  "email": "email or null",
-  "phone": "phone number with country code if present, or null",
-  "location": "city/state/country from resume address section",
-  "preferredLocation": "same as location or remote preference if stated",
-  "expectedSalary": "salary expectation if mentioned, else null",
-  "workAuthorization": "work visa/authorization if mentioned, else null",
-  "linkedin": "LinkedIn URL if present, else null",
-  "skills": ["technical and soft skills"],
-  "experience": number (total years of professional experience),
-  "education": [{"institution": "string", "degree": "string", "field": "string", "startYear": number, "endYear": number|null}],
-  "certifications": ["certification names"],
-  "projects": [{"name": "string", "description": "string", "technologies": ["strings"]}],
-  "languages": ["spoken/written languages"],
-  "summary": "2-4 sentence professional summary from resume",
-  "atsScore": number (0-100, ATS compatibility estimate)
-}
-Extract real values only — do not invent data. Use null or empty arrays for missing fields.`;
+  "name": "full name string",
+  "email": "email string or null",
+  "phone": "phone string or null",
+  "location": "city/state/country or null",
+  "preferredLocation": "preferred location or Remote",
+  "expectedSalary": "salary or null",
+  "workAuthorization": "work authorization/visa or null",
+  "linkedin": "LinkedIn URL or null",
+  "skills": ["skill1", "skill2"],
+  "experience": number,
+  "education": [{"institution": "string", "degree": "string", "field": "string", "startYear": 2020, "endYear": 2024}],
+  "certifications": ["cert1"],
+  "projects": [{"name": "string", "description": "string", "technologies": ["tech1"]}],
+  "languages": ["language1"],
+  "summary": "professional summary text",
+  "atsScore": 85
+}`;
 async function extractTextFromBase64(base64, fileName) {
     const buffer = Buffer.from(base64, "base64");
     const lower = fileName.toLowerCase();
     if (lower.endsWith(".pdf")) {
+        // 1. Try pdf-parse v2 API
         try {
             // eslint-disable-next-line @typescript-eslint/no-require-imports
-            const pdfParse = require("pdf-parse");
-            const data = await pdfParse(buffer);
-            if (data.text?.trim().length > 50)
-                return data.text.substring(0, 12000);
+            const pdfModule = require("pdf-parse");
+            if (pdfModule.PDFParse) {
+                const parser = new pdfModule.PDFParse({ data: buffer });
+                await parser.load();
+                const res = await parser.getText();
+                const textStr = typeof res === "string" ? res : res?.text || "";
+                if (textStr.trim().length > 30) {
+                    return textStr.substring(0, 12000);
+                }
+            }
+            if (typeof pdfModule === "function") {
+                const data = await pdfModule(buffer);
+                if (data.text?.trim().length > 30) {
+                    return data.text.substring(0, 12000);
+                }
+            }
         }
-        catch {
-            // fall through
+        catch (e) {
+            console.warn("PDF parse library error:", e);
+        }
+        // 2. Fallback: Raw PDF stream regex extraction
+        try {
+            const raw = buffer.toString("binary");
+            const matches = [];
+            const regex = /\(([^()]*)\)\s*T[jJ]/g;
+            let m;
+            while ((m = regex.exec(raw)) !== null) {
+                if (m[1] && m[1].length > 1) {
+                    matches.push(m[1]);
+                }
+            }
+            const extracted = matches.join(" ").replace(/\\./g, " ").replace(/\s+/g, " ").trim();
+            if (extracted.length > 50) {
+                return extracted.substring(0, 12000);
+            }
+        }
+        catch (e) {
+            console.warn("Raw PDF regex extraction failed:", e);
         }
     }
     const utf8 = buffer.toString("utf-8");
     if (utf8.length > 100 && !utf8.includes("\u0000")) {
         return utf8.substring(0, 12000);
     }
-    return `Resume file: ${fileName}. Text extraction limited — infer reasonable skills for a software/tech professional from filename and any partial text: ${utf8.substring(0, 500)}`;
+    return `Resume file: ${fileName}. Extractable text: ${utf8.replace(/[^\x20-\x7E\n\r\t]/g, " ").substring(0, 3000)}`;
 }
 exports.parseResume = (0, https_1.onCall)({ maxInstances: 10, timeoutSeconds: 90, secrets: [secrets_1.openaiApiKey] }, async (request) => {
     if (!request.auth) {

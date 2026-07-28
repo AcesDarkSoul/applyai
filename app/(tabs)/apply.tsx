@@ -1,82 +1,165 @@
-import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Card, Button, Badge, SectionHeader } from '@/components/ui';
+import { Card, Button, Badge, SectionHeader, JobCardSkeleton } from '@/components/ui';
 import { Screen, ResponsiveGrid } from '@/components/layout/Screen';
 import { FadeInView } from '@/components/AnimatedView';
+import { RecordApplicationModal } from '@/components/RecordApplicationModal';
+import { ShareJobModal } from '@/components/ShareJobModal';
 import { useAuthStore } from '@/stores/authStore';
 import { useResumeStore, userHasResume } from '@/stores/resumeStore';
-import { searchJobs } from '@/lib/services/jobs';
-import { detectPlatform, getPlatformConfig, openSmartApply, shareOnLinkedIn } from '@/lib/services/platforms';
+import { searchJobsPaginated } from '@/lib/services/jobs';
+import { detectPlatform, getPlatformConfig, openSmartApply } from '@/lib/services/platforms';
 import { createApplication } from '@/lib/firebase/profile';
 import { Colors, Spacing, FontSize, BorderRadius, PlatformConfig } from '@/constants/theme';
-import type { Job } from '@/types';
+import type { Job, ApplicationStatus } from '@/types';
+import { useJobStore } from '@/stores/jobStore';
 
 export default function SmartApplyScreen() {
   const router = useRouter();
   const { user, profile } = useAuthStore();
   const { hasResume } = useResumeStore();
+  const addJobs = useJobStore((s) => s.addJobs);
+  const setSelectedJob = useJobStore((s) => s.setSelectedJob);
   const hasResumeSaved = userHasResume(hasResume, profile?.hasResume);
+
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [page, setPage] = useState(1);
   const [applyingId, setApplyingId] = useState<string | null>(null);
   const [selectedPlatform, setSelectedPlatform] = useState<string>('all');
 
-  useEffect(() => {
-    searchJobs({}, profile?.skills || []).then((result) => {
-      setJobs(result.slice(0, 20));
-      setLoading(false);
-    });
-  }, [profile?.skills]);
+  // Record modal state
+  const [modalJob, setModalJob] = useState<Job | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
 
-  const filteredJobs = selectedPlatform === 'all'
-    ? jobs
-    : jobs.filter((j) => detectPlatform(j.url, j.source) === selectedPlatform);
+  // Share modal state
+  const [shareJob, setShareJob] = useState<Job | null>(null);
+  const [shareVisible, setShareVisible] = useState(false);
+
+  const loadApplyJobs = useCallback(
+    async (pageToFetch: number, isAppending = false) => {
+      if (isAppending) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+      }
+
+      try {
+        const response = await searchJobsPaginated(
+          { platform: selectedPlatform !== 'all' ? selectedPlatform : undefined, page: pageToFetch, pageSize: 8 },
+          profile?.skills || [],
+          profile?.preferredLocation || 'Remote',
+          profile?.experience || 3
+        );
+
+        if (isAppending) {
+          setJobs((prev) => [...prev, ...response.jobs]);
+        } else {
+          setJobs(response.jobs);
+        }
+
+        setHasMore(response.hasMore);
+        addJobs(response.jobs);
+      } catch (err) {
+        console.warn('Failed to load smart apply jobs:', err);
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
+      }
+    },
+    [selectedPlatform, profile, addJobs]
+  );
+
+  useEffect(() => {
+    setPage(1);
+    loadApplyJobs(1, false);
+  }, [selectedPlatform, profile?.skills, loadApplyJobs]);
+
+  const handleLoadMore = () => {
+    if (!hasMore || loadingMore || loading) return;
+    const nextPage = page + 1;
+    setPage(nextPage);
+    loadApplyJobs(nextPage, true);
+  };
 
   const handleSmartApply = async (job: Job) => {
-    if (!user) return;
     const platform = detectPlatform(job.url, job.source);
     setApplyingId(job.id);
     try {
       await openSmartApply({ job, platform, profile: profile || {} });
-      await createApplication(user.uid, {
-        id: job.id, title: job.title, company: job.company, matchScore: job.matchScore?.overall || 0,
-      });
-      Alert.alert('Application Started! 🎉', `Opening ${getPlatformConfig(platform).name} to complete your application.`);
     } catch {
-      Alert.alert('Error', 'Failed to start application');
+      Alert.alert('Notice', 'Opening job URL in browser...');
     } finally {
       setApplyingId(null);
+      setModalJob(job);
+      setModalVisible(true);
     }
   };
 
-  const handleShareLinkedIn = async (job: Job) => {
-    await shareOnLinkedIn(job, profile || undefined);
+  const handleConfirmModalStatus = async (status: ApplicationStatus) => {
+    if (!modalJob) return;
+    const activeUserId = user?.uid || 'local_user';
+    try {
+      await createApplication(activeUserId, {
+        id: modalJob.id,
+        title: modalJob.title,
+        company: modalJob.company,
+        matchScore: modalJob.matchScore?.overall || 0,
+        status,
+      });
+      Alert.alert(
+        'Saved to Record Tracker 📋',
+        `Application for "${modalJob.title}" at ${modalJob.company} marked as "${status}" in your tracker.`
+      );
+    } catch (err) {
+      console.warn('Failed to save application status:', err);
+    } finally {
+      setModalVisible(false);
+      setModalJob(null);
+    }
+  };
+
+  const handleOpenShare = (job: Job) => {
+    setShareJob(job);
+    setShareVisible(true);
   };
 
   return (
     <Screen safe={false} edges={['left', 'right']}>
       <FadeInView direction="down">
         <LinearGradient colors={Colors.gradientHero} style={styles.hero}>
-          <Text style={styles.heroTitle}>⚡ Smart Apply</Text>
+          <Text style={styles.heroTitle}>⚡ Smart Apply Hub</Text>
           <Text style={styles.heroSubtitle}>
-            Apply on LinkedIn, Indeed & Naukri with one tap. Your resume and profile are ready to go.
+            Categorized for LinkedIn, Indeed & Naukri. Profile skills matched automatically.
           </Text>
         </LinearGradient>
       </FadeInView>
 
       <FadeInView direction="up" delay={100}>
-        <SectionHeader title="Choose Platform" subtitle="Filter jobs by portal" />
+        <SectionHeader title="Categorized Platforms" subtitle="Filter by portal" />
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.platformFilters}>
-          <Button title="All" size="sm" variant={selectedPlatform === 'all' ? 'primary' : 'outline'}
-            onPress={() => setSelectedPlatform('all')} style={styles.platformBtn} />
+          <Button
+            title="All Platforms"
+            size="sm"
+            variant={selectedPlatform === 'all' ? 'primary' : 'outline'}
+            onPress={() => setSelectedPlatform('all')}
+            style={styles.platformBtn}
+          />
           {(['linkedin', 'indeed', 'naukri'] as const).map((key) => {
             const p = PlatformConfig[key];
             return (
-              <Button key={key} title={`${p.icon} ${p.name}`} size="sm"
+              <Button
+                key={key}
+                title={`${p.icon} ${p.name}`}
+                size="sm"
                 variant={selectedPlatform === key ? 'primary' : 'outline'}
-                onPress={() => setSelectedPlatform(key)} style={styles.platformBtn} />
+                onPress={() => setSelectedPlatform(key)}
+                style={styles.platformBtn}
+              />
             );
           })}
         </ScrollView>
@@ -85,51 +168,100 @@ export default function SmartApplyScreen() {
       {!hasResumeSaved && (
         <FadeInView direction="up" delay={150}>
           <Card style={styles.warningCard}>
-            <Text style={styles.warningTitle}>📄 Resume Required</Text>
-            <Text style={styles.warningText}>Save your resume on this device first — it will be sent when you apply.</Text>
+            <Text style={styles.warningTitle}>📄 Resume Recommended</Text>
+            <Text style={styles.warningText}>Save your resume on this device to extract skills & streamline candidate submissions.</Text>
             <Button title="Save Resume" size="sm" onPress={() => router.push('/resume/upload')} />
           </Card>
         </FadeInView>
       )}
 
       <FadeInView direction="up" delay={200}>
-        <SectionHeader title={`${filteredJobs.length} Jobs Ready`} subtitle="Tap to smart apply" />
+        <SectionHeader title={`${jobs.length} Profile-Matched Roles`} subtitle="Tap to open job portal & record application" />
       </FadeInView>
 
       {loading ? (
-        <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: Spacing.xl }} />
+        <View style={{ marginTop: Spacing.md }}>
+          <JobCardSkeleton />
+          <JobCardSkeleton />
+          <JobCardSkeleton />
+        </View>
       ) : (
-        <ResponsiveGrid>
-          {filteredJobs.map((job, i) => {
-            const platform = detectPlatform(job.url, job.source);
-            const pConfig = getPlatformConfig(platform);
-            return (
-              <FadeInView key={job.id} direction="up" delay={Math.min(i * 40, 400)}>
-                <Card style={styles.jobCard}>
-                  <View style={styles.jobHeader}>
-                    <View style={[styles.jobLogo, { backgroundColor: pConfig.color }]}>
-                      <Text style={styles.jobLogoText}>{pConfig.icon}</Text>
+        <>
+          <ResponsiveGrid>
+            {jobs.map((job, i) => {
+              const platform = detectPlatform(job.url, job.source);
+              const pConfig = getPlatformConfig(platform);
+              return (
+                <FadeInView key={`${job.id}_${i}`} direction="up" delay={Math.min(i * 35, 300)}>
+                  <Card style={styles.jobCard}>
+                    <View style={styles.jobHeader}>
+                      <View style={[styles.jobLogo, { backgroundColor: pConfig.color }]}>
+                        <Text style={styles.jobLogoText}>{pConfig.icon}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.jobTitle}>{job.title}</Text>
+                        <Text style={styles.jobCompany}>{job.company} · {job.location}</Text>
+                        <Badge text={`${job.matchScore?.overall || 0}% match`} backgroundColor={Colors.primary + '15'} color={Colors.primary} />
+                      </View>
                     </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.jobTitle}>{job.title}</Text>
-                      <Text style={styles.jobCompany}>{job.company} · {job.location}</Text>
-                      <Badge text={`${job.matchScore?.overall || 0}% match`} backgroundColor={Colors.primary + '15'} color={Colors.primary} />
+                    <View style={styles.jobActions}>
+                      <Button
+                        title={pConfig.applyLabel}
+                        size="sm"
+                        loading={applyingId === job.id}
+                        onPress={() => handleSmartApply(job)}
+                        style={{ flex: 1 }}
+                      />
+                      <Button title="Share" size="sm" variant="yellow" onPress={() => handleOpenShare(job)} style={{ flex: 0.4 }} />
+                      <Button
+                        title="Details"
+                        size="sm"
+                        variant="outline"
+                        onPress={() => { setSelectedJob(job); router.push(`/job/${job.id}`); }}
+                        style={{ flex: 0.4 }}
+                      />
                     </View>
-                  </View>
-                  <View style={styles.jobActions}>
-                    <Button title={pConfig.applyLabel} size="sm" loading={applyingId === job.id}
-                      onPress={() => handleSmartApply(job)} style={{ flex: 1 }} />
-                    {platform === 'linkedin' && (
-                      <Button title="Share" size="sm" variant="yellow" onPress={() => handleShareLinkedIn(job)} style={{ flex: 0.4 }} />
-                    )}
-                    <Button title="Details" size="sm" variant="outline" onPress={() => router.push(`/job/${job.id}`)} style={{ flex: 0.4 }} />
-                  </View>
-                </Card>
-              </FadeInView>
-            );
-          })}
-        </ResponsiveGrid>
+                  </Card>
+                </FadeInView>
+              );
+            })}
+          </ResponsiveGrid>
+
+          {hasMore && (
+            <View style={styles.loadMoreSection}>
+              <Button
+                title={loadingMore ? 'Loading More Roles...' : 'Load More Smart Apply Roles ⚡'}
+                variant="outline"
+                size="md"
+                loading={loadingMore}
+                onPress={handleLoadMore}
+                style={styles.loadMoreBtn}
+              />
+            </View>
+          )}
+        </>
       )}
+
+      {/* Record Management Modal */}
+      <RecordApplicationModal
+        visible={modalVisible}
+        job={modalJob}
+        onClose={() => {
+          setModalVisible(false);
+          setModalJob(null);
+        }}
+        onConfirmStatus={handleConfirmModalStatus}
+      />
+
+      {/* Share Job Modal */}
+      <ShareJobModal
+        visible={shareVisible}
+        job={shareJob}
+        onClose={() => {
+          setShareVisible(false);
+          setShareJob(null);
+        }}
+      />
     </Screen>
   );
 }
@@ -150,4 +282,6 @@ const styles = StyleSheet.create({
   jobTitle: { color: Colors.text, fontSize: FontSize.md, fontWeight: '700' },
   jobCompany: { color: Colors.textSecondary, fontSize: FontSize.sm, marginBottom: Spacing.xs },
   jobActions: { flexDirection: 'row', gap: Spacing.sm, flexWrap: 'wrap' },
+  loadMoreSection: { marginTop: Spacing.md, marginBottom: Spacing.xl, alignItems: 'center' },
+  loadMoreBtn: { width: '100%', maxWidth: 340 },
 });
