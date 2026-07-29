@@ -52,15 +52,30 @@ Job Details:
 - Description: ${(jobDescription || "").substring(0, 2000)}`;
     try {
         const openai = new openai_1.default({ apiKey: openaiKey });
-        const completion = await openai.chat.completions.create({
-            model: "gpt-4o-mini",
-            messages: [
-                { role: "system", content: COVER_LETTER_PROMPT },
-                { role: "user", content: userContext },
-            ],
-            temperature: 0.7,
-            max_tokens: 1000,
-        });
+        let completion;
+        try {
+            completion = await openai.chat.completions.create({
+                model: "gpt-4o",
+                messages: [
+                    { role: "system", content: COVER_LETTER_PROMPT },
+                    { role: "user", content: userContext },
+                ],
+                temperature: 0.7,
+                max_tokens: 1000,
+            });
+        }
+        catch (err) {
+            console.warn("gpt-4o failed in generateCoverLetter, falling back to gpt-4o-mini:", err);
+            completion = await openai.chat.completions.create({
+                model: "gpt-4o-mini",
+                messages: [
+                    { role: "system", content: COVER_LETTER_PROMPT },
+                    { role: "user", content: userContext },
+                ],
+                temperature: 0.7,
+                max_tokens: 1000,
+            });
+        }
         const coverLetter = completion.choices[0]?.message?.content || "";
         // Save to Firestore
         const docRef = await index_1.db.collection("coverLetters").add({

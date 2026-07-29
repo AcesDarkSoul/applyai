@@ -90,16 +90,31 @@ Recruiter: ${recruiterName || "Hiring Manager"}
 Role: ${jobTitle}
 Company: ${company}`;
 
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: EMAIL_PROMPT },
-          { role: "user", content: context },
-        ],
-        temperature: 0.7,
-        max_tokens: 500,
-        response_format: { type: "json_object" },
-      });
+      let completion;
+      try {
+        completion = await openai.chat.completions.create({
+          model: "gpt-4o",
+          messages: [
+            { role: "system", content: EMAIL_PROMPT },
+            { role: "user", content: context },
+          ],
+          temperature: 0.7,
+          max_tokens: 500,
+          response_format: { type: "json_object" },
+        });
+      } catch (err: unknown) {
+        console.warn("gpt-4o failed in sendOutreachEmail, falling back to gpt-4o-mini:", err);
+        completion = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: EMAIL_PROMPT },
+            { role: "user", content: context },
+          ],
+          temperature: 0.7,
+          max_tokens: 500,
+          response_format: { type: "json_object" },
+        });
+      }
 
       const emailContent = JSON.parse(
         completion.choices[0]?.message?.content || '{"subject":"","body":""}'

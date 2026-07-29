@@ -85,7 +85,7 @@ async function fetchLiveRemotiveJobs(queryStr?: string): Promise<Job[]> {
   try {
     const url = queryStr
       ? `https://remotive.com/api/remote-jobs?search=${encodeURIComponent(queryStr)}&limit=15`
-      : `https://remotive.com/api/remote-jobs?category=software-dev&limit=15`;
+      : `https://remotive.com/api/remote-jobs?limit=20`;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 3500);
 
@@ -95,7 +95,7 @@ async function fetchLiveRemotiveJobs(queryStr?: string): Promise<Job[]> {
     const data = await res.json();
     const jobs: any[] = data.jobs || [];
 
-    // Filter strictly for India / Worldwide Remote candidates
+    // Filter for India / Worldwide Remote candidates
     const indiaJobs = jobs.filter((j) => {
       const loc = (j.candidate_required_location || '').toLowerCase();
       return (
@@ -112,14 +112,14 @@ async function fetchLiveRemotiveJobs(queryStr?: string): Promise<Job[]> {
       title: j.title,
       company: j.company_name,
       location: j.candidate_required_location ? `${j.candidate_required_location} (India Remote)` : 'Remote (India)',
-      salary: j.salary || '20-35 LPA Equivalent',
+      salary: j.salary || 'Competitive Package',
       employmentType: (j.job_type?.toLowerCase().includes('contract') ? 'contract' : 'full-time') as any,
       remote: true,
       description: (j.description || '').replace(/<[^>]*>?/gm, '').substring(0, 800) + '...',
       requirements: (j.tags || []).slice(0, 4),
-      skills: j.tags && j.tags.length > 0 ? j.tags : ['Software Engineering', 'React', 'Node.js'],
+      skills: j.tags && j.tags.length > 0 ? j.tags : [],
       url: j.url,
-      source: 'LinkedIn',
+      source: 'Remotive',
       postedAt: j.publication_date || new Date().toISOString(),
     }));
   } catch {
@@ -131,34 +131,47 @@ async function fetchLiveRemotiveJobs(queryStr?: string): Promise<Job[]> {
 function generateProfileMatchedJobs(userSkills: string[], userProfile?: Partial<UserProfile>): Job[] {
   const baseSkills = userSkills.length > 0
     ? userSkills
-    : ['React Native', 'TypeScript', 'Node.js', 'React', 'Python'];
+    : ['Software Engineering', 'TypeScript', 'Python', 'System Design'];
 
   const primarySkill = baseSkills[0] || 'Software';
   const secondarySkill = baseSkills[1] || baseSkills[0] || 'Engineering';
-  const tertiarySkill = baseSkills[2] || baseSkills[0] || 'Web';
+  const tertiarySkill = baseSkills[2] || baseSkills[0] || 'Technology';
+
+  // Determine domain/role prefix based on skills
+  const skillsLowerStr = baseSkills.map((s) => s.toLowerCase()).join(' ');
+  let domainTitlePrefix = 'Senior';
+  let domainRoleSuffix = 'Engineer';
+
+  if (skillsLowerStr.includes('data') || skillsLowerStr.includes('machine learning') || skillsLowerStr.includes('python')) {
+    domainRoleSuffix = 'Data Scientist / ML Specialist';
+  } else if (skillsLowerStr.includes('product management') || skillsLowerStr.includes('agile')) {
+    domainRoleSuffix = 'Product Manager';
+  } else if (skillsLowerStr.includes('design') || skillsLowerStr.includes('figma') || skillsLowerStr.includes('ui/ux')) {
+    domainRoleSuffix = 'Product Designer';
+  } else if (skillsLowerStr.includes('devops') || skillsLowerStr.includes('docker') || skillsLowerStr.includes('aws') || skillsLowerStr.includes('kubernetes')) {
+    domainRoleSuffix = 'Cloud & DevOps Architect';
+  }
 
   const makeLinkedInUrl = (title: string, company: string) =>
-    `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(`${title} ${company} India`)}`;
+    `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(`${title} ${company}`)}&location=India`;
   const makeIndeedUrl = (title: string, company: string) =>
     `https://www.indeed.com/jobs?q=${encodeURIComponent(`${title} ${company}`)}&l=India`;
-  const makeNaukriUrl = (title: string, company: string) => {
-    const slug = title.toLowerCase().replace(/[^a-z0-9]/g, '-');
-    return `https://www.naukri.com/${slug}-jobs-in-india?k=${encodeURIComponent(`${title} ${company}`)}`;
-  };
+  const makeNaukriUrl = (title: string, company: string) =>
+    `https://www.naukri.com/jobs-in-india?k=${encodeURIComponent(`${title} ${company}`)}`;
 
   const generated: Job[] = [
     {
       id: 'job_in_ln_1',
-      title: `Senior ${primarySkill} Developer`,
+      title: `${domainTitlePrefix} ${primarySkill} ${domainRoleSuffix}`,
       company: 'Google',
       location: 'Bangalore, India',
       salary: '28-42 LPA',
       employmentType: 'full-time',
       remote: true,
-      description: `Lead architectural design and high-concurrency mobile/web engineering using ${baseSkills.slice(0, 3).join(', ')}. Collaborate with cross-functional engineering teams in Bangalore & globally.`,
-      requirements: [`4+ years hands-on experience with ${primarySkill}`, `Proficiency in ${secondarySkill} & modern architecture`, 'REST & GraphQL API design', 'CI/CD & Cloud Infrastructure'],
+      description: `Lead key technical initiatives using ${baseSkills.slice(0, 3).join(', ')}. Collaborate with cross-functional global engineering and product teams.`,
+      requirements: [`3+ years hands-on experience with ${primarySkill}`, `Proficiency in ${secondarySkill} & system architecture`, 'REST & GraphQL API design', 'CI/CD & Cloud Infrastructure'],
       skills: baseSkills.slice(0, 5),
-      url: makeLinkedInUrl(`Senior ${primarySkill} Developer`, 'Google'),
+      url: makeLinkedInUrl(`${domainTitlePrefix} ${primarySkill} ${domainRoleSuffix}`, 'Google'),
       source: 'LinkedIn',
       postedAt: new Date(Date.now() - 3600000 * 3).toISOString(),
     },
@@ -170,8 +183,8 @@ function generateProfileMatchedJobs(userSkills: string[], userProfile?: Partial<
       salary: '32-48 LPA',
       employmentType: 'full-time',
       remote: true,
-      description: `Architect cloud-native solution platforms in Hyderabad using ${baseSkills.slice(0, 4).join(', ')}. Build reliable, performant microservices and reactive interfaces.`,
-      requirements: [`5+ years software engineering experience`, `Deep knowledge of ${primarySkill} and distributed systems`, 'Azure / AWS Cloud Infrastructure'],
+      description: `Architect cloud-native solution platforms in Hyderabad using ${baseSkills.slice(0, 4).join(', ')}. Build reliable, performant services.`,
+      requirements: [`5+ years domain experience`, `Deep knowledge of ${primarySkill} and distributed systems`, 'Cloud Infrastructure'],
       skills: baseSkills.slice(0, 4),
       url: makeLinkedInUrl(`Lead ${primarySkill} Architect`, 'Microsoft'),
       source: 'LinkedIn',
@@ -179,31 +192,31 @@ function generateProfileMatchedJobs(userSkills: string[], userProfile?: Partial<
     },
     {
       id: 'job_in_ind_1',
-      title: `Full Stack ${primarySkill} Engineer`,
+      title: `Full Stack ${primarySkill} Professional`,
       company: 'Flipkart',
       location: 'Bangalore, India',
       salary: '24-36 LPA',
       employmentType: 'full-time',
       remote: true,
       description: `Develop e-commerce products for millions of daily active users across India using ${baseSkills.slice(0, 4).join(', ')}.`,
-      requirements: [`3+ years engineering experience with ${primarySkill}`, `Hands-on expertise with ${secondarySkill}`, 'High throughput system design'],
+      requirements: [`3+ years professional experience with ${primarySkill}`, `Hands-on expertise with ${secondarySkill}`],
       skills: baseSkills.slice(0, 4),
-      url: makeIndeedUrl(`Full Stack ${primarySkill} Engineer`, 'Flipkart'),
+      url: makeIndeedUrl(`Full Stack ${primarySkill} Professional`, 'Flipkart'),
       source: 'Indeed',
       postedAt: new Date(Date.now() - 3600000 * 18).toISOString(),
     },
     {
       id: 'job_in_nak_1',
-      title: `Senior ${primarySkill} Mobile / Web Engineer`,
+      title: `Senior ${primarySkill} Specialist`,
       company: 'Swiggy',
       location: 'Bangalore, India',
       salary: '22-34 LPA',
       employmentType: 'full-time',
       remote: false,
       description: `Scale hyper-local delivery app features using ${primarySkill}, ${secondarySkill}, state management, and performant backend services in Bangalore.`,
-      requirements: [`3+ years experience with ${primarySkill}`, `App performance optimization & release engineering`],
+      requirements: [`3+ years experience with ${primarySkill}`, `Product performance optimization & release engineering`],
       skills: baseSkills.slice(0, 4),
-      url: makeNaukriUrl(`Senior ${primarySkill} Engineer`, 'Swiggy'),
+      url: makeNaukriUrl(`Senior ${primarySkill} Specialist`, 'Swiggy'),
       source: 'Naukri',
       postedAt: new Date(Date.now() - 3600000 * 24).toISOString(),
     },
@@ -224,46 +237,46 @@ function generateProfileMatchedJobs(userSkills: string[], userProfile?: Partial<
     },
     {
       id: 'job_in_nak_2',
-      title: `Senior Software Engineer (${primarySkill})`,
+      title: `Senior ${primarySkill} Consultant`,
       company: 'CRED',
       location: 'Bangalore, India',
       salary: '28-40 LPA',
       employmentType: 'full-time',
       remote: true,
       description: `Build high-trust fintech experiences for premium credit card users in India using ${baseSkills.slice(0, 4).join(', ')}.`,
-      requirements: [`3+ years experience in ${primarySkill}`, `Clean code, unit testing, and performant API design`],
+      requirements: [`3+ years experience in ${primarySkill}`, `Clean architecture and robust design`],
       skills: baseSkills.slice(0, 4),
-      url: makeNaukriUrl(`Senior Engineer ${primarySkill}`, 'CRED'),
+      url: makeNaukriUrl(`Senior ${primarySkill} Consultant`, 'CRED'),
       source: 'Naukri',
       postedAt: new Date(Date.now() - 3600000 * 36).toISOString(),
     },
     {
       id: 'job_in_ln_3',
-      title: `Staff ${primarySkill} Developer`,
+      title: `Staff ${primarySkill} Specialist`,
       company: 'Adobe',
       location: 'Noida, India',
       salary: '34-50 LPA',
       employmentType: 'full-time',
       remote: true,
       description: `Lead creative cloud platform features and web/mobile integrations in Noida utilizing ${baseSkills.slice(0, 4).join(', ')}.`,
-      requirements: [`5+ years software development experience with ${primarySkill}`, `System design and cross-team leadership`],
+      requirements: [`5+ years professional experience with ${primarySkill}`, `System design and cross-team leadership`],
       skills: baseSkills.slice(0, 5),
-      url: makeLinkedInUrl(`Staff ${primarySkill} Developer`, 'Adobe'),
+      url: makeLinkedInUrl(`Staff ${primarySkill} Specialist`, 'Adobe'),
       source: 'LinkedIn',
       postedAt: new Date(Date.now() - 3600000 * 42).toISOString(),
     },
     {
       id: 'job_in_ind_3',
-      title: `Software Engineer (${secondarySkill} / ${primarySkill})`,
+      title: `${primarySkill} Specialist (${secondarySkill})`,
       company: 'Amazon',
       location: 'Gurgaon, India',
       salary: '26-38 LPA',
       employmentType: 'full-time',
       remote: false,
       description: `Develop e-commerce and logistics services in Gurgaon using ${baseSkills.slice(0, 4).join(', ')}.`,
-      requirements: [`2+ years development experience`, `Proficiency in ${primarySkill} and cloud infrastructure`],
+      requirements: [`2+ years development experience`, `Proficiency in ${primarySkill}`],
       skills: baseSkills.slice(0, 4),
-      url: makeIndeedUrl(`Software Engineer ${primarySkill}`, 'Amazon'),
+      url: makeIndeedUrl(`${primarySkill} Specialist`, 'Amazon'),
       source: 'Indeed',
       postedAt: new Date(Date.now() - 3600000 * 48).toISOString(),
     },
@@ -307,7 +320,8 @@ export async function searchJobsPaginated(
         remote: filters.remote,
         employmentType: filters.employmentType !== 'all' ? filters.employmentType : undefined,
         page,
-      })
+      }),
+      8000
     );
     if (result && result.jobs && result.jobs.length > 0) {
       allJobs = result.jobs;
@@ -393,7 +407,20 @@ export async function searchJobsPaginated(
     );
   }
 
-  // 7. Apply platform filter (LinkedIn, Indeed, Naukri)
+  // 7. Strictly limit jobs ONLY to 3 portals: LinkedIn, Indeed, Naukri (skip all extra portals)
+  filtered = filtered.filter((j) => {
+    const source = (j.source || '').toLowerCase();
+    const url = (j.url || '').toLowerCase();
+    return (
+      source.includes('linkedin') ||
+      source.includes('indeed') ||
+      source.includes('naukri') ||
+      url.includes('linkedin') ||
+      url.includes('indeed') ||
+      url.includes('naukri')
+    );
+  });
+
   if (filters.platform && filters.platform !== 'all') {
     const plat = filters.platform.toLowerCase();
     filtered = filtered.filter((j) => {

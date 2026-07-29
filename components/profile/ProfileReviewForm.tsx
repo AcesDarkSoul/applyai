@@ -35,31 +35,32 @@ export function profileToFormData(profile: UserProfile | null): ProfileFormData 
 
 export function parsedToFormData(
   parsed: Record<string, unknown>,
-  existing: UserProfile | null
+  existing?: UserProfile | null
 ): ProfileFormData {
-  const base = profileToFormData(existing);
   const skills = Array.isArray(parsed.skills) ? (parsed.skills as string[]) : [];
   const languages = Array.isArray(parsed.languages) ? (parsed.languages as string[]) : [];
   const certs = Array.isArray(parsed.certifications) ? (parsed.certifications as string[]) : [];
 
   return {
-    name: (parsed.name as string) || base.name,
-    phone: (parsed.phone as string) || base.phone,
-    linkedin: (parsed.linkedin as string) || base.linkedin,
+    name: (parsed.name as string) || (existing?.name || ''),
+    phone: (parsed.phone as string) || '',
+    linkedin: (parsed.linkedin as string) || '',
     preferredLocation:
       (parsed.location as string) ||
       (parsed.preferredLocation as string) ||
-      base.preferredLocation,
-    expectedSalary: (parsed.expectedSalary as string) || base.expectedSalary,
-    workAuthorization: (parsed.workAuthorization as string) || base.workAuthorization,
+      '',
+    expectedSalary: (parsed.expectedSalary as string) || '',
+    workAuthorization: (parsed.workAuthorization as string) || '',
     experience:
       typeof parsed.experience === 'number'
         ? String(parsed.experience)
-        : base.experience,
-    summary: (parsed.summary as string) || base.summary,
-    skillsText: skills.length ? skills.join(', ') : base.skillsText,
-    languagesText: languages.length ? languages.join(', ') : base.languagesText,
-    certificationsText: certs.length ? certs.join(', ') : base.certificationsText,
+        : typeof parsed.experience === 'string'
+        ? parsed.experience
+        : '',
+    summary: (parsed.summary as string) || '',
+    skillsText: skills.join(', '),
+    languagesText: languages.join(', '),
+    certificationsText: certs.join(', '),
   };
 }
 

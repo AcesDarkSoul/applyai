@@ -62,15 +62,29 @@ Job Details:
     try {
       const openai = new OpenAI({ apiKey: openaiKey });
 
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: COVER_LETTER_PROMPT },
-          { role: "user", content: userContext },
-        ],
-        temperature: 0.7,
-        max_tokens: 1000,
-      });
+      let completion;
+      try {
+        completion = await openai.chat.completions.create({
+          model: "gpt-4o",
+          messages: [
+            { role: "system", content: COVER_LETTER_PROMPT },
+            { role: "user", content: userContext },
+          ],
+          temperature: 0.7,
+          max_tokens: 1000,
+        });
+      } catch (err: unknown) {
+        console.warn("gpt-4o failed in generateCoverLetter, falling back to gpt-4o-mini:", err);
+        completion = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: COVER_LETTER_PROMPT },
+            { role: "user", content: userContext },
+          ],
+          temperature: 0.7,
+          max_tokens: 1000,
+        });
+      }
 
       const coverLetter = completion.choices[0]?.message?.content || "";
 

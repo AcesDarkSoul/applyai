@@ -24,30 +24,25 @@ export interface ApplyPackage {
 }
 
 export function buildApplyUrl(job: Job, platform: JobPlatform): string {
-  if (
-    job.url &&
-    job.url.startsWith('http') &&
-    !job.url.includes('389000') &&
-    !job.url.includes('389012') &&
-    !job.url.includes('abc12345') &&
-    !job.url.includes('555fff')
-  ) {
+  // Always return exact direct job opening listing URL directly if provided
+  if (job.url && job.url.startsWith('http')) {
     return job.url;
   }
 
-  // Generate authentic live direct platform search and application links
-  const query = encodeURIComponent(`${job.title} ${job.company}`);
+  // Direct platform fallback query only if url is missing
+  const cleanTitle = job.title.replace(/[^a-zA-Z0-9\s]/g, '').trim();
+  const query = encodeURIComponent(cleanTitle);
+
   if (platform === 'linkedin') {
-    return `https://www.linkedin.com/jobs/search/?keywords=${query}`;
+    return `https://www.linkedin.com/jobs/search/?keywords=${query}&location=India`;
   }
   if (platform === 'indeed') {
-    return `https://www.indeed.com/jobs?q=${query}`;
+    return `https://www.indeed.com/jobs?q=${query}&l=India`;
   }
   if (platform === 'naukri') {
-    const slug = job.title.toLowerCase().replace(/[^a-z0-9]/g, '-');
-    return `https://www.naukri.com/${slug}-jobs?k=${query}`;
+    return `https://www.naukri.com/jobs-in-india?k=${query}`;
   }
-  return `https://www.google.com/search?q=${encodeURIComponent(`${job.title} ${job.company} job application`)}`;
+  return `https://www.google.com/search?q=${encodeURIComponent(`${cleanTitle} ${job.company} job apply`)}`;
 }
 
 async function sendResumeFromLocal(): Promise<boolean> {

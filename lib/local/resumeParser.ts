@@ -21,22 +21,35 @@ export interface ParsedResumeResult {
 }
 
 const SKILL_DICTIONARY = [
+  // Programming Languages & Frameworks
   'React Native', 'React', 'TypeScript', 'JavaScript', 'Node.js', 'Express',
-  'Python', 'Django', 'FastAPI', 'Java', 'Spring Boot', 'C++', 'C#', '.NET',
-  'Swift', 'SwiftUI', 'Kotlin', 'Android', 'Flutter', 'Dart', 'Go', 'Rust',
-  'SQL', 'PostgreSQL', 'MongoDB', 'Redis', 'MySQL', 'GraphQL', 'REST APIs',
-  'AWS', 'Azure', 'GCP', 'Docker', 'Kubernetes', 'Terraform', 'CI/CD', 'Git',
-  'Redux', 'Zustand', 'Tailwind CSS', 'HTML5', 'CSS3', 'PyTorch', 'TensorFlow',
-  'OpenAI', 'Machine Learning', 'Data Science', 'System Design', 'Figma',
-  'Microservices', 'Jest', 'Webpack', 'Vite', 'Next.js', 'Vue.js', 'Angular'
+  'Python', 'Django', 'FastAPI', 'Flask', 'Java', 'Spring Boot', 'C++', 'C#', '.NET',
+  'Swift', 'SwiftUI', 'Kotlin', 'Android', 'Flutter', 'Dart', 'Go', 'Rust', 'Ruby', 'Rails', 'PHP', 'Laravel',
+  'SQL', 'PostgreSQL', 'MongoDB', 'Redis', 'MySQL', 'GraphQL', 'REST APIs', 'Cassandra', 'Elasticsearch',
+  // Cloud, DevOps & Systems
+  'AWS', 'Azure', 'GCP', 'Docker', 'Kubernetes', 'Terraform', 'CI/CD', 'Git', 'Linux', 'System Design', 'Microservices',
+  'Redux', 'Zustand', 'Tailwind CSS', 'HTML5', 'CSS3', 'Next.js', 'Vue.js', 'Angular', 'Vite', 'Webpack', 'Jest',
+  // Data Science, AI & Machine Learning
+  'Machine Learning', 'Data Science', 'PyTorch', 'TensorFlow', 'OpenAI', 'Deep Learning', 'NLP', 'Computer Vision',
+  'Pandas', 'NumPy', 'Scikit-Learn', 'R', 'Data Analysis', 'Tableau', 'Power BI', 'BigQuery', 'Spark',
+  // Product, Design & Business
+  'Figma', 'UI/UX Design', 'Product Management', 'Agile', 'Scrum', 'Jira', 'Project Management',
+  'Digital Marketing', 'SEO', 'Content Strategy', 'Financial Analysis', 'Accounting', 'Sales', 'Business Development',
+  'Cybersecurity', 'Network Security', 'Quality Assurance', 'Automation Testing', 'Selenium'
 ];
 
-/** Decode base64 to readable text strings */
+/** Decode base64 to readable text strings, handling binary PDF stream tokens */
 function decodeBase64ToText(base64: string): string {
   try {
     const raw = atob(base64);
     // Replace non-printable control characters with spaces
-    return raw.replace(/[\x00-\x1F\x7F-\x9F]/g, ' ');
+    let text = raw.replace(/[\x00-\x1F\x7F-\x9F]/g, ' ');
+    // If text is binary PDF content, extract ASCII word sequences
+    if (text.includes('%PDF') || text.length < 50) {
+      const asciiWords = raw.match(/[a-zA-Z0-9.+@#/\\-]{2,}/g) || [];
+      text = asciiWords.join(' ');
+    }
+    return text;
   } catch {
     return base64;
   }
@@ -96,24 +109,21 @@ export function parseResumeContent(base64Content: string, fileName: string): Par
     }
   }
 
-  // 6. Extract Technical Skills
+  // 6. Extract Technical & Professional Skills
   const extractedSkills: string[] = [];
   SKILL_DICTIONARY.forEach((skill) => {
     const sLower = skill.toLowerCase();
-    // Escape special regex characters in skill name
     const safeRegex = new RegExp(`\\b${sLower.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}\\b`, 'i');
     if (safeRegex.test(textLower)) {
       extractedSkills.push(skill);
     }
   });
 
-  // Ensure default fallback skills if none detected in binary PDF streams
-  const finalSkills = extractedSkills.length > 0
-    ? extractedSkills
-    : ['React Native', 'TypeScript', 'Node.js', 'Software Engineering'];
+  // DO NOT inject fake skills if 0 detected. Preserve real candidate skills or empty list.
+  const finalSkills = extractedSkills;
 
   // 7. Extract Years of Experience
-  let experience = 3; // sensible default
+  let experience = 0;
   const expMatch = textLower.match(/(\d+)\+?\s*(years?|yrs?)\s*(of)?\s*(experience|exp)/i);
   if (expMatch && expMatch[1]) {
     const parsedExp = parseInt(expMatch[1], 10);
@@ -122,38 +132,32 @@ export function parseResumeContent(base64Content: string, fileName: string): Par
     }
   }
 
-  // 8. Extract Education Degree
-  const education: ParsedResumeResult['education'] = [];
-  if (textLower.includes('b.tech') || textLower.includes('btech') || textLower.includes('b.e') || textLower.includes('bachelor')) {
-    education.push({
-      institution: 'University / Institute of Technology',
-      degree: 'Bachelor of Technology (B.Tech)',
-      field: 'Computer Science & Engineering',
-      startYear: 2019,
-      endYear: 2023,
-    });
-  } else if (textLower.includes('m.tech') || textLower.includes('m.s') || textLower.includes('master')) {
-    education.push({
-      institution: 'University / Institute of Technology',
-      degree: 'Master of Science (M.S.)',
-      field: 'Computer Science',
-      startYear: 2021,
-      endYear: 2023,
-    });
-  } else {
-    education.push({
-      institution: 'University',
-      degree: 'Bachelor of Science (B.S.)',
-      field: 'Computer Science / IT',
-      startYear: 2020,
-      endYear: 2024,
-    });
+  // If experience phrase not explicitly found, estimate from date ranges (e.g. 2020-2024 -> 4 yrs)
+  if (experience === 0) {
+    const yearMatches = text.match(/\b(20[0-2][0-9]|19[8-9][0-9])\b/g);
+    if (yearMatches && yearMatches.length >= 2) {
+      const years = yearMatches.map((y) => parseInt(y, 10)).sort((a, b) => a - b);
+      const minYear = years[0];
+      const maxYear = years[years.length - 1];
+      const diff = maxYear - minYear;
+      if (diff > 0 && diff <= 30) {
+        experience = diff;
+      }
+    }
   }
 
-  // Calculate ATS Optimization Score
-  const atsScore = Math.min(95, Math.max(65, 60 + finalSkills.length * 4 + (email ? 10 : 0) + (phone ? 10 : 0)));
+  // 8. Extract Education Degree (ZERO assumptions: leave fields empty if not explicitly stated)
+  const education: ParsedResumeResult['education'] = [];
+  if (textLower.includes('b.tech') || textLower.includes('btech')) {
+    education.push({ institution: '', degree: 'Bachelor of Technology (B.Tech)', field: '', startYear: 0 });
+  } else if (textLower.includes('b.e') || textLower.includes('bachelor')) {
+    education.push({ institution: '', degree: 'Bachelor Degree', field: '', startYear: 0 });
+  } else if (textLower.includes('m.tech') || textLower.includes('m.s') || textLower.includes('master') || textLower.includes('mba')) {
+    education.push({ institution: '', degree: 'Master Degree', field: '', startYear: 0 });
+  }
 
-  const summary = `${name} is a results-driven Software Engineer with ${experience}+ years of hands-on experience specializing in ${finalSkills.slice(0, 3).join(', ')}. Demonstrated expertise in scalable system design, cross-platform applications, and agile product development.`;
+  // Calculate ATS Optimization Score based strictly on real presence of skills and contact details
+  const atsScore = Math.min(95, Math.max(40, 40 + finalSkills.length * 5 + (email ? 15 : 0) + (phone ? 15 : 0) + (linkedin ? 10 : 0)));
 
   return {
     name,
@@ -164,8 +168,8 @@ export function parseResumeContent(base64Content: string, fileName: string): Par
     skills: finalSkills,
     experience,
     education,
-    preferredLocation: 'Remote / Hybrid',
-    summary,
+    preferredLocation: '',
+    summary: '',
     atsScore,
     hasResume: true,
     resumeFileName: fileName,

@@ -132,8 +132,8 @@ exports.getRecommendedJobs = (0, https_1.onCall)({ maxInstances: 20, timeoutSeco
     const skills = userData.skills || [];
     const location = userData.preferredLocation || "Remote";
     const searchQuery = skills.length > 0
-        ? skills.slice(0, 3).join(" ") + " developer"
-        : "software developer " + location;
+        ? `${skills.slice(0, 3).join(" ")} ${location}`
+        : `software engineer ${location}`;
     return executeJobSearch(request.auth.uid, apiKey, {
         query: searchQuery,
         page: 1,

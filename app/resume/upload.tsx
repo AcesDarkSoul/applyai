@@ -64,6 +64,24 @@ export default function ResumeUploadScreen() {
     setSaving(true);
     setStatus('Saving resume on this device...');
     try {
+      // 1. Read base64 directly from selected document asset
+      let base64 = '';
+      try {
+        const response = await fetch(file.uri);
+        const blob = await response.blob();
+        base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const res = reader.result as string;
+            resolve(res.includes(',') ? res.split(',')[1] : res);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      } catch (readErr) {
+        console.warn('Direct blob read failed:', readErr);
+      }
+
       if (user) {
         await saveResumeForUser(user.uid, file);
       } else {
@@ -75,15 +93,15 @@ export default function ResumeUploadScreen() {
 
       let parsed: Record<string, unknown> = {};
       try {
-        parsed = await parseResumeWithAI(activeUid, file.name);
+        parsed = await parseResumeWithAI(activeUid, file.name, base64);
         setReviewBanner('✅ Successfully extracted info from your resume! Review & confirm below.');
         setReviewBannerType('success');
-        setForm(parsedToFormData(parsed, profile));
+        setForm(parsedToFormData(parsed));
       } catch (parseError) {
-        console.warn('Resume parsing fallback:', parseError);
-        setReviewBanner('⚠️ Extracted partial details. Please review and fill in missing fields below.');
+        console.warn('Resume parsing error:', parseError);
+        setReviewBanner('⚠️ Please review your information and fill in any missing fields below.');
         setReviewBannerType('warning');
-        setForm(profileToFormData(profile));
+        setForm(parsedToFormData({}));
       }
 
       await refreshResume();

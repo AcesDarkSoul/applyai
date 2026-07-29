@@ -71,19 +71,37 @@ Return JSON: { "title": "optional title for Reddit", "content": "post text", "ha
 
     try {
       const openai = new OpenAI({ apiKey: openaiKey });
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
-          {
-            role: "user",
-            content: `${profileContext}\n\nPost type: ${postType}\n${postContext}${customPrompt ? `\nExtra instructions: ${customPrompt}` : ""}`,
-          },
-        ],
-        temperature: 0.8,
-        max_tokens: 800,
-        response_format: { type: "json_object" },
-      });
+      let completion;
+      try {
+        completion = await openai.chat.completions.create({
+          model: "gpt-4o",
+          messages: [
+            { role: "system", content: systemPrompt },
+            {
+              role: "user",
+              content: `${profileContext}\n\nPost type: ${postType}\n${postContext}${customPrompt ? `\nExtra instructions: ${customPrompt}` : ""}`,
+            },
+          ],
+          temperature: 0.8,
+          max_tokens: 800,
+          response_format: { type: "json_object" },
+        });
+      } catch (err: unknown) {
+        console.warn("gpt-4o failed in generateSocialPost, falling back to gpt-4o-mini:", err);
+        completion = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: systemPrompt },
+            {
+              role: "user",
+              content: `${profileContext}\n\nPost type: ${postType}\n${postContext}${customPrompt ? `\nExtra instructions: ${customPrompt}` : ""}`,
+            },
+          ],
+          temperature: 0.8,
+          max_tokens: 800,
+          response_format: { type: "json_object" },
+        });
+      }
 
       const parsed = JSON.parse(completion.choices[0]?.message?.content || "{}");
       return {
