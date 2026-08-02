@@ -1,0 +1,8 @@
+[
+  {
+    "origin": ["http://localhost:8081", "http://localhost:19006", "http://localhost:3000", "http://127.0.0.1:8081", "https://applyai-444b2.web.app", "https://applyai-444b2.firebaseapp.com"],
+    "method": ["GET", "POST", "PUT", "DELETE", "HEAD"],
+    "maxAgeSeconds": 3600,
+    "responseHeader": ["Content-Type", "Authorization", "Content-Length", "X-Requested-With"]
+  }
+]

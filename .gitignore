@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Builds
+dist/
+build/
+frontend/dist/
+backend/dist/
+.next/
+.expo/
+web-build/
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+!**/.env.example
+serviceAccount.json
+**/serviceAccount*.json
+*.pem
+credentials.json
+**/google-services.json
+**/GoogleService-Info.plist
+
+# Logs & OS
+*.log
+.DS_Store
+Thumbs.db
+coverage/
+.firebase/
+*.local
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Misc
+*.tgz
+.turbo/
+
+# Nested repo metadata (preserved locally)
+applyai/.git.nested.bak/
+
+
+applyai-git-backup-nested/
+

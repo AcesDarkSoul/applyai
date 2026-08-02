@@ -1,0 +1,46 @@
+import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
+import { env } from '../config/env';
+import { authenticate, requireRole } from '../middleware/auth';
+import * as healthController from '../controllers/healthController';
+import * as profileController from '../controllers/profileController';
+import * as jobController from '../controllers/jobController';
+import * as applicationController from '../controllers/applicationController';
+import * as aiController from '../controllers/aiController';
+
+const aiLimiter = rateLimit({
+  windowMs: env.RATE_LIMIT_WINDOW_MS,
+  max: env.AI_RATE_LIMIT_MAX,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: { code: 'RATE_LIMITED', message: 'AI rate limit exceeded' },
+  },
+});
+
+export const apiRouter = Router();
+
+apiRouter.get('/health', healthController.health);
+
+apiRouter.use(authenticate);
+
+apiRouter.get('/me', profileController.getProfile);
+apiRouter.patch('/me', profileController.updateProfile);
+
+apiRouter.get('/jobs', jobController.searchJobs);
+apiRouter.get('/jobs/today', jobController.todaysJobs);
+apiRouter.get('/jobs/saved', jobController.listSavedJobs);
+apiRouter.get('/jobs/:id', jobController.getJob);
+apiRouter.post('/jobs/:id/save', jobController.saveJob);
+
+apiRouter.get('/applications', applicationController.listApplications);
+apiRouter.get('/applications/stats', applicationController.getStats);
+apiRouter.post('/applications/smart-apply', applicationController.smartApply);
+apiRouter.patch('/applications/:id/status', applicationController.updateApplicationStatus);
+
+apiRouter.post('/ai/cover-letter', aiLimiter, aiController.generateCoverLetter);
+
+apiRouter.get('/admin/ping', requireRole('admin'), (_req, res) => {
+  res.json({ success: true, data: { ok: true, role: 'admin' } });
+});

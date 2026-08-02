@@ -1,0 +1,24 @@
+{
+  "name": "applyai-functions",
+  "description": "Firebase Cloud Functions for ApplyAI",
+  "scripts": {
+    "build": "tsc",
+    "serve": "npm run build && firebase emulators:start --only functions",
+    "deploy": "firebase deploy --only functions"
+  },
+  "engines": {
+    "node": "20"
+  },
+  "main": "lib/index.js",
+  "dependencies": {
+    "@sendgrid/mail": "^8.1.0",
+    "firebase-admin": "^13.0.0",
+    "firebase-functions": "^6.3.0",
+    "openai": "^4.80.0",
+    "pdf-parse": "^2.4.5"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  },
+  "private": true
+}

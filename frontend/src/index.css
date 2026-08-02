@@ -1,0 +1,107 @@
+@import "tailwindcss";
+
+:root {
+  --brand-ink: #0b2420;
+  --brand-leaf: #0f8f68;
+  --brand-leaf-deep: #0a5c44;
+  --brand-sun: #f0b429;
+  --brand-coral: #e85d4c;
+  --brand-sky: #2aa8c4;
+  --brand-mist: #e4f6ef;
+  --brand-sand: #f6f1e7;
+  --surface: rgba(255, 255, 255, 0.72);
+  --surface-border: rgba(15, 42, 36, 0.08);
+  --shadow-soft: 0 18px 50px rgba(11, 36, 32, 0.08);
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: "DM Sans", system-ui, sans-serif;
+  background:
+    radial-gradient(1100px 640px at -5% -10%, rgba(240, 180, 41, 0.28), transparent 55%),
+    radial-gradient(900px 520px at 105% 0%, rgba(42, 168, 196, 0.2), transparent 50%),
+    radial-gradient(700px 420px at 70% 110%, rgba(232, 93, 76, 0.12), transparent 45%),
+    linear-gradient(165deg, #f8f4ec 0%, #eef8f3 45%, #e7f3f7 100%);
+  background-attachment: fixed;
+  color: var(--brand-ink);
+}
+
+body.dark {
+  --surface: rgba(16, 36, 32, 0.78);
+  --surface-border: rgba(232, 242, 238, 0.1);
+  --shadow-soft: 0 18px 50px rgba(0, 0, 0, 0.35);
+  background:
+    radial-gradient(900px 500px at 0% 0%, rgba(15, 143, 104, 0.28), transparent 50%),
+    radial-gradient(800px 420px at 100% 5%, rgba(240, 180, 41, 0.12), transparent 45%),
+    radial-gradient(700px 400px at 50% 100%, rgba(42, 168, 196, 0.12), transparent 50%),
+    linear-gradient(180deg, #071412, #0d221c 55%, #0a1a22);
+  color: #e8f2ee;
+}
+
+@keyframes float-y {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.aa-float {
+  animation: float-y 5.5s ease-in-out infinite;
+}
+
+.aa-shimmer-text {
+  background: linear-gradient(90deg, #0f8f68, #2aa8c4, #f0b429, #0f8f68);
+  background-size: 220% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 6s linear infinite;
+}
+
+.aa-surface {
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(14px);
+}
+
+.aa-page-title {
+  letter-spacing: -0.03em;
+}
+
+.aa-nav-active {
+  background: linear-gradient(135deg, rgba(15, 143, 104, 0.18), rgba(42, 168, 196, 0.12)) !important;
+  border-left: 3px solid #0f8f68;
+}
+
+a {
+  color: inherit;
+}
