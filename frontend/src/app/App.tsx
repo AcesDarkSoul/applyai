@@ -3,6 +3,8 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { LoginPage } from '../features/auth/LoginPage';
 import { OverviewPage } from '../features/dashboard/OverviewPage';
 import { ApplicationsPage } from '../features/applications/ApplicationsPage';
+import { AiToolsPage } from '../features/ai/AiToolsPage';
+import { AnalyticsPage } from '../features/ai/AnalyticsPage';
 import { JobDetailPage } from '../features/jobs/JobDetailPage';
 import { JobsPage } from '../features/jobs/JobsPage';
 import { SavedJobsPage } from '../features/jobs/SavedJobsPage';
@@ -29,6 +31,8 @@ export default function App() {
               <Route path="jobs/:id" element={<JobDetailPage />} />
               <Route path="saved" element={<SavedJobsPage />} />
               <Route path="applications" element={<ApplicationsPage />} />
+              <Route path="ai-tools" element={<AiToolsPage />} />
+              <Route path="analytics" element={<AnalyticsPage />} />
               <Route path="profile" element={<ProfilePage />} />
             </Route>
           </Route>

@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Button, Input } from '@/components/ui';
 import { Screen } from '@/components/layout/Screen';
 import { FadeInView } from '@/components/AnimatedView';
-import { signIn } from '@/lib/firebase/auth';
+import { signIn, formatAuthError } from '@/lib/firebase/auth';
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 
@@ -29,8 +29,8 @@ export default function LoginScreen() {
       await signIn(email.trim(), password);
       router.replace('/(tabs)');
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : 'Login failed';
-      setError(message.replace('Firebase: ', '').replace(/\(auth\/.*\)\.?/, '').trim());
+      console.error('Login failed:', e);
+      setError(formatAuthError(e));
     } finally {
       setLoading(false);
     }

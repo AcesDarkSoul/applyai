@@ -1,8 +1,9 @@
 # PROJECT_STATE.md — ApplyAI / AI Job Agent
 
-**Last updated:** 2026-08-02  
+**Last updated:** 2026-08-03  
 **Current formal phase:** Phase 2 — Architecture (**complete — awaiting approval**)  
 **Process mode:** Enterprise phased delivery (module-by-module, stop after each module)
+**Active side track:** `feature/n8n-job-outreach-flow` — Phase 8 n8n scaffold started (job discovery + compliant outreach workflow)
 
 ---
 
@@ -24,7 +25,11 @@
 3. Phase 5 — Frontend (production features per stack: Redux Toolkit, React Query, RHF, Zod)  
 4. Phase 6 — Backend (Firebase Auth/JWT production path, DTOs, DI, Multer, compression)  
 5. Phase 7 — Database (Firestore collections)  
-6. Phase 8 — n8n Automation  
+6. Phase 8 — n8n Automation — **scaffold complete** on `feature/n8n-job-outreach-flow`  
+   - Workflow: `n8n/workflows/job-outreach-auto-apply.json`  
+   - Local accurate runner: `n8n/scripts/job-outreach-runner.mjs` (`npm run outreach`)  
+   - Shared logic + self-test: `n8n/lib/outreach.mjs`, `npm run test:lib`  
+   - Blocker for live fetch: user must set `RAPIDAPI_KEY` in `n8n/.env`  
 7. Phase 9 — AI Prompt Library  
 8. Phase 10 — Dashboard completeness  
 9. Phase 11 — Notifications  

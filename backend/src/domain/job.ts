@@ -7,7 +7,7 @@ export interface Job {
   employmentType?: string;
   isRemote: boolean;
   salary?: string;
-  source: 'linkedin' | 'indeed' | 'naukri' | 'other';
+  source: 'linkedin' | 'indeed' | 'naukri' | 'googlejobs' | 'other';
   applyUrl: string;
   postedAt?: string;
   matchScore?: number;

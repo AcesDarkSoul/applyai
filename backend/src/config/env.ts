@@ -14,6 +14,21 @@ const envSchema = z.object({
   OPENAI_MODEL: z.string().default('gpt-4o-mini'),
   RAPIDAPI_KEY: z.string().optional().default(''),
   RAPIDAPI_JSEARCH_HOST: z.string().default('jsearch.p.rapidapi.com'),
+  APIFY_TOKEN: z.string().optional().default(''),
+  APIFY_LINKEDIN_ACTOR_ID: z.string().default('curious_coder/linkedin-jobs-scraper'),
+  APIFY_INDEED_ACTOR_ID: z.string().default('misceres/indeed-scraper'),
+  SERPAPI_API_KEY: z.string().optional().default(''),
+  JOB_SEARCH_QUERY: z.string().default('Full Stack Developer'),
+  JOB_SEARCH_LOCATION: z.string().default('India'),
+  JOB_SEARCH_LIMIT: z.coerce.number().default(15),
+  // serpapi,indeed,linkedin  (linkedin is slow — omit for quick local tests)
+  JOB_SCRAPE_SOURCES: z.string().default('serpapi,indeed'),
+  INGEST_API_KEY: z.string().default('applyai-local-ingest'),
+  PREFER_LIVE_CATALOG: z
+    .string()
+    .optional()
+    .default('true')
+    .transform((v) => v === 'true' || v === '1'),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(900_000),
   RATE_LIMIT_MAX: z.coerce.number().default(200),
   AI_RATE_LIMIT_MAX: z.coerce.number().default(30),
@@ -22,6 +37,17 @@ const envSchema = z.object({
     .optional()
     .default('true')
     .transform((v) => v === 'true' || v === '1'),
+  SENDGRID_API_KEY: z.string().optional().default(''),
+  SENDGRID_FROM_EMAIL: z.string().optional().default(''),
+  TWILIO_ACCOUNT_SID: z.string().optional().default(''),
+  TWILIO_AUTH_TOKEN: z.string().optional().default(''),
+  // e.g. whatsapp:+14155238886 (Twilio sandbox) or your WhatsApp-enabled number
+  TWILIO_WHATSAPP_FROM: z.string().optional().default(''),
+  OUTREACH_DRY_RUN: z
+    .string()
+    .optional()
+    .default('true')
+    .transform((v) => v !== 'false' && v !== '0'),
 });
 
 const parsed = envSchema.safeParse(process.env);

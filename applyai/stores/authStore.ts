@@ -32,18 +32,28 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ profile: null });
       return;
     }
-    const profile = await getUserProfile(user.uid);
-    set({ profile });
+    try {
+      const profile = await getUserProfile(user.uid);
+      set({ profile });
+    } catch (e) {
+      console.warn('refreshProfile failed:', e);
+      set({ profile: null });
+    }
   },
 
   initialize: () => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      set({ user, loading: true });
-      if (user) {
-        const profile = await getUserProfile(user.uid);
-        set({ profile, loading: false, initialized: true });
-      } else {
-        set({ profile: null, loading: false, initialized: true });
+      try {
+        if (user) {
+          const profile = await getUserProfile(user.uid);
+          set({ user, profile, loading: false, initialized: true });
+        } else {
+          set({ user: null, profile: null, loading: false, initialized: true });
+        }
+      } catch (e) {
+        // Never leave the app stuck on the loading spinner
+        console.warn('Auth init failed:', e);
+        set({ user, profile: null, loading: false, initialized: true });
       }
     });
     return unsubscribe;

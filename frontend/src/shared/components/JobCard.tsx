@@ -5,11 +5,14 @@ import { motion } from 'framer-motion';
 import { Link as RouterLink } from 'react-router-dom';
 import type { Job } from '../types';
 
+const PRIMARY = '#5b5ce2';
+
 const sourceColor: Record<string, string> = {
-  linkedin: '#2aa8c4',
-  indeed: '#0f8f68',
-  naukri: '#e85d4c',
-  other: '#f0b429',
+  linkedin: '#0a66c2',
+  indeed: '#14b8a6',
+  naukri: '#ec4899',
+  googlejobs: '#3b82f6',
+  other: '#f59e0b',
 };
 
 interface JobCardProps {
@@ -23,63 +26,45 @@ export function JobCard({ job, onSave, index = 0 }: JobCardProps) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 18 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.06, duration: 0.4 }}
-      whileHover={{ y: -4 }}
+      transition={{ delay: index * 0.05, duration: 0.35 }}
+      whileHover={{ y: -3 }}
     >
-      <Box
-        className="aa-surface rounded-3xl p-5 md:p-6 relative overflow-hidden"
-        sx={{
-          transition: 'border-color 0.25s ease',
-          '&:hover': { borderColor: accent },
-        }}
-      >
-        <Box
-          sx={{
-            position: 'absolute',
-            inset: 0,
-            background: `linear-gradient(120deg, ${accent}14, transparent 42%)`,
-            pointerEvents: 'none',
-          }}
-        />
+      <Box className="aa-card p-4 md:p-5">
         <Stack
           direction={{ xs: 'column', md: 'row' }}
           justifyContent="space-between"
           gap={2}
-          position="relative"
+          alignItems={{ md: 'center' }}
         >
-          <Box>
+          <Box className="min-w-0 flex-1">
             <Stack direction="row" gap={1} mb={1} flexWrap="wrap" alignItems="center">
               <Chip
                 size="small"
                 label={job.source}
-                sx={{ bgcolor: `${accent}22`, color: accent, fontWeight: 700 }}
+                sx={{ bgcolor: `${accent}18`, color: accent, fontWeight: 700 }}
               />
               {job.isRemote && (
-                <Chip size="small" label="Remote" color="success" variant="outlined" />
+                <Chip size="small" label="Remote" variant="outlined" color="success" />
               )}
               {typeof job.matchScore === 'number' && (
                 <Chip
                   size="small"
-                  label={`${job.matchScore}% match`}
-                  sx={{
-                    bgcolor: 'secondary.main',
-                    color: '#1a1405',
-                    fontWeight: 800,
-                  }}
+                  label={`${job.matchScore}% Match`}
+                  sx={{ bgcolor: `${PRIMARY}18`, color: PRIMARY, fontWeight: 800 }}
                 />
               )}
             </Stack>
-            <Typography variant="h5" className="aa-page-title" gutterBottom>
+            <Typography fontWeight={800} fontSize={18} letterSpacing="-0.02em" gutterBottom>
               {job.title}
             </Typography>
-            <Typography color="text.secondary">
+            <Typography color="text.secondary" fontSize={14}>
               {job.company} · {job.location}
               {job.salary ? ` · ${job.salary}` : ''}
             </Typography>
           </Box>
-          <Stack direction="row" spacing={1} alignItems="flex-start">
+          <Stack direction="row" spacing={1} alignItems="center" flexShrink={0}>
             {onSave && (
               <Button startIcon={<BookmarkBorderIcon />} onClick={onSave} variant="outlined">
                 Save

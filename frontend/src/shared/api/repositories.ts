@@ -10,6 +10,34 @@ export const profileRepository = {
     const { data } = await api.patch<ApiResponse<UserProfile>>('/me', patch);
     return data.data;
   },
+  async uploadResume(file: File) {
+    const form = new FormData();
+    form.append('resume', file);
+    const { data } = await api.post<
+      ApiResponse<{
+        profile: UserProfile;
+        parsed: {
+          name: string | null;
+          email: string | null;
+          phone: string | null;
+          title: string;
+          skills: string[];
+          experience: number;
+          education: string[];
+          summary: string;
+          linkedin: string | null;
+          location: string;
+          parseMethod: string;
+          textChars: number;
+          atsScore?: number;
+        };
+      }>
+    >('/me/resume', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 90_000,
+    });
+    return data.data;
+  },
 };
 
 export const jobRepository = {
@@ -47,6 +75,26 @@ export const applicationRepository = {
     const { data } = await api.post<
       ApiResponse<{ application: Application; applyUrl: string; complianceNote: string }>
     >('/applications/smart-apply', { jobId, confirmed: true });
+    return data.data;
+  },
+  async outreachApply(jobId: string) {
+    const { data } = await api.post<
+      ApiResponse<{
+        application: Application;
+        applyUrl: string;
+        outreach: {
+          channel: 'email' | 'whatsapp' | 'smart_apply';
+          contacts: { email: string | null; phone: string | null };
+          dryRun: boolean;
+          sent: boolean;
+          subject?: string;
+          body?: string;
+          to?: string;
+          waLink?: string;
+          note: string;
+        };
+      }>
+    >('/applications/outreach-apply', { jobId, confirmed: true }, { timeout: 60_000 });
     return data.data;
   },
   async updateStatus(id: string, status: Application['status'], note?: string) {

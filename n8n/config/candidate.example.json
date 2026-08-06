@@ -1,0 +1,21 @@
+{
+  "name": "Your Name",
+  "email": "you@example.com",
+  "phone": "+91XXXXXXXXXX",
+  "title": "Full Stack Developer",
+  "location": "Remote",
+  "yearsExperience": 3,
+  "skills": ["React", "TypeScript", "Node.js", "Firebase", "Express"],
+  "resumeUrl": "https://example.com/resume.pdf",
+  "searchQueries": [
+    "Full Stack Developer India",
+    "React Developer Remote",
+    "Node.js Developer Bangalore"
+  ],
+  "platforms": ["linkedin", "indeed", "naukri"],
+  "dailyEmailLimit": 10,
+  "dailySmsLimit": 5,
+  "minMatchScore": 50,
+  "emailTemplateNotes": "Keep under 150 words; mention role + 2-3 skills; ask for a short call.",
+  "smsTemplateNotes": "Short intro + role + resume link. No spammy language."
+}

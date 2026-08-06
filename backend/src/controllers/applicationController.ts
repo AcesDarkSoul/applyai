@@ -4,8 +4,14 @@ import { AppError } from '../middleware/errorHandler';
 import { applicationService } from '../services/applicationService';
 import { jobService } from '../services/jobService';
 import { profileService } from '../services/profileService';
+import { outreachApply } from '../services/outreachService';
 
 const smartApplySchema = z.object({
+  jobId: z.string().min(1),
+  confirmed: z.literal(true),
+});
+
+const outreachApplySchema = z.object({
   jobId: z.string().min(1),
   confirmed: z.literal(true),
 });
@@ -39,6 +45,59 @@ export async function smartApply(req: Request, res: Response, next: NextFunction
         applyUrl: job.applyUrl,
         complianceNote:
           'Smart Apply opens the official job posting. You complete the application on the third-party site.',
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Auto outreach apply:
+ * - email in job post → send application email (SendGrid)
+ * - phone in job post → WhatsApp (Twilio) or wa.me fallback
+ * - else → Smart Apply URL (no silent LinkedIn/Naukri submit)
+ */
+export async function outreachApplyHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const body = outreachApplySchema.parse(req.body);
+    const profile = await profileService.getOrCreate(req.user!);
+    const job = await jobService.getById(body.jobId, profile);
+    if (!job) throw new AppError(404, 'Job not found', 'NOT_FOUND');
+
+    if (!profile.summary && !(profile.skills?.length > 2)) {
+      throw new AppError(
+        400,
+        'Upload your resume on Profile first so outreach can use your details.',
+        'PROFILE_INCOMPLETE',
+      );
+    }
+
+    const outreach = await outreachApply(profile, job);
+    const note =
+      outreach.channel === 'email'
+        ? outreach.sent
+          ? 'Emailed recruiter from resume profile'
+          : outreach.note
+        : outreach.channel === 'whatsapp'
+          ? outreach.sent
+            ? 'WhatsApp sent from resume profile'
+            : outreach.note
+          : 'Smart Apply — opened official posting';
+
+    const application = await applicationService.smartApply(req.user!.uid, job);
+    await applicationService.updateStatus(req.user!.uid, application.id, 'applied', note);
+
+    res.status(201).json({
+      success: true,
+      data: {
+        application,
+        outreach,
+        applyUrl: job.applyUrl,
       },
     });
   } catch (err) {

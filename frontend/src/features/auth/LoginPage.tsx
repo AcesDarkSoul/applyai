@@ -1,29 +1,36 @@
 import { Alert, Box, Button, Stack, Typography } from '@mui/material';
 import RocketLaunchRoundedIcon from '@mui/icons-material/RocketLaunchRounded';
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
-import VerifiedUserRoundedIcon from '@mui/icons-material/VerifiedUserRounded';
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
+import BoltRoundedIcon from '@mui/icons-material/BoltRounded';
+import InsightsRoundedIcon from '@mui/icons-material/InsightsRounded';
+import SmartToyRoundedIcon from '@mui/icons-material/SmartToyRounded';
 import { motion } from 'framer-motion';
 import { Navigate } from 'react-router-dom';
 import { useAuthStore } from './authStore';
 
+const PRIMARY = '#5b5ce2';
+
 const highlights = [
   {
     icon: <AutoAwesomeRoundedIcon />,
-    title: 'AI matching',
-    text: 'See fit scores before you spend time applying.',
-    color: '#0f8f68',
+    title: 'Smart Job Matching',
+    text: 'AI ranks roles by skills, experience, and location fit.',
   },
   {
-    icon: <RocketLaunchRoundedIcon />,
-    title: 'Faster prep',
-    text: 'Cover letters and outreach drafts in one click.',
-    color: '#2aa8c4',
+    icon: <DescriptionOutlinedIcon />,
+    title: 'Resume Tailoring',
+    text: 'Beat the ATS with tailored resumes and cover letters.',
   },
   {
-    icon: <VerifiedUserRoundedIcon />,
-    title: 'Policy-safe apply',
-    text: 'Opens official job pages — you stay in control.',
-    color: '#e85d4c',
+    icon: <BoltRoundedIcon />,
+    title: 'Smart Apply Assistant',
+    text: 'Opens official apply pages — you stay in control.',
+  },
+  {
+    icon: <InsightsRoundedIcon />,
+    title: 'Track & Analyze',
+    text: 'See applications, interviews, and offers in one place.',
   },
 ];
 
@@ -33,80 +40,64 @@ export function LoginPage() {
   if (token) return <Navigate to="/" replace />;
 
   return (
-    <Box className="min-h-screen relative overflow-hidden">
-      <Box
-        className="aa-float"
-        sx={{
-          position: 'absolute',
-          width: 420,
-          height: 420,
-          borderRadius: '50%',
-          top: -80,
-          right: -60,
-          background: 'radial-gradient(circle, rgba(240,180,41,0.35), transparent 70%)',
-          pointerEvents: 'none',
-        }}
-      />
-      <Box
-        sx={{
-          position: 'absolute',
-          width: 360,
-          height: 360,
-          borderRadius: '50%',
-          bottom: -40,
-          left: -80,
-          background: 'radial-gradient(circle, rgba(42,168,196,0.28), transparent 70%)',
-          pointerEvents: 'none',
-          animation: 'float-y 7s ease-in-out infinite',
-        }}
-      />
-
+    <Box className="min-h-screen" sx={{ bgcolor: '#f4f5fb' }}>
       <Box
         className="relative min-h-screen grid lg:grid-cols-2"
-        sx={{ maxWidth: 1200, mx: 'auto', px: { xs: 2.5, md: 4 }, py: { xs: 4, md: 6 } }}
+        sx={{ maxWidth: 1100, mx: 'auto', px: { xs: 2.5, md: 4 }, py: { xs: 4, md: 6 }, gap: 4 }}
       >
         <motion.div
-          initial={{ opacity: 0, x: -24 }}
+          initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6 }}
-          className="flex flex-col justify-center gap-6 py-6"
+          transition={{ duration: 0.5 }}
+          className="flex flex-col justify-center gap-5 py-4"
         >
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <Box
+              sx={{
+                width: 44,
+                height: 44,
+                borderRadius: '12px',
+                bgcolor: PRIMARY,
+                color: '#fff',
+                display: 'grid',
+                placeItems: 'center',
+              }}
+            >
+              <SmartToyRoundedIcon />
+            </Box>
+            <Typography fontWeight={800} fontSize={22}>
+              ApplyAI
+            </Typography>
+          </Stack>
+
           <Typography
-            variant="h1"
-            className="aa-shimmer-text aa-page-title"
-            sx={{ fontSize: { xs: '3.2rem', md: '4.6rem' }, lineHeight: 1.05 }}
+            sx={{ fontWeight: 800, fontSize: { xs: 32, md: 40 }, letterSpacing: '-0.03em', lineHeight: 1.15 }}
           >
-            ApplyAI
-          </Typography>
-          <Typography
-            variant="h4"
-            sx={{ maxWidth: 520, fontWeight: 500, color: 'text.secondary', lineHeight: 1.35 }}
-          >
-            Your colorful command center for jobs, matches, and applications.
+            AI-Powered Job Application Automation
           </Typography>
           <Typography color="text.secondary" sx={{ maxWidth: 480 }}>
-            Discover roles, score fit instantly, draft materials with AI, and track every step —
-            designed to feel clear for first-time users and fast for power users.
+            Find. Match. Tailor. Apply. — a clean workspace for discovering roles and tracking every
+            step.
           </Typography>
 
           <Stack spacing={2} mt={1}>
             {highlights.map((item, i) => (
               <motion.div
                 key={item.title}
-                initial={{ opacity: 0, y: 12 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.25 + i * 0.1 }}
+                transition={{ delay: 0.15 + i * 0.08 }}
               >
                 <Stack direction="row" spacing={2} alignItems="flex-start">
                   <Box
                     sx={{
-                      width: 42,
-                      height: 42,
-                      borderRadius: 2,
+                      width: 40,
+                      height: 40,
+                      borderRadius: 2.5,
                       display: 'grid',
                       placeItems: 'center',
-                      bgcolor: `${item.color}22`,
-                      color: item.color,
+                      bgcolor: 'rgba(91,92,226,0.12)',
+                      color: PRIMARY,
                       flexShrink: 0,
                     }}
                   >
@@ -125,26 +116,18 @@ export function LoginPage() {
         </motion.div>
 
         <motion.div
-          initial={{ opacity: 0, y: 28 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.55, delay: 0.15 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
           className="flex items-center"
         >
-          <Box className="aa-surface rounded-[28px] w-full p-7 md:p-10 relative overflow-hidden">
-            <Box
-              sx={{
-                position: 'absolute',
-                inset: 0,
-                background:
-                  'linear-gradient(145deg, rgba(15,143,104,0.08), rgba(240,180,41,0.1), rgba(42,168,196,0.08))',
-                pointerEvents: 'none',
-              }}
-            />
-            <Stack spacing={3} position="relative">
-              <Typography variant="h4">Start in seconds</Typography>
+          <Box className="aa-card w-full p-7 md:p-9">
+            <Stack spacing={2.5}>
+              <Typography fontWeight={800} fontSize={24} letterSpacing="-0.02em">
+                Start in seconds
+              </Typography>
               <Typography color="text.secondary">
-                Demo mode is ready — no account setup required. Pick a role and explore the full
-                dashboard experience.
+                Demo mode is ready — enter as a candidate and explore the dashboard.
               </Typography>
               {error && <Alert severity="error">{error}</Alert>}
               <Button
@@ -162,12 +145,12 @@ export function LoginPage() {
                 size="large"
                 disabled={loading}
                 onClick={() => loginDemo(true)}
-                sx={{ py: 1.4, borderWidth: 2 }}
+                sx={{ py: 1.4 }}
               >
                 Enter as Admin
               </Button>
               <Typography variant="caption" color="text.secondary">
-                Tip: Use Candidate mode to try jobs, Smart Apply, and cover letters.
+                Tip: Use Candidate mode for jobs, Smart Apply, and cover letters.
               </Typography>
             </Stack>
           </Box>

@@ -40,16 +40,15 @@ export function SavedJobsPage() {
     <Stack spacing={3}>
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
         <Box
-          className="aa-surface rounded-[28px] p-6 md:p-8"
+          className="aa-card p-5 md:p-6"
           sx={{
-            background:
-              'linear-gradient(120deg, rgba(240,180,41,0.22), rgba(15,143,104,0.1))',
+            background: 'linear-gradient(120deg, rgba(91,92,226,0.1), rgba(245,158,11,0.08))',
           }}
         >
-          <Typography variant="h3" className="aa-page-title" gutterBottom>
+          <Typography fontWeight={800} fontSize={22} letterSpacing="-0.02em" gutterBottom>
             Saved Jobs
           </Typography>
-          <Typography color="text.secondary">
+          <Typography color="text.secondary" fontSize={14}>
             Your shortlist — revisit matches when you&apos;re ready to apply.
           </Typography>
         </Box>

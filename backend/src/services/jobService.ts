@@ -2,7 +2,10 @@ import { env } from '../config/env';
 import { logger } from '../config/logger';
 import type { Job } from '../domain/job';
 import type { UserProfile } from '../domain/user';
+import { jobCatalog } from '../repositories/memory/jobCatalog';
 import { computeMatch } from './matchingService';
+import { toJobs, type NormalizedJobInput } from './jobNormalize';
+import { jobScrapeService } from './jobScrapeService';
 
 const SAMPLE_JOBS: Job[] = [
   {
@@ -61,6 +64,118 @@ const SAMPLE_JOBS: Job[] = [
     applyUrl: 'https://www.linkedin.com/jobs/',
     postedAt: new Date().toISOString(),
   },
+  {
+    id: 'job-5',
+    title: 'React Native Mobile Developer',
+    company: 'Trailblaze Apps',
+    location: 'Mumbai, India',
+    description:
+      'Build cross-platform mobile apps with React Native, TypeScript, and Firebase. Push notifications and offline-first UX.',
+    employmentType: 'Full-time',
+    isRemote: false,
+    salary: 'INR 15L - 25L',
+    source: 'naukri',
+    applyUrl: 'https://www.naukri.com/',
+    postedAt: new Date().toISOString(),
+  },
+  {
+    id: 'job-6',
+    title: 'DevOps Engineer',
+    company: 'CloudNest',
+    location: 'Remote (India)',
+    description:
+      'Own CI/CD, Docker, Kubernetes, AWS. Terraform and monitoring experience preferred. Collaborate with full-stack teams.',
+    employmentType: 'Full-time',
+    isRemote: true,
+    salary: 'INR 20L - 35L',
+    source: 'linkedin',
+    applyUrl: 'https://www.linkedin.com/jobs/',
+    postedAt: new Date().toISOString(),
+  },
+  {
+    id: 'job-7',
+    title: 'Full Stack Developer (MERN)',
+    company: 'BrightCart',
+    location: 'Noida, India',
+    description:
+      'MongoDB, Express, React, Node.js e-commerce platform. REST APIs, payment integrations, and performance tuning.',
+    employmentType: 'Full-time',
+    isRemote: false,
+    salary: 'INR 10L - 18L',
+    source: 'indeed',
+    applyUrl: 'https://www.indeed.com/',
+    postedAt: new Date().toISOString(),
+  },
+  {
+    id: 'job-8',
+    title: 'TypeScript Platform Engineer',
+    company: 'Ledgerly',
+    location: 'Bengaluru, India',
+    description:
+      'Design typed services, event-driven workflows, and developer tooling. Node.js, PostgreSQL, Redis, GraphQL.',
+    employmentType: 'Full-time',
+    isRemote: true,
+    salary: 'INR 28L - 42L',
+    source: 'linkedin',
+    applyUrl: 'https://www.linkedin.com/jobs/',
+    postedAt: new Date().toISOString(),
+  },
+  {
+    id: 'job-9',
+    title: 'Junior Software Engineer',
+    company: 'StartHive',
+    location: 'Pune, India',
+    description:
+      'Entry-level role for JavaScript/TypeScript developers. Mentorship on React, Node.js, Git, and Agile delivery.',
+    employmentType: 'Full-time',
+    isRemote: false,
+    salary: 'INR 6L - 10L',
+    source: 'naukri',
+    applyUrl: 'https://www.naukri.com/',
+    postedAt: new Date().toISOString(),
+  },
+  {
+    id: 'job-10',
+    title: 'QA Automation Engineer',
+    company: 'QualityForge',
+    location: 'Chennai, India',
+    description:
+      'Playwright/Cypress automation, API testing, CI pipelines. Experience with Node.js test tooling is a plus.',
+    employmentType: 'Full-time',
+    isRemote: true,
+    salary: 'INR 12L - 20L',
+    source: 'other',
+    applyUrl: 'https://careers.example.com/qa-automation',
+    postedAt: new Date().toISOString(),
+  },
+  {
+    id: 'job-11',
+    title: 'Solutions Engineer',
+    company: 'StackBridge',
+    location: 'Remote',
+    description:
+      'Customer-facing technical role: demos, PoCs, and integrations using REST APIs, webhooks, and JavaScript.',
+    employmentType: 'Full-time',
+    isRemote: true,
+    salary: '$80k – $110k',
+    source: 'indeed',
+    applyUrl: 'https://www.indeed.com/',
+    postedAt: new Date().toISOString(),
+  },
+  {
+    id: 'job-12',
+    title: 'Software Engineer – Intern',
+    company: 'CampusCode',
+    location: 'Hyderabad, India',
+    description:
+      'Internship building internal tools with React and Express. Strong fundamentals in data structures preferred.',
+    employmentType: 'Internship',
+    isRemote: false,
+    salary: 'Stipend',
+    source: 'other',
+    applyUrl: 'https://careers.example.com/intern',
+    postedAt: new Date().toISOString(),
+  },
 ];
 
 function detectSource(url: string): Job['source'] {
@@ -68,21 +183,28 @@ function detectSource(url: string): Job['source'] {
   if (u.includes('linkedin.com')) return 'linkedin';
   if (u.includes('indeed.com')) return 'indeed';
   if (u.includes('naukri.com')) return 'naukri';
+  if (u.includes('google.com') || u.includes('google.co')) return 'googlejobs';
   return 'other';
 }
 
 export class JobService {
   async search(query: string, profile: UserProfile | null): Promise<Job[]> {
     let jobs = SAMPLE_JOBS;
+    const catalog = jobCatalog.list();
 
-    if (env.RAPIDAPI_KEY) {
+    if (env.PREFER_LIVE_CATALOG && catalog.length > 0) {
+      jobs = catalog;
+    } else if (env.RAPIDAPI_KEY) {
       try {
         jobs = await this.fetchFromJSearch(query);
       } catch (err) {
         logger.warn('JSearch failed; using sample jobs', {
           err: err instanceof Error ? err.message : err,
         });
+        if (catalog.length > 0) jobs = catalog;
       }
+    } else if (catalog.length > 0) {
+      jobs = catalog;
     }
 
     const q = query.trim().toLowerCase();
@@ -91,7 +213,8 @@ export class JobService {
           (j) =>
             j.title.toLowerCase().includes(q) ||
             j.company.toLowerCase().includes(q) ||
-            j.description.toLowerCase().includes(q),
+            j.description.toLowerCase().includes(q) ||
+            j.source.toLowerCase().includes(q),
         )
       : jobs;
 
@@ -103,8 +226,34 @@ export class JobService {
   }
 
   async getById(id: string, profile: UserProfile | null): Promise<Job | null> {
+    const fromCatalog = jobCatalog.getById(id);
+    if (fromCatalog) {
+      if (!profile) return fromCatalog;
+      const breakdown = computeMatch(profile, fromCatalog);
+      return { ...fromCatalog, matchScore: breakdown.overall, matchBreakdown: breakdown };
+    }
     const jobs = await this.search('', profile);
     return jobs.find((j) => j.id === id) ?? SAMPLE_JOBS.find((j) => j.id === id) ?? null;
+  }
+
+  async ingestNormalized(rawJobs: NormalizedJobInput[], sourceLabel = 'n8n') {
+    const jobs = toJobs(rawJobs);
+    return jobCatalog.upsertMany(jobs, sourceLabel);
+  }
+
+  async refreshFromProviders(query?: string, location?: string) {
+    const result = await jobScrapeService.refresh(query, location);
+    if (result.jobs.length) {
+      jobCatalog.replaceAll(result.jobs, 'apify-serpapi');
+    }
+    return {
+      ...result,
+      catalog: jobCatalog.meta(),
+    };
+  }
+
+  catalogMeta() {
+    return jobCatalog.meta();
   }
 
   private async fetchFromJSearch(query: string): Promise<Job[]> {

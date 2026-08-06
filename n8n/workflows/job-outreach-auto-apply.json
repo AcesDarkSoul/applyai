@@ -1,0 +1,1210 @@
+{
+  "name": "ApplyAI - Job Discovery and Compliant Outreach",
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "description": "Fetches LinkedIn/Indeed/Google Jobs via Apify + SerpApi, normalizes schema, matches resume skills, then rate-limited email/SMS. Dry-run safe by default."
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "active": false,
+  "pinData": {},
+  "tags": [
+    {
+      "name": "applyai"
+    },
+    {
+      "name": "outreach"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sched-001",
+      "name": "Daily 9AM IST",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        200
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "manual-001",
+      "name": "Manual Test",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        400
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "webhook-001",
+      "name": "Webhook Start",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        600
+      ],
+      "webhookId": "applyai-job-outreach",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "applyai-job-outreach",
+        "responseMode": "lastNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "note-001",
+      "name": "Setup Notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        120
+      ],
+      "parameters": {
+        "content": "## ApplyAI Job Outreach (Apify + SerpApi → API)\n\n1. Fill `n8n/.env`: APIFY_TOKEN + SERPAPI_API_KEY + candidate\n2. Set `APPLYAI_API_BASE` + `INGEST_API_KEY` (defaults work locally)\n3. Keep **OUTREACH_DRY_RUN=true** until logs look right\n4. Import this workflow → run **Manual Test** (or activate + POST webhook)\n5. After Normalize: jobs POST to ApplyAI `POST /api/v1/jobs/ingest`\n6. Open http://localhost:5173/jobs — live catalog when PREFER_LIVE_CATALOG=true\n\nDocs: `n8n/README.md`",
+        "height": 320,
+        "width": 360,
+        "color": 4
+      }
+    },
+    {
+      "id": "set-001",
+      "name": "Load Candidate Profile",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        280,
+        400
+      ],
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "candidate.name",
+              "value": "={{ $env.CANDIDATE_NAME || 'Your Name' }}",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "candidate.email",
+              "value": "={{ $env.CANDIDATE_EMAIL || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "a3",
+              "name": "candidate.phone",
+              "value": "={{ $env.CANDIDATE_PHONE || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "a4",
+              "name": "candidate.title",
+              "value": "={{ $env.CANDIDATE_TITLE || 'Software Developer' }}",
+              "type": "string"
+            },
+            {
+              "id": "a5",
+              "name": "candidate.location",
+              "value": "={{ $env.CANDIDATE_LOCATION || 'Remote' }}",
+              "type": "string"
+            },
+            {
+              "id": "a6",
+              "name": "candidate.skills",
+              "value": "={{ ($env.CANDIDATE_SKILLS || 'JavaScript,React,Node.js').split(',').map(s => s.trim()).filter(Boolean) }}",
+              "type": "array"
+            },
+            {
+              "id": "a7",
+              "name": "candidate.resumeUrl",
+              "value": "={{ $env.CANDIDATE_RESUME_URL || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "a8",
+              "name": "candidate.yearsExperience",
+              "value": "={{ Number($env.CANDIDATE_YEARS_EXP || 0) }}",
+              "type": "number"
+            },
+            {
+              "id": "a9",
+              "name": "search.query",
+              "value": "={{ ($json.body && $json.body.query) || $env.JOB_SEARCH_QUERY || $env.JSEARCH_QUERY || 'Full Stack Developer' }}",
+              "type": "string"
+            },
+            {
+              "id": "a10",
+              "name": "limits.dailyEmail",
+              "value": "={{ Number($env.DAILY_EMAIL_LIMIT || 10) }}",
+              "type": "number"
+            },
+            {
+              "id": "a11",
+              "name": "limits.dailySms",
+              "value": "={{ Number($env.DAILY_SMS_LIMIT || 5) }}",
+              "type": "number"
+            },
+            {
+              "id": "a12",
+              "name": "limits.minMatchScore",
+              "value": "={{ Number($env.MIN_MATCH_SCORE || 50) }}",
+              "type": "number"
+            },
+            {
+              "id": "a13",
+              "name": "flags.dryRun",
+              "value": "={{ String($env.OUTREACH_DRY_RUN || 'true').toLowerCase() !== 'false' }}",
+              "type": "boolean"
+            },
+            {
+              "id": "a14",
+              "name": "flags.platforms",
+              "value": "={{ ($env.PLATFORM_FILTER || 'linkedin,indeed,googlejobs').split(',').map(s => s.trim().toLowerCase()).filter(Boolean) }}",
+              "type": "array"
+            },
+            {
+              "id": "a15",
+              "name": "search.location",
+              "value": "={{ ($json.body && $json.body.location) || $env.JOB_SEARCH_LOCATION || 'India' }}",
+              "type": "string"
+            },
+            {
+              "id": "a16",
+              "name": "search.limit",
+              "value": "={{ Number($env.JOB_SEARCH_LIMIT || 25) }}",
+              "type": "number"
+            },
+            {
+              "id": "a20",
+              "name": "secrets.apifyToken",
+              "value": "={{ $env.APIFY_TOKEN || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "a21",
+              "name": "secrets.serpApiKey",
+              "value": "={{ $env.SERPAPI_API_KEY || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "a22",
+              "name": "secrets.linkedinActorId",
+              "value": "={{ $env.APIFY_LINKEDIN_ACTOR_ID || 'curious_coder/linkedin-jobs-scraper' }}",
+              "type": "string"
+            },
+            {
+              "id": "a23",
+              "name": "secrets.indeedActorId",
+              "value": "={{ $env.APIFY_INDEED_ACTOR_ID || 'misceres/indeed-scraper' }}",
+              "type": "string"
+            },
+            {
+              "id": "a24",
+              "name": "secrets.applyAiApiBase",
+              "value": "={{ $env.APPLYAI_API_BASE || 'http://localhost:4000/api/v1' }}",
+              "type": "string"
+            },
+            {
+              "id": "a25",
+              "name": "secrets.ingestApiKey",
+              "value": "={{ $env.INGEST_API_KEY || 'applyai-local-ingest' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "http-li-001",
+      "name": "Apify LinkedIn Scraper",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        520,
+        240
+      ],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.apify.com/v2/acts/' + String($json.secrets.linkedinActorId || $env.APIFY_LINKEDIN_ACTOR_ID || 'curious_coder/linkedin-jobs-scraper').replace('/', '~') + '/run-sync-get-dataset-items?token=' + ($json.secrets.apifyToken || $env.APIFY_TOKEN) }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ urls: [\"https://www.linkedin.com/jobs/search/?keywords=\" + encodeURIComponent($json.search.query) + \"&location=\" + encodeURIComponent($json.search.location) + \"&f_TPR=r604800\"], count: Number($json.search.limit || 25), scrapeCompany: false }) }}",
+        "options": {
+          "timeout": 300000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "http-in-001",
+      "name": "Apify Indeed Scraper",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        520,
+        400
+      ],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.apify.com/v2/acts/' + String($json.secrets.indeedActorId || $env.APIFY_INDEED_ACTOR_ID || 'misceres/indeed-scraper').replace('/', '~') + '/run-sync-get-dataset-items?token=' + ($json.secrets.apifyToken || $env.APIFY_TOKEN) }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ position: $json.search.query, location: $json.search.location, country: ($env.JSEARCH_COUNTRY || \"in\").toUpperCase() === \"IN\" ? \"IN\" : ($env.JSEARCH_COUNTRY || \"US\").toUpperCase(), maxItemsPerSearch: Number($json.search.limit || 25), saveOnlyUniqueItems: true }) }}",
+        "options": {
+          "timeout": 300000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "http-gg-001",
+      "name": "SerpApi Google Jobs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        520,
+        560
+      ],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "GET",
+        "url": "https://serpapi.com/search.json",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "engine",
+              "value": "google_jobs"
+            },
+            {
+              "name": "q",
+              "value": "={{ $json.search.query }}"
+            },
+            {
+              "name": "location",
+              "value": "={{ $json.search.location }}"
+            },
+            {
+              "name": "api_key",
+              "value": "={{ $json.secrets.serpApiKey || $env.SERPAPI_API_KEY }}"
+            },
+            {
+              "name": "hl",
+              "value": "en"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "merge-001",
+      "name": "Merge Job Sources",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        760,
+        400
+      ],
+      "parameters": {
+        "mode": "append",
+        "numberInputs": 3
+      }
+    },
+    {
+      "id": "code-norm-001",
+      "name": "Normalize Jobs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        980,
+        400
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "/**\n * n8n Code node — Standardize + dedupe jobs from:\n *   - Apify LinkedIn Jobs Scraper\n *   - Apify Indeed Scraper\n *   - SerpApi Google Jobs\n *\n * Paste this entire file into an n8n \"Code\" node (Run Once for All Items).\n *\n * Upstream: Merge (or multiple inputs) from the three scrape nodes.\n * Downstream: one item per unique job matching the schema below.\n *\n * Schema:\n *   jobId, sourcePlatform, title, company, location,\n *   isRemote, description, applyUrl, postedAt\n */\n\n// ---------------------------------------------------------------------------\n// Helpers\n// ---------------------------------------------------------------------------\n\nfunction stripHtml(value) {\n  if (value == null) return \"\";\n  return String(value)\n    .replace(/<script[\\s\\S]*?<\\/script>/gi, \" \")\n    .replace(/<style[\\s\\S]*?<\\/style>/gi, \" \")\n    .replace(/<[^>]+>/g, \" \")\n    .replace(/&nbsp;/gi, \" \")\n    .replace(/&amp;/gi, \"&\")\n    .replace(/&lt;/gi, \"<\")\n    .replace(/&gt;/gi, \">\")\n    .replace(/&quot;/gi, '\"')\n    .replace(/&#39;|&apos;/gi, \"'\")\n    .replace(/\\s+/g, \" \")\n    .trim();\n}\n\nfunction asString(value) {\n  if (value == null) return \"\";\n  if (typeof value === \"string\") return value.trim();\n  if (typeof value === \"number\" || typeof value === \"boolean\") return String(value);\n  return \"\";\n}\n\nfunction firstNonEmpty(...values) {\n  for (const v of values) {\n    const s = asString(v);\n    if (s) return s;\n  }\n  return \"\";\n}\n\nfunction normalizeKey(title, company) {\n  return `${title}|${company}`\n    .toLowerCase()\n    .replace(/[^a-z0-9|]+/g, \" \")\n    .replace(/\\s+/g, \" \")\n    .trim();\n}\n\nfunction detectRemote(job, location, description) {\n  if (typeof job.isRemote === \"boolean\") return job.isRemote;\n  if (typeof job.remote === \"boolean\") return job.remote;\n  if (typeof job.is_remote === \"boolean\") return job.is_remote;\n\n  const workplace = firstNonEmpty(\n    job.workplaceType,\n    job.workplace,\n    job.workType,\n    job.job_type,\n    job.schedule_type,\n    job.detected_extensions?.schedule_type,\n    job.detected_extensions?.work_from_home\n  ).toLowerCase();\n\n  const hay = `${workplace} ${location} ${description}`.toLowerCase();\n  if (/\\b(remote|work from home|wfh|fully remote|100%\\s*remote)\\b/i.test(hay)) {\n    return true;\n  }\n  if (/\\b(on[- ]?site|in[- ]?office|hybrid)\\b/i.test(workplace) && !/\\bremote\\b/i.test(workplace)) {\n    return false;\n  }\n  return false;\n}\n\nfunction toIsoDate(value) {\n  if (value == null || value === \"\") return null;\n\n  // Unix seconds / millis\n  if (typeof value === \"number\" && Number.isFinite(value)) {\n    const ms = value < 1e12 ? value * 1000 : value;\n    const d = new Date(ms);\n    return Number.isNaN(d.getTime()) ? null : d.toISOString();\n  }\n\n  const raw = String(value).trim();\n  if (!raw) return null;\n\n  // Relative phrases from scrapers: \"2 days ago\", \"Just posted\"\n  const relative = raw.match(\n    /^(\\d+)\\s+(minute|hour|day|week|month|year)s?\\s+ago$/i\n  );\n  if (relative) {\n    const n = Number(relative[1]);\n    const unit = relative[2].toLowerCase();\n    const d = new Date();\n    const map = {\n      minute: \"Minutes\",\n      hour: \"Hours\",\n      day: \"Date\",\n      week: \"Date\",\n      month: \"Month\",\n      year: \"FullYear\",\n    };\n    if (unit === \"week\") d.setDate(d.getDate() - n * 7);\n    else if (unit === \"day\") d.setDate(d.getDate() - n);\n    else if (unit === \"minute\") d.setMinutes(d.getMinutes() - n);\n    else if (unit === \"hour\") d.setHours(d.getHours() - n);\n    else if (unit === \"month\") d.setMonth(d.getMonth() - n);\n    else if (unit === \"year\") d.setFullYear(d.getFullYear() - n);\n    return d.toISOString();\n  }\n  if (/^just\\s+(posted|now)$/i.test(raw) || /^today$/i.test(raw)) {\n    return new Date().toISOString();\n  }\n  if (/^yesterday$/i.test(raw)) {\n    const d = new Date();\n    d.setDate(d.getDate() - 1);\n    return d.toISOString();\n  }\n\n  const parsed = new Date(raw);\n  if (!Number.isNaN(parsed.getTime())) return parsed.toISOString();\n  return null;\n}\n\nfunction stableHash(input) {\n  // Simple non-crypto hash for synthetic jobIds when source has none\n  let h = 2166136261;\n  const s = String(input);\n  for (let i = 0; i < s.length; i++) {\n    h ^= s.charCodeAt(i);\n    h = Math.imul(h, 16777619);\n  }\n  return (h >>> 0).toString(16);\n}\n\nfunction pickApplyUrl(job) {\n  // SerpApi apply_options: [{ link, title }, ...]\n  const applyOptions = Array.isArray(job.apply_options) ? job.apply_options : [];\n  const applyOptionLink = applyOptions\n    .map((o) => o?.link || o?.url)\n    .find((u) => asString(u));\n\n  const related = Array.isArray(job.related_links) ? job.related_links : [];\n  const relatedApply = related\n    .map((o) => o?.link || o?.url)\n    .find((u) => /apply|linkedin|indeed|greenhouse|lever|workday/i.test(String(u || \"\")));\n\n  return firstNonEmpty(\n    job.applyUrl,\n    job.apply_url,\n    job.applicationUrl,\n    job.externalApplyLink,\n    job.jobUrl,\n    job.job_url,\n    job.url,\n    job.link,\n    job.share_link,\n    applyOptionLink,\n    relatedApply,\n    job.job_google_link,\n    job.google_link\n  );\n}\n\nfunction detectSourcePlatform(job, nodeHint) {\n  const hint = String(nodeHint || job.sourcePlatform || job.source || job.via || \"\")\n    .toLowerCase()\n    .replace(/\\s+/g, \"\");\n\n  if (hint.includes(\"linkedin\")) return \"LinkedIn\";\n  if (hint.includes(\"indeed\")) return \"Indeed\";\n  if (hint.includes(\"google\")) return \"GoogleJobs\";\n\n  const hay = [\n    job.jobUrl,\n    job.url,\n    job.link,\n    job.applyUrl,\n    job.job_url,\n    job.share_link,\n    job.publisher,\n    job.job_publisher,\n    job.via,\n  ]\n    .filter(Boolean)\n    .join(\" \")\n    .toLowerCase();\n\n  if (hay.includes(\"linkedin\")) return \"LinkedIn\";\n  if (hay.includes(\"indeed\")) return \"Indeed\";\n  if (hay.includes(\"google\") || job.job_id || job.detected_extensions) return \"GoogleJobs\";\n\n  // Apify LinkedIn often has linkedinJobId / postedAt + companyName\n  if (job.linkedinJobId || job.companyName && job.title && /urn:li:|linkedin/i.test(JSON.stringify(job).slice(0, 500))) {\n    return \"LinkedIn\";\n  }\n  // Apify Indeed often has positionName\n  if (job.positionName || job.positionId) return \"Indeed\";\n\n  return \"GoogleJobs\";\n}\n\nfunction unwrapRawJobs(payload) {\n  if (payload == null) return [];\n\n  // Already a job object\n  if (!Array.isArray(payload) && typeof payload === \"object\") {\n    // Apify dataset item / SerpApi jobs_results wrapper\n    if (Array.isArray(payload.jobs_results)) return payload.jobs_results;\n    if (Array.isArray(payload.jobs)) return payload.jobs;\n    if (Array.isArray(payload.items)) return payload.items;\n    if (Array.isArray(payload.data)) return payload.data;\n    if (Array.isArray(payload.results)) return payload.results;\n    // Single job record\n    if (payload.title || payload.positionName || jobLike(payload)) return [payload];\n    return [];\n  }\n\n  if (Array.isArray(payload)) {\n    // Nested arrays from Merge node\n    return payload.flatMap((entry) => unwrapRawJobs(entry));\n  }\n\n  return [];\n}\n\nfunction jobLike(obj) {\n  if (!obj || typeof obj !== \"object\") return false;\n  return Boolean(\n    obj.title ||\n      obj.positionName ||\n      obj.job_title ||\n      obj.company ||\n      obj.company_name ||\n      obj.companyName ||\n      obj.description ||\n      obj.job_description\n  );\n}\n\nfunction normalizeJob(raw, nodeHint) {\n  const title = firstNonEmpty(\n    raw.title,\n    raw.positionName,\n    raw.job_title,\n    raw.jobTitle,\n    raw.name\n  );\n  const company = firstNonEmpty(\n    raw.company,\n    raw.companyName,\n    raw.company_name,\n    raw.employer_name,\n    raw.employer\n  );\n  const location = firstNonEmpty(\n    raw.location,\n    raw.locationName,\n    raw.job_location,\n    raw.formattedLocation,\n    raw.city,\n    Array.isArray(raw.locations) ? raw.locations.join(\", \") : \"\"\n  );\n  const description = stripHtml(\n    firstNonEmpty(\n      raw.description,\n      raw.descriptionHtml,\n      raw.descriptionHTML,\n      raw.jobDescription,\n      raw.job_description,\n      raw.descriptionText,\n      raw.snippet\n    )\n  );\n  const applyUrl = pickApplyUrl(raw);\n  const sourcePlatform = detectSourcePlatform(raw, nodeHint);\n  const postedAt =\n    toIsoDate(\n      firstNonEmpty(\n        raw.postedAt,\n        raw.posted_at,\n        raw.publishedAt,\n        raw.datePublished,\n        raw.postedDate,\n        raw.posted_date,\n        raw.detected_extensions?.posted_at,\n        raw.postedTime,\n        raw.relativeTime\n      )\n    ) || new Date().toISOString();\n\n  const jobId = firstNonEmpty(\n    raw.jobId,\n    raw.job_id,\n    raw.id,\n    raw.linkedinJobId,\n    raw.positionId,\n    raw.key,\n    `${sourcePlatform}-${stableHash(`${title}|${company}|${applyUrl}`)}`\n  );\n\n  if (!title || !company) return null;\n\n  return {\n    jobId,\n    sourcePlatform,\n    title,\n    company,\n    location: location || \"Not specified\",\n    isRemote: detectRemote(raw, location, description),\n    description,\n    applyUrl,\n    postedAt,\n  };\n}\n\n// ---------------------------------------------------------------------------\n// Collect from all incoming items (and optionally named upstream nodes)\n// ---------------------------------------------------------------------------\n\nconst namedSources = [\n  { name: \"Apify LinkedIn Scraper\", hint: \"LinkedIn\" },\n  { name: \"Apify Indeed Scraper\", hint: \"Indeed\" },\n  { name: \"SerpApi Google Jobs\", hint: \"GoogleJobs\" },\n  { name: \"LinkedIn Jobs\", hint: \"LinkedIn\" },\n  { name: \"Indeed Jobs\", hint: \"Indeed\" },\n  { name: \"Google Jobs\", hint: \"GoogleJobs\" },\n];\n\nconst collected = [];\n\n// Prefer current Code-node input (Merge → Code). Only fall back to named\n// upstream nodes when Merge produced nothing (so we never double-count).\nfor (const item of items) {\n  const hint =\n    item.json?.sourcePlatform ||\n    item.json?.source ||\n    item.json?._source ||\n    \"\";\n  const jobs = unwrapRawJobs(item.json);\n  for (const job of jobs) {\n    collected.push({ job, hint });\n  }\n  // If the item itself is a flat job (Apify dataset row)\n  if (jobs.length === 0 && jobLike(item.json)) {\n    collected.push({ job: item.json, hint });\n  }\n}\n\nif (collected.length === 0) {\n  for (const src of namedSources) {\n    try {\n      const nodeItems = $(src.name).all();\n      for (const item of nodeItems) {\n        const jobs = unwrapRawJobs(item.json);\n        if (jobs.length) {\n          for (const job of jobs) collected.push({ job, hint: src.hint });\n        } else if (jobLike(item.json)) {\n          collected.push({ job: item.json, hint: src.hint });\n        }\n      }\n    } catch {\n      // Node not in this execution path — ignore\n    }\n  }\n}\n\n// ---------------------------------------------------------------------------\n// Normalize + dedupe (title + company)\n// ---------------------------------------------------------------------------\n\nconst seen = new Map();\nconst output = [];\n\nfor (const { job, hint } of collected) {\n  const normalized = normalizeJob(job, hint);\n  if (!normalized) continue;\n\n  const key = normalizeKey(normalized.title, normalized.company);\n  if (seen.has(key)) continue;\n  seen.set(key, true);\n  output.push({ json: normalized });\n}\n\n// Always return an array for n8n \"Run Once for All Items\"\nreturn output;\n"
+      }
+    },
+    {
+      "id": "code-001",
+      "name": "Match + Extract Contacts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        400
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const profile = $('Load Candidate Profile').first().json;\nconst skills = (profile.candidate.skills || []).map((s) => String(s).toLowerCase());\nconst minScore = Number(profile.limits.minMatchScore || 50);\nconst dryRun = Boolean(profile.flags.dryRun);\nconst allowed = new Set((profile.flags.platforms || []).map((p) => String(p).toLowerCase()));\n\nconst EMAIL_RE = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}/g;\nconst PHONE_RE = /(?:\\+|00)?[0-9][0-9\\s().-]{7,}[0-9]/g;\nconst BLOCKED_EMAIL = /(noreply|no-reply|donotreply|do-not-reply|mailer-daemon|example\\.com)/i;\n\nfunction platformKey(sourcePlatform) {\n  const map = { LinkedIn: 'linkedin', Indeed: 'indeed', GoogleJobs: 'googlejobs' };\n  if (map[sourcePlatform]) return map[sourcePlatform];\n  return String(sourcePlatform || 'other').toLowerCase().replace(/\\s+/g, '');\n}\n\nfunction scoreJob(job) {\n  const blob = `${job.title || ''} ${job.description || ''} ${job.company || ''}`.toLowerCase();\n  if (!skills.length) return 50;\n  const hits = skills.filter((s) => blob.includes(s));\n  const base = Math.round((hits.length / skills.length) * 100);\n  const remoteBoost = job.isRemote ? 5 : 0;\n  return Math.min(100, base + remoteBoost);\n}\n\nfunction extractContacts(text = '') {\n  const emails = [...new Set((String(text).match(EMAIL_RE) || []).filter((e) => !BLOCKED_EMAIL.test(e)))];\n  const phones = [...new Set((String(text).match(PHONE_RE) || []).map((p) => p.replace(/\\s+/g, ' ').trim()))];\n  return { contactEmail: emails[0] || null, contactPhone: phones[0] || null };\n}\n\nconst jobs = items.map((i) => i.json).filter((j) => j && j.title && j.company && !j.skipped);\nconst out = [];\n\nfor (const job of jobs) {\n  const platform = platformKey(job.sourcePlatform);\n  if (allowed.size && !allowed.has('all') && !allowed.has(platform)) continue;\n\n  const matchScore = scoreJob(job);\n  if (matchScore < minScore) continue;\n\n  const description = job.description || '';\n  const contacts = extractContacts(description);\n  const applyUrl = job.applyUrl || '';\n\n  let channel = 'platform_only';\n  if (contacts.contactEmail) channel = 'email';\n  else if (contacts.contactPhone) channel = 'sms';\n\n  out.push({\n    json: {\n      jobId: job.jobId,\n      jobTitle: job.title,\n      company: job.company,\n      location: job.location,\n      isRemote: !!job.isRemote,\n      applyUrl,\n      smartApplyUrl: applyUrl,\n      linkedInAppUrl: platform === 'linkedin' ? applyUrl : null,\n      platform,\n      sourcePlatform: job.sourcePlatform,\n      matchScore,\n      channel,\n      contactEmail: contacts.contactEmail,\n      contactPhone: contacts.contactPhone,\n      postedAt: job.postedAt || null,\n      dryRun,\n      candidate: profile.candidate,\n      limits: profile.limits,\n      descriptionSnippet: String(description).slice(0, 400),\n    },\n  });\n}\n\nif (!out.length) {\n  return [{ json: { skipped: true, reason: 'No jobs matched skills / platform / min score', searched: jobs.length, minScore, dryRun } }];\n}\n\nreturn out;"
+      }
+    },
+    {
+      "id": "if-001",
+      "name": "Has Matched Jobs?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1440,
+        400
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.skipped }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "switch-001",
+      "name": "Route by Contact",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1240,
+        300
+      ],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "id": "r1",
+                    "leftValue": "={{ $json.channel }}",
+                    "rightValue": "email",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "email"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "id": "r2",
+                    "leftValue": "={{ $json.channel }}",
+                    "rightValue": "sms",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "sms"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      }
+    },
+    {
+      "id": "code-002",
+      "name": "Build Email + Rate Limit",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        120
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nconst today = new Date().toISOString().slice(0, 10);\nif (!staticData.emailLog || staticData.emailLog.day !== today) {\n  staticData.emailLog = { day: today, count: 0, sentIds: [] };\n}\n\nconst item = $input.item.json;\nconst limit = Number(item.limits?.dailyEmail || 10);\nconst already = (staticData.emailLog.sentIds || []).includes(item.jobId);\n\nlet status = 'ready';\nlet skipReason = null;\nif (already) {\n  status = 'skipped';\n  skipReason = 'Already contacted this job today';\n} else if (staticData.emailLog.count >= limit) {\n  status = 'skipped';\n  skipReason = `Daily email limit reached (${limit})`;\n}\n\nconst name = item.candidate?.name || 'Candidate';\nconst skills = (item.candidate?.skills || []).slice(0, 3).join(', ');\nconst resume = item.candidate?.resumeUrl || '';\n\nconst subject = `Application for ${item.jobTitle} at ${item.company} — ${name}`;\nconst body = `Hello Hiring Team,\\n\\nI am ${name}, interested in the ${item.jobTitle} role at ${item.company}.\\n\\nRelevant skills: ${skills}.\\nResume: ${resume}\\n\\nI would welcome a short conversation about fit.\\n\\nBest regards,\\n${name}\\n${item.candidate?.email || ''}\\n${item.candidate?.phone || ''}`;\n\nreturn {\n  json: {\n    ...item,\n    outreachType: 'email',\n    status,\n    skipReason,\n    subject,\n    body,\n    to: item.contactEmail,\n    emailCountBefore: staticData.emailLog.count,\n    emailLimit: limit,\n  },\n};"
+      }
+    },
+    {
+      "id": "if-002",
+      "name": "Send Email?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1740,
+        120
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "c2",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "ready",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "c3",
+              "leftValue": "={{ $json.dryRun }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "c4",
+              "leftValue": "={{ $env.SENDGRID_API_KEY }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "http-002",
+      "name": "SendGrid Email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1980,
+        40
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.sendgrid.com/v3/mail/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SENDGRID_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"personalizations\": [{ \"to\": [{ \"email\": \"{{ $json.to }}\" }] }],\n  \"from\": { \"email\": \"{{ $env.SENDGRID_FROM_EMAIL || 'noreply@applyai.app' }}\", \"name\": \"{{ $json.candidate.name }}\" },\n  \"reply_to\": { \"email\": \"{{ $json.candidate.email }}\" },\n  \"subject\": {{ JSON.stringify($json.subject) }},\n  \"content\": [{ \"type\": \"text/plain\", \"value\": {{ JSON.stringify($json.body) }} }]\n}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "code-003",
+      "name": "Mark Email Sent",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2220,
+        40
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const prev = $('Build Email + Rate Limit').item.json;\nconst staticData = $getWorkflowStaticData('global');\nconst today = new Date().toISOString().slice(0, 10);\nif (!staticData.emailLog || staticData.emailLog.day !== today) {\n  staticData.emailLog = { day: today, count: 0, sentIds: [] };\n}\nstaticData.emailLog.count += 1;\nstaticData.emailLog.sentIds.push(prev.jobId);\n\nreturn {\n  json: {\n    ...prev,\n    status: 'sent',\n    sentAt: new Date().toISOString(),\n    provider: 'sendgrid',\n  },\n};"
+      }
+    },
+    {
+      "id": "code-004",
+      "name": "Email Dry-Run / Skip Log",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1980,
+        220
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const item = $input.item.json;\nconst status = item.status === 'ready'\n  ? (item.dryRun ? 'dry_run' : 'skipped_no_sendgrid')\n  : item.status;\n\nreturn {\n  json: {\n    ...item,\n    status,\n    loggedAt: new Date().toISOString(),\n  },\n};"
+      }
+    },
+    {
+      "id": "code-005",
+      "name": "Build SMS + Rate Limit",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        400
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nconst today = new Date().toISOString().slice(0, 10);\nif (!staticData.smsLog || staticData.smsLog.day !== today) {\n  staticData.smsLog = { day: today, count: 0, sentIds: [] };\n}\n\nconst item = $input.item.json;\nconst limit = Number(item.limits?.dailySms || 5);\nconst already = (staticData.smsLog.sentIds || []).includes(item.jobId);\n\nlet status = 'ready';\nlet skipReason = null;\nif (already) {\n  status = 'skipped';\n  skipReason = 'Already contacted this job today';\n} else if (staticData.smsLog.count >= limit) {\n  status = 'skipped';\n  skipReason = `Daily SMS limit reached (${limit})`;\n}\n\nconst name = item.candidate?.name || 'Candidate';\nconst resume = item.candidate?.resumeUrl || '';\nconst message = `Hi, I'm ${name} applying for ${item.jobTitle} at ${item.company}. Resume: ${resume}`;\n\nreturn {\n  json: {\n    ...item,\n    outreachType: 'sms',\n    status,\n    skipReason,\n    message,\n    to: item.contactPhone,\n    smsCountBefore: staticData.smsLog.count,\n    smsLimit: limit,\n  },\n};"
+      }
+    },
+    {
+      "id": "if-003",
+      "name": "Send SMS?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1740,
+        400
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "c5",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "ready",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "c6",
+              "leftValue": "={{ $json.dryRun }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "c7",
+              "leftValue": "={{ $env.TWILIO_ACCOUNT_SID }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            },
+            {
+              "id": "c8",
+              "leftValue": "={{ $env.TWILIO_AUTH_TOKEN }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "http-003",
+      "name": "Twilio SMS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1980,
+        320
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.twilio.com/2010-04-01/Accounts/{{ $env.TWILIO_ACCOUNT_SID }}/Messages.json",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Basic ' + Buffer.from(String($env.TWILIO_ACCOUNT_SID) + ':' + String($env.TWILIO_AUTH_TOKEN)).toString('base64') }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/x-www-form-urlencoded"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "To",
+              "value": "={{ $json.to }}"
+            },
+            {
+              "name": "From",
+              "value": "={{ $env.TWILIO_FROM_NUMBER }}"
+            },
+            {
+              "name": "Body",
+              "value": "={{ $json.message }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "code-006",
+      "name": "Mark SMS Sent",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2220,
+        320
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const prev = $('Build SMS + Rate Limit').item.json;\nconst staticData = $getWorkflowStaticData('global');\nconst today = new Date().toISOString().slice(0, 10);\nif (!staticData.smsLog || staticData.smsLog.day !== today) {\n  staticData.smsLog = { day: today, count: 0, sentIds: [] };\n}\nstaticData.smsLog.count += 1;\nstaticData.smsLog.sentIds.push(prev.jobId);\n\nreturn {\n  json: {\n    ...prev,\n    status: 'sent',\n    sentAt: new Date().toISOString(),\n    provider: 'twilio',\n  },\n};"
+      }
+    },
+    {
+      "id": "code-007",
+      "name": "SMS Dry-Run / Skip Log",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1980,
+        500
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const item = $input.item.json;\nconst status = item.status === 'ready'\n  ? (item.dryRun ? 'dry_run' : 'skipped_no_twilio')\n  : item.status;\n\nreturn {\n  json: {\n    ...item,\n    status,\n    loggedAt: new Date().toISOString(),\n  },\n};"
+      }
+    },
+    {
+      "id": "code-008",
+      "name": "Platform-Only Log",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        640
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const item = $input.item.json;\nreturn {\n  json: {\n    ...item,\n    outreachType: 'platform_only',\n    status: 'needs_smart_apply',\n    note: item.platform === 'linkedin'\n      ? 'No public email/phone. Open smartApplyUrl — LinkedIn app opens if installed on device.'\n      : 'No public email/phone. Open smartApplyUrl via ApplyAI Smart Apply.',\n    loggedAt: new Date().toISOString(),\n  },\n};"
+      }
+    },
+    {
+      "id": "code-009",
+      "name": "Normalize Final Log",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2460,
+        360
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "return items.map((item) => {\n  const j = item.json;\n  return {\n    json: {\n      timestamp: j.sentAt || j.loggedAt || new Date().toISOString(),\n      jobId: j.jobId || null,\n      jobTitle: j.jobTitle || null,\n      company: j.company || null,\n      platform: j.platform || null,\n      matchScore: j.matchScore ?? null,\n      channel: j.outreachType || j.channel || null,\n      contact: j.to || j.contactEmail || j.contactPhone || null,\n      status: j.status || 'unknown',\n      subject: j.subject || null,\n      applyUrl: j.applyUrl || null,\n      dryRun: j.dryRun ?? null,\n      skipReason: j.skipReason || j.reason || j.note || null,\n    },\n  };\n});"
+      }
+    },
+    {
+      "id": "set-002",
+      "name": "No Matches Summary",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1240,
+        560
+      ],
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "n1",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "n2",
+              "name": "status",
+              "value": "no_matches",
+              "type": "string"
+            },
+            {
+              "id": "n3",
+              "name": "reason",
+              "value": "={{ $json.reason || 'No matched jobs' }}",
+              "type": "string"
+            },
+            {
+              "id": "n4",
+              "name": "searched",
+              "value": "={{ $json.searched || 0 }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "code-ingest-prep-001",
+      "name": "Prepare API Ingest",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        200
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const profile = $('Load Candidate Profile').first().json;\nconst jobs = items\n  .map((i) => i.json)\n  .filter((j) => j && j.title && j.company && !j.skipped)\n  .map((j) => ({\n    jobId: j.jobId,\n    sourcePlatform: j.sourcePlatform,\n    title: j.title,\n    company: j.company,\n    location: j.location,\n    isRemote: !!j.isRemote,\n    description: j.description || '',\n    applyUrl: j.applyUrl || '',\n    postedAt: j.postedAt || null,\n  }));\n\nconst apiBase = String(\n  profile.secrets?.applyAiApiBase ||\n    $env.APPLYAI_API_BASE ||\n    'http://localhost:4000/api/v1'\n).replace(/\\/$/, '');\nconst ingestKey = String(\n  profile.secrets?.ingestApiKey || $env.INGEST_API_KEY || 'applyai-local-ingest'\n);\n\nreturn [\n  {\n    json: {\n      url: `${apiBase}/jobs/ingest`,\n      ingestKey,\n      count: jobs.length,\n      body: { source: 'n8n', jobs },\n    },\n  },\n];"
+      }
+    },
+    {
+      "id": "http-ingest-001",
+      "name": "POST ApplyAI Jobs Ingest",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1440,
+        200
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-Ingest-Key",
+              "value": "={{ $json.ingestKey }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.body }}",
+        "options": {
+          "timeout": 60000,
+          "response": {
+            "neverError": true
+          }
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Daily 9AM IST": {
+      "main": [
+        [
+          {
+            "node": "Load Candidate Profile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Test": {
+      "main": [
+        [
+          {
+            "node": "Load Candidate Profile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Start": {
+      "main": [
+        [
+          {
+            "node": "Load Candidate Profile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Candidate Profile": {
+      "main": [
+        [
+          {
+            "node": "Apify LinkedIn Scraper",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Apify Indeed Scraper",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "SerpApi Google Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Match + Extract Contacts": {
+      "main": [
+        [
+          {
+            "node": "Has Matched Jobs?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Matched Jobs?": {
+      "main": [
+        [
+          {
+            "node": "Route by Contact",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Matches Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Contact": {
+      "main": [
+        [
+          {
+            "node": "Build Email + Rate Limit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build SMS + Rate Limit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Platform-Only Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Email + Rate Limit": {
+      "main": [
+        [
+          {
+            "node": "Send Email?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email?": {
+      "main": [
+        [
+          {
+            "node": "SendGrid Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email Dry-Run / Skip Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SendGrid Email": {
+      "main": [
+        [
+          {
+            "node": "Mark Email Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Email Sent": {
+      "main": [
+        [
+          {
+            "node": "Normalize Final Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Dry-Run / Skip Log": {
+      "main": [
+        [
+          {
+            "node": "Normalize Final Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build SMS + Rate Limit": {
+      "main": [
+        [
+          {
+            "node": "Send SMS?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send SMS?": {
+      "main": [
+        [
+          {
+            "node": "Twilio SMS",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "SMS Dry-Run / Skip Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Twilio SMS": {
+      "main": [
+        [
+          {
+            "node": "Mark SMS Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark SMS Sent": {
+      "main": [
+        [
+          {
+            "node": "Normalize Final Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SMS Dry-Run / Skip Log": {
+      "main": [
+        [
+          {
+            "node": "Normalize Final Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Platform-Only Log": {
+      "main": [
+        [
+          {
+            "node": "Normalize Final Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apify LinkedIn Scraper": {
+      "main": [
+        [
+          {
+            "node": "Merge Job Sources",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apify Indeed Scraper": {
+      "main": [
+        [
+          {
+            "node": "Merge Job Sources",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "SerpApi Google Jobs": {
+      "main": [
+        [
+          {
+            "node": "Merge Job Sources",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Merge Job Sources": {
+      "main": [
+        [
+          {
+            "node": "Normalize Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Jobs": {
+      "main": [
+        [
+          {
+            "node": "Match + Extract Contacts",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prepare API Ingest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare API Ingest": {
+      "main": [
+        [
+          {
+            "node": "POST ApplyAI Jobs Ingest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

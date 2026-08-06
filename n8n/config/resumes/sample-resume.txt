@@ -1,0 +1,21 @@
+Sagar Patil
+Bengaluru, India
+sagar.patil@email.com
++91 98765 43210
+linkedin.com/in/sagarpatil
+
+Full Stack Developer
+
+SUMMARY
+Software developer with 3 years of experience building web apps with React, TypeScript, Node.js and Firebase.
+
+SKILLS
+React, TypeScript, Node.js, Express, Firebase, MongoDB, PostgreSQL, Docker, Git, AWS
+
+EXPERIENCE
+Full Stack Developer — Example Tech (2023 - Present)
+- Built React + Node.js features for job portal products
+- Integrated Firebase Auth and Firestore
+
+EDUCATION
+B.Tech Computer Science

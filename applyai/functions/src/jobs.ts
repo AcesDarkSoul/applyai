@@ -122,14 +122,14 @@ async function executeJobSearch(
 
   const searchParams = new URLSearchParams({
     query,
-    page: String(page),
     num_pages: "1",
+    country: "in",
     ...(remote !== undefined && { remote_jobs_only: String(remote) }),
     ...(employmentType && { employment_types: employmentType.toUpperCase() }),
   });
 
   const response = await fetch(
-    `https://${JSEARCH_API_HOST}/search?${searchParams}`,
+    `https://${JSEARCH_API_HOST}/search-v2?${searchParams}`,
     {
       headers: {
         "x-rapidapi-key": apiKey,
@@ -143,7 +143,12 @@ async function executeJobSearch(
   }
 
   const data = await response.json();
-  const rawJobs: JSearchJob[] = data.data || [];
+  // JSearch v5: { data: { jobs: [] } } — legacy: { data: [] }
+  const rawJobs: JSearchJob[] = Array.isArray(data?.data?.jobs)
+    ? data.data.jobs
+    : Array.isArray(data?.data)
+      ? data.data
+      : [];
 
   const jobs = rawJobs.map((j) => ({
     id: j.job_id,

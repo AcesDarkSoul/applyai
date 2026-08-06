@@ -1,0 +1,21 @@
+Sagar Kumar
+Full Stack Developer
+sagar.demo@example.com | +91 98765 43210
+Bengaluru, India | linkedin.com/in/sagarkumar-demo
+
+SUMMARY
+Full Stack Developer with 4 years of experience building React and Node.js applications.
+Skilled in TypeScript, PostgreSQL, Docker, and AWS. Passionate about clean architecture
+and shipping reliable product features.
+
+SKILLS
+JavaScript, TypeScript, React, Next.js, Node.js, Express, PostgreSQL, MongoDB, Redis,
+Docker, AWS, Git, REST, GraphQL, Jest
+
+EXPERIENCE
+Software Engineer — ApplyAI Labs (2022–Present)
+- Built job matching APIs and React dashboards
+- Improved ATS parse accuracy for candidate profiles
+
+EDUCATION
+B.Tech Computer Science — Example University

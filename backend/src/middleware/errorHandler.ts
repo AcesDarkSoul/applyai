@@ -41,6 +41,15 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
     return;
   }
 
+  // multer / upload filter errors
+  if (err instanceof Error && /Only PDF|File too large|Unexpected field|resume/i.test(err.message)) {
+    res.status(400).json({
+      success: false,
+      error: { code: 'VALIDATION', message: err.message },
+    });
+    return;
+  }
+
   logger.error('Unhandled error', {
     requestId: req.requestId,
     err: err instanceof Error ? err.message : err,

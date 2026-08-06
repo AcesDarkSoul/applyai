@@ -24,13 +24,13 @@ const statuses: ApplicationStatus[] = [
 ];
 
 const statusColor: Record<ApplicationStatus, string> = {
-  saved: '#f0b429',
-  applied: '#0f8f68',
-  viewed: '#2aa8c4',
-  interview: '#2aa8c4',
-  offer: '#f0b429',
-  rejected: '#e85d4c',
-  withdrawn: '#8a9a94',
+  saved: '#f59e0b',
+  applied: '#22c55e',
+  viewed: '#ef4444',
+  interview: '#3b82f6',
+  offer: '#f59e0b',
+  rejected: '#ef4444',
+  withdrawn: '#6b6f8c',
 };
 
 export function ApplicationsPage() {
@@ -72,18 +72,17 @@ export function ApplicationsPage() {
 
   return (
     <Stack spacing={3}>
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
         <Box
-          className="aa-surface rounded-[28px] p-6 md:p-8"
+          className="aa-card p-5 md:p-6"
           sx={{
-            background:
-              'linear-gradient(120deg, rgba(232,93,76,0.14), rgba(42,168,196,0.12), rgba(15,143,104,0.1))',
+            background: 'linear-gradient(120deg, rgba(91,92,226,0.1), rgba(236,72,153,0.06))',
           }}
         >
-          <Typography variant="h3" className="aa-page-title" gutterBottom>
+          <Typography fontWeight={800} fontSize={22} letterSpacing="-0.02em" gutterBottom>
             Applications
           </Typography>
-          <Typography color="text.secondary">
+          <Typography color="text.secondary" fontSize={14}>
             Update status as you move — interviews, offers, and follow-ups stay organized.
           </Typography>
         </Box>
@@ -104,7 +103,7 @@ export function ApplicationsPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.05 }}
           >
-            <Box className="aa-surface rounded-[24px] p-5">
+            <Box className="aa-card p-5">
               <Stack
                 direction={{ xs: 'column', md: 'row' }}
                 justifyContent="space-between"

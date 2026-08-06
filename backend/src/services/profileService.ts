@@ -7,11 +7,13 @@ function completeness(p: Omit<UserProfile, 'profileCompleteness'>): number {
     Boolean(p.displayName),
     Boolean(p.email),
     Boolean(p.phone),
-    p.skills.length > 0,
+    Boolean(p.title),
+    p.skills.length >= 3,
     p.education.length > 0,
-    Boolean(p.summary),
+    Boolean(p.summary && p.summary.length > 80),
     p.preferredLocations.length > 0,
-    Boolean(p.expectedSalary),
+    Boolean(p.expectedSalary) || Boolean(p.experienceYears),
+    Boolean(p.resumeFileName),
   ];
   return Math.round((checks.filter(Boolean).length / checks.length) * 100);
 }

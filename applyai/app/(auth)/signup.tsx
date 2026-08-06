@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Button, Input } from '@/components/ui';
 import { Screen } from '@/components/layout/Screen';
 import { FadeInView } from '@/components/AnimatedView';
-import { signUp } from '@/lib/firebase/auth';
+import { signUp, formatAuthError } from '@/lib/firebase/auth';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 
 export default function SignUpScreen() {
@@ -27,8 +27,8 @@ export default function SignUpScreen() {
       await signUp(email.trim(), password, name.trim());
       router.replace('/(tabs)');
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : 'Sign up failed';
-      setError(message.replace('Firebase: ', '').replace(/\(auth\/.*\)\.?/, '').trim());
+      console.error('Sign up failed:', e);
+      setError(formatAuthError(e));
     } finally {
       setLoading(false);
     }

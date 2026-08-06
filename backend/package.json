@@ -9,7 +9,8 @@
     "start": "node dist/server.js",
     "lint": "eslint src --ext .ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "jobs:refresh": "node ./scripts/refresh-and-test-jobs.mjs"
   },
   "engines": {
     "node": ">=20"
@@ -21,8 +22,11 @@
     "express-rate-limit": "^7.5.0",
     "firebase-admin": "^13.0.2",
     "helmet": "^8.0.0",
+    "mammoth": "^1.12.0",
     "morgan": "^1.10.0",
+    "multer": "^2.2.0",
     "openai": "^4.80.0",
+    "pdf-parse": "^1.1.1",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "winston": "^3.17.0",
@@ -32,7 +36,9 @@
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/morgan": "^1.9.9",
+    "@types/multer": "^2.2.0",
     "@types/node": "^22.10.5",
+    "@types/pdf-parse": "^1.1.5",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.7",
     "tsx": "^4.19.2",

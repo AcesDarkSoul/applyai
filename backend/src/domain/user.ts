@@ -12,6 +12,8 @@ export interface UserProfile {
   displayName: string;
   role: UserRole;
   phone?: string;
+  title?: string;
+  linkedinUrl?: string;
   skills: string[];
   experienceYears?: number;
   education: string[];
@@ -21,6 +23,8 @@ export interface UserProfile {
   remotePreference?: 'remote' | 'hybrid' | 'onsite' | 'any';
   atsScore?: number;
   profileCompleteness: number;
+  resumeFileName?: string;
+  resumeParsedAt?: string;
   createdAt: string;
   updatedAt: string;
 }
