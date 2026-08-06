@@ -1,0 +1,238 @@
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  InputAdornment,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material';
+import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
+import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined';
+import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
+import MailOutlineRoundedIcon from '@mui/icons-material/MailOutlineRounded';
+import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined';
+import { motion } from 'framer-motion';
+import { useEffect, useMemo, useState } from 'react';
+import { Link as RouterLink, useSearchParams } from 'react-router-dom';
+import { postRepository } from '../../shared/api/repositories';
+import type { HiringPost } from '../../shared/types';
+
+const PRIMARY = '#5b5ce2';
+
+function formatDate(iso?: string) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+export function PostsPage() {
+  const [params] = useSearchParams();
+  const [q, setQ] = useState(params.get('q') || '');
+  const [posts, setPosts] = useState<HiringPost[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [source, setSource] = useState<'all' | 'linkedin' | 'googlejobs'>('all');
+
+  async function load(query = '') {
+    setLoading(true);
+    setError(null);
+    try {
+      setPosts(await postRepository.list(query));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load posts');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    const initial = params.get('q') || '';
+    setQ(initial);
+    void load(initial);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params]);
+
+  const visible = useMemo(() => {
+    if (source === 'all') return posts;
+    return posts.filter((p) => p.source === source);
+  }, [posts, source]);
+
+  const counts = useMemo(() => {
+    const base = { all: posts.length, linkedin: 0, googlejobs: 0 };
+    for (const p of posts) {
+      if (p.source === 'linkedin') base.linkedin += 1;
+      if (p.source === 'googlejobs') base.googlejobs += 1;
+    }
+    return base;
+  }, [posts]);
+
+  return (
+    <Stack spacing={2.5}>
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+        <Box className="aa-card p-5 md:p-6">
+          <Stack direction="row" spacing={1.5} alignItems="center" mb={1}>
+            <ArticleOutlinedIcon sx={{ color: PRIMARY }} />
+            <Typography fontWeight={800} fontSize={22} letterSpacing="-0.02em">
+              Hiring Posts
+            </Typography>
+          </Stack>
+          <Typography color="text.secondary" fontSize={14} sx={{ maxWidth: 640, mb: 2 }}>
+            Full LinkedIn & Google Jobs posts with complete text, contacts, and structured sections.
+            Formal board roles live under Find Jobs.
+          </Typography>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+            <TextField
+              fullWidth
+              size="small"
+              placeholder="Search posts by title, company, or skill…"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && void load(q)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchRoundedIcon color="action" />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3, bgcolor: 'background.default' } }}
+            />
+            <Button variant="contained" onClick={() => void load(q)} disabled={loading} sx={{ minWidth: 120 }}>
+              Search
+            </Button>
+          </Stack>
+        </Box>
+      </motion.div>
+
+      <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+        {(
+          [
+            { id: 'all' as const, label: 'All', color: PRIMARY, count: counts.all },
+            { id: 'linkedin' as const, label: 'LinkedIn', color: '#0a66c2', count: counts.linkedin },
+            { id: 'googlejobs' as const, label: 'Google Jobs', color: '#3b82f6', count: counts.googlejobs },
+          ] as const
+        ).map((f) => {
+          const selected = source === f.id;
+          return (
+            <Chip
+              key={f.id}
+              label={`${f.label} (${f.count})`}
+              onClick={() => setSource(f.id)}
+              sx={{
+                fontWeight: 700,
+                border: '1px solid',
+                borderColor: f.color,
+                bgcolor: selected ? f.color : 'transparent',
+                color: selected ? '#fff' : 'text.primary',
+              }}
+            />
+          );
+        })}
+      </Stack>
+
+      {error && <Alert severity="error">{error}</Alert>}
+
+      {loading ? (
+        <Box className="grid place-items-center py-16">
+          <CircularProgress sx={{ color: PRIMARY }} />
+        </Box>
+      ) : (
+        <Stack spacing={1.5}>
+          <Typography color="text.secondary" fontWeight={600} fontSize={13}>
+            {visible.length} post{visible.length === 1 ? '' : 's'}
+          </Typography>
+          {visible.map((post, index) => (
+            <motion.div
+              key={post.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.04 }}
+            >
+              <Box className="aa-card p-4 md:p-5">
+                <Stack
+                  direction={{ xs: 'column', md: 'row' }}
+                  justifyContent="space-between"
+                  gap={2}
+                  alignItems={{ md: 'flex-start' }}
+                >
+                  <Box className="min-w-0 flex-1">
+                    <Stack direction="row" gap={1} mb={1} flexWrap="wrap" alignItems="center">
+                      <Chip
+                        size="small"
+                        label={post.source}
+                        sx={{
+                          bgcolor: post.source === 'linkedin' ? '#0a66c218' : '#3b82f618',
+                          color: post.source === 'linkedin' ? '#0a66c2' : '#3b82f6',
+                          fontWeight: 700,
+                        }}
+                      />
+                      {post.isRemote && <Chip size="small" label="Remote" variant="outlined" color="success" />}
+                      {typeof post.matchScore === 'number' && (
+                        <Chip
+                          size="small"
+                          label={`${post.matchScore}% Match`}
+                          sx={{ bgcolor: `${PRIMARY}18`, color: PRIMARY, fontWeight: 800 }}
+                        />
+                      )}
+                      {formatDate(post.postedAt) && (
+                        <Typography fontSize={12} color="text.secondary">
+                          {formatDate(post.postedAt)}
+                        </Typography>
+                      )}
+                    </Stack>
+                    <Typography fontWeight={800} fontSize={18} letterSpacing="-0.02em" gutterBottom>
+                      {post.title}
+                    </Typography>
+                    <Typography color="text.secondary" fontSize={14} mb={1.25}>
+                      {post.company} · {post.location}
+                    </Typography>
+                    <Typography color="text.secondary" fontSize={13.5} lineHeight={1.6} sx={{ mb: 1.25 }}>
+                      {post.excerpt}
+                    </Typography>
+                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                      {post.contacts.email && (
+                        <Chip
+                          size="small"
+                          icon={<MailOutlineRoundedIcon />}
+                          label={post.contacts.email}
+                          variant="outlined"
+                        />
+                      )}
+                      {post.contacts.phone && (
+                        <Chip
+                          size="small"
+                          icon={<PhoneOutlinedIcon />}
+                          label={post.contacts.phone}
+                          variant="outlined"
+                        />
+                      )}
+                    </Stack>
+                  </Box>
+                  <Button
+                    component={RouterLink}
+                    to={`/posts/${encodeURIComponent(post.id)}`}
+                    variant="contained"
+                    endIcon={<ArrowForwardRoundedIcon />}
+                    sx={{ flexShrink: 0 }}
+                  >
+                    View full post
+                  </Button>
+                </Stack>
+              </Box>
+            </motion.div>
+          ))}
+          {!visible.length && (
+            <Alert severity="info">
+              No hiring posts yet. Refresh jobs from the API/n8n pipeline, or check Find Jobs for board
+              listings.
+            </Alert>
+          )}
+        </Stack>
+      )}
+    </Stack>
+  );
+}

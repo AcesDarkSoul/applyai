@@ -19,14 +19,12 @@ import type { Job } from '../../shared/types';
 
 const PRIMARY = '#5b5ce2';
 
-type SourceFilter = 'all' | 'linkedin' | 'naukri' | 'indeed' | 'googlejobs' | 'other';
+type SourceFilter = 'all' | 'naukri' | 'indeed' | 'other';
 
 const FILTERS: Array<{ id: SourceFilter; label: string; color: string }> = [
-  { id: 'all', label: 'All', color: PRIMARY },
-  { id: 'linkedin', label: 'LinkedIn', color: '#0a66c2' },
+  { id: 'all', label: 'All boards', color: PRIMARY },
   { id: 'naukri', label: 'Naukri', color: '#ec4899' },
   { id: 'indeed', label: 'Indeed', color: '#14b8a6' },
-  { id: 'googlejobs', label: 'Google Jobs', color: '#3b82f6' },
   { id: 'other', label: 'Other', color: '#f59e0b' },
 ];
 
@@ -43,7 +41,7 @@ export function JobsPage() {
     setLoading(true);
     setError(null);
     try {
-      const data = query ? await jobRepository.search(query) : await jobRepository.today();
+      const data = query ? await jobRepository.board(query) : await jobRepository.board();
       setJobs(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load jobs');
@@ -62,10 +60,8 @@ export function JobsPage() {
   const counts = useMemo(() => {
     const base: Record<SourceFilter, number> = {
       all: jobs.length,
-      linkedin: 0,
       naukri: 0,
       indeed: 0,
-      googlejobs: 0,
       other: 0,
     };
     for (const job of jobs) {
@@ -99,8 +95,8 @@ export function JobsPage() {
             Find Jobs
           </Typography>
           <Typography color="text.secondary" fontSize={14} sx={{ maxWidth: 620, mb: 2 }}>
-            Search live roles from LinkedIn, Indeed, and Google Jobs. Smart Apply opens the official
-            posting — you finish apply on that site.
+            Formal board listings from Indeed, Naukri, and other career sites. LinkedIn & Google Jobs
+            posts with full text are under Hiring Posts.
           </Typography>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
             <TextField

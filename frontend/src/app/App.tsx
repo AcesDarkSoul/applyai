@@ -8,6 +8,8 @@ import { AnalyticsPage } from '../features/ai/AnalyticsPage';
 import { JobDetailPage } from '../features/jobs/JobDetailPage';
 import { JobsPage } from '../features/jobs/JobsPage';
 import { SavedJobsPage } from '../features/jobs/SavedJobsPage';
+import { PostDetailPage } from '../features/posts/PostDetailPage';
+import { PostsPage } from '../features/posts/PostsPage';
 import { ProfilePage } from '../features/profile/ProfilePage';
 import { AppShell } from '../shared/components/AppShell';
 import { useThemeMode } from '../shared/hooks/useThemeMode';
@@ -29,6 +31,8 @@ export default function App() {
               <Route index element={<OverviewPage />} />
               <Route path="jobs" element={<JobsPage />} />
               <Route path="jobs/:id" element={<JobDetailPage />} />
+              <Route path="posts" element={<PostsPage />} />
+              <Route path="posts/:id" element={<PostDetailPage />} />
               <Route path="saved" element={<SavedJobsPage />} />
               <Route path="applications" element={<ApplicationsPage />} />
               <Route path="ai-tools" element={<AiToolsPage />} />

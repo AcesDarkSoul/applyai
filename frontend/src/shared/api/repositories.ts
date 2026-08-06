@@ -1,5 +1,5 @@
 import { api } from './client';
-import type { ApiResponse, AppStats, Application, Job, UserProfile } from '../types';
+import type { ApiResponse, AppStats, Application, HiringPost, Job, UserProfile } from '../types';
 
 export const profileRepository = {
   async me(): Promise<UserProfile> {
@@ -45,6 +45,11 @@ export const jobRepository = {
     const { data } = await api.get<ApiResponse<Job[]>>('/jobs', { params: { q } });
     return data.data;
   },
+  /** Formal board jobs (Indeed / Naukri / other) — excludes LinkedIn & Google Jobs posts. */
+  async board(q = ''): Promise<Job[]> {
+    const { data } = await api.get<ApiResponse<Job[]>>('/jobs/board', { params: { q } });
+    return data.data;
+  },
   async today(): Promise<Job[]> {
     const { data } = await api.get<ApiResponse<Job[]>>('/jobs/today');
     return data.data;
@@ -59,6 +64,17 @@ export const jobRepository = {
   },
   async save(id: string): Promise<void> {
     await api.post(`/jobs/${id}/save`);
+  },
+};
+
+export const postRepository = {
+  async list(q = ''): Promise<HiringPost[]> {
+    const { data } = await api.get<ApiResponse<HiringPost[]>>('/posts', { params: { q } });
+    return data.data;
+  },
+  async get(id: string): Promise<HiringPost> {
+    const { data } = await api.get<ApiResponse<HiringPost>>(`/posts/${id}`);
+    return data.data;
   },
 };
 

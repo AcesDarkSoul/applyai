@@ -8,6 +8,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Divider,
   LinearProgress,
   Stack,
   TextField,
@@ -17,11 +18,27 @@ import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
 import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded';
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import SendRoundedIcon from '@mui/icons-material/SendRounded';
+import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
+import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined';
+import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined';
+import WorkOutlineRoundedIcon from '@mui/icons-material/WorkOutlineRounded';
+import ScheduleRoundedIcon from '@mui/icons-material/ScheduleRounded';
 import { motion } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 import { aiRepository, applicationRepository, jobRepository } from '../../shared/api/repositories';
+import { ContentSections } from '../../shared/components/ContentSections';
+import { extractContacts, parseContentSections } from '../../shared/lib/contentParse';
 import type { Job } from '../../shared/types';
+
+const PRIMARY = '#5b5ce2';
+
+function formatDate(iso?: string) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+}
 
 export function JobDetailPage() {
   const { id = '' } = useParams();
@@ -51,6 +68,15 @@ export function JobDetailPage() {
       alive = false;
     };
   }, [id]);
+
+  const sections = useMemo(
+    () => (job ? parseContentSections(job.description || '') : []),
+    [job],
+  );
+  const contacts = useMemo(
+    () => (job ? extractContacts(job.description || '') : { email: null, phone: null }),
+    [job],
+  );
 
   async function onSmartApply() {
     if (!job) return;
@@ -108,7 +134,7 @@ export function JobDetailPage() {
   if (loading) {
     return (
       <Box className="grid place-items-center py-24">
-        <CircularProgress />
+        <CircularProgress sx={{ color: PRIMARY }} />
       </Box>
     );
   }
@@ -117,24 +143,43 @@ export function JobDetailPage() {
     return <Alert severity="error">{error || 'Job not found'}</Alert>;
   }
 
+  const isPostLike = job.source === 'linkedin' || job.source === 'googlejobs';
+
   return (
-    <Stack spacing={3}>
+    <Stack spacing={2.5}>
+      <Button
+        component={RouterLink}
+        to={isPostLike ? '/posts' : '/jobs'}
+        startIcon={<ArrowBackRoundedIcon />}
+        sx={{ alignSelf: 'flex-start' }}
+      >
+        Back to {isPostLike ? 'posts' : 'jobs'}
+      </Button>
+
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
         <Box
-          className="aa-card p-5 md:p-6"
+          className="aa-card p-5 md:p-7"
           sx={{
             background: 'linear-gradient(135deg, rgba(91,92,226,0.12), rgba(124,126,240,0.06))',
           }}
         >
           <Stack direction="row" gap={1} mb={1.5} flexWrap="wrap">
-            <Chip label={job.source} color="info" />
+            <Chip label="Job" sx={{ bgcolor: PRIMARY, color: '#fff', fontWeight: 700 }} />
+            <Chip label={job.source} variant="outlined" />
             {job.isRemote && <Chip label="Remote" color="success" variant="outlined" />}
+            {job.employmentType && <Chip label={job.employmentType} variant="outlined" />}
             {job.salary && <Chip label={job.salary} color="secondary" />}
+            {typeof job.matchScore === 'number' && (
+              <Chip
+                label={`${job.matchScore}% match`}
+                sx={{ bgcolor: `${PRIMARY}18`, color: PRIMARY, fontWeight: 800 }}
+              />
+            )}
           </Stack>
-          <Typography fontWeight={800} fontSize={28} letterSpacing="-0.02em" gutterBottom>
+          <Typography fontWeight={800} fontSize={{ xs: 24, md: 30 }} letterSpacing="-0.03em" gutterBottom>
             {job.title}
           </Typography>
-          <Typography color="text.secondary" fontWeight={500}>
+          <Typography color="text.secondary" fontWeight={600}>
             {job.company} · {job.location}
           </Typography>
         </Box>
@@ -143,6 +188,47 @@ export function JobDetailPage() {
       {error && <Alert severity="error">{error}</Alert>}
       {savedMsg && <Alert severity="success">{savedMsg}</Alert>}
       {outreachMsg && <Alert severity="info">{outreachMsg}</Alert>}
+
+      <Box className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          { icon: <BusinessOutlinedIcon fontSize="small" />, label: 'Company', value: job.company },
+          { icon: <PlaceOutlinedIcon fontSize="small" />, label: 'Location', value: job.location },
+          {
+            icon: <WorkOutlineRoundedIcon fontSize="small" />,
+            label: 'Type',
+            value: job.employmentType || (job.isRemote ? 'Remote' : 'On-site / hybrid'),
+          },
+          {
+            icon: <ScheduleRoundedIcon fontSize="small" />,
+            label: 'Posted',
+            value: formatDate(job.postedAt),
+          },
+        ].map((item) => (
+          <Box key={item.label} className="aa-card p-3.5">
+            <Stack direction="row" spacing={1} alignItems="center" mb={0.75} sx={{ color: PRIMARY }}>
+              {item.icon}
+              <Typography fontSize={12} fontWeight={700} color="text.secondary">
+                {item.label}
+              </Typography>
+            </Stack>
+            <Typography fontWeight={700} fontSize={14}>
+              {item.value}
+            </Typography>
+          </Box>
+        ))}
+      </Box>
+
+      {(contacts.email || contacts.phone) && (
+        <Box className="aa-card p-4">
+          <Typography fontWeight={800} fontSize={14} mb={1}>
+            Contacts found in listing
+          </Typography>
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            {contacts.email && <Chip label={contacts.email} color="primary" variant="outlined" />}
+            {contacts.phone && <Chip label={contacts.phone} color="secondary" variant="outlined" />}
+          </Stack>
+        </Box>
+      )}
 
       {job.matchBreakdown && (
         <Box className="aa-card p-5">
@@ -171,10 +257,7 @@ export function JobDetailPage() {
                     height: 8,
                     borderRadius: 99,
                     bgcolor: 'rgba(91,92,226,0.12)',
-                    '& .MuiLinearProgress-bar': {
-                      borderRadius: 99,
-                      bgcolor: '#5b5ce2',
-                    },
+                    '& .MuiLinearProgress-bar': { borderRadius: 99, bgcolor: PRIMARY },
                   }}
                 />
               </Box>
@@ -182,11 +265,25 @@ export function JobDetailPage() {
         </Box>
       )}
 
-      <Box className="aa-card p-5">
-        <Typography fontWeight={800} fontSize={18} gutterBottom>
-          Role overview
+      <Box className="aa-card p-5 md:p-6">
+        <Typography fontWeight={800} fontSize={18} mb={1}>
+          Full job details
         </Typography>
-        <Typography whiteSpace="pre-wrap" color="text.secondary" lineHeight={1.7}>
+        <Divider sx={{ mb: 2.5 }} />
+        <ContentSections sections={sections} />
+      </Box>
+
+      <Box className="aa-card p-5">
+        <Typography fontWeight={800} fontSize={16} mb={1.5}>
+          Complete original description
+        </Typography>
+        <Typography
+          whiteSpace="pre-wrap"
+          color="text.secondary"
+          fontSize={14}
+          lineHeight={1.75}
+          sx={{ maxHeight: 360, overflow: 'auto' }}
+        >
           {job.description}
         </Typography>
       </Box>
@@ -229,12 +326,17 @@ export function JobDetailPage() {
         >
           Save
         </Button>
+        {isPostLike && (
+          <Button component={RouterLink} to={`/posts/post-${job.id}`} size="large">
+            View as post
+          </Button>
+        )}
       </Stack>
 
       {letter && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           <TextField
-            label="AI cover letter — edit freely before sending"
+            label="AI cover letter / outreach draft — edit freely"
             multiline
             minRows={10}
             value={letter}
@@ -266,27 +368,10 @@ export function JobDetailPage() {
         <DialogTitle sx={{ fontWeight: 800 }}>Apply with Outreach</DialogTitle>
         <DialogContent>
           <Typography paragraph>
-            We scan this posting (including LinkedIn/Indeed text) for a public email or phone:
+            We scan this listing for a public email or phone, then use your resume profile.
           </Typography>
-          <Typography component="ul" sx={{ pl: 2, mb: 2 }}>
-            <li>
-              <strong>Email found</strong> → send an application email written from your resume
-              profile
-            </li>
-            <li>
-              <strong>Phone found</strong> → send a WhatsApp apply message
-            </li>
-            <li>
-              <strong>Neither</strong> → open Smart Apply (official URL — no silent site submit)
-            </li>
-          </Typography>
-          <Typography color="text.secondary" fontSize={14}>
-            Upload your resume on{' '}
-            <Button component={RouterLink} to="/profile" size="small" sx={{ p: 0, minWidth: 0 }}>
-              Profile
-            </Button>{' '}
-            first. Sending is dry-run until SendGrid / Twilio are configured and{' '}
-            <code>OUTREACH_DRY_RUN=false</code>.
+          <Typography fontSize={14} color="text.secondary">
+            Detected — Email: {contacts.email || 'none'} · Phone: {contacts.phone || 'none'}
           </Typography>
         </DialogContent>
         <DialogActions sx={{ p: 2.5 }}>

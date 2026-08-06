@@ -7,6 +7,7 @@ import * as healthController from '../controllers/healthController';
 import * as profileController from '../controllers/profileController';
 import * as jobController from '../controllers/jobController';
 import * as applicationController from '../controllers/applicationController';
+import * as postController from '../controllers/postController';
 import * as aiController from '../controllers/aiController';
 
 const aiLimiter = rateLimit({
@@ -34,12 +35,16 @@ apiRouter.patch('/me', profileController.updateProfile);
 apiRouter.post('/me/resume', resumeUpload.single('resume'), profileController.uploadResume);
 
 apiRouter.get('/jobs', jobController.searchJobs);
+apiRouter.get('/jobs/board', postController.listFormalJobs);
 apiRouter.get('/jobs/today', jobController.todaysJobs);
 apiRouter.get('/jobs/saved', jobController.listSavedJobs);
 apiRouter.get('/jobs/catalog', jobController.catalogStatus);
 apiRouter.post('/jobs/refresh', jobController.refreshJobs);
 apiRouter.get('/jobs/:id', jobController.getJob);
 apiRouter.post('/jobs/:id/save', jobController.saveJob);
+
+apiRouter.get('/posts', postController.listPosts);
+apiRouter.get('/posts/:id', postController.getPost);
 
 apiRouter.get('/applications', applicationController.listApplications);
 apiRouter.get('/applications/stats', applicationController.getStats);

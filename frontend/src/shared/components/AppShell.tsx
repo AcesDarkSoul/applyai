@@ -23,6 +23,7 @@ import DarkModeIcon from '@mui/icons-material/DarkMode';
 import LightModeIcon from '@mui/icons-material/LightMode';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import SmartToyRoundedIcon from '@mui/icons-material/SmartToyRounded';
+import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined';
 import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
 import { AnimatePresence } from 'framer-motion';
 import { useMemo, useState } from 'react';
@@ -40,6 +41,12 @@ const nav = [
     label: 'Find Jobs',
     icon: <WorkOutlineRoundedIcon />,
     match: (p: string) => p.startsWith('/jobs') || p === '/saved',
+  },
+  {
+    to: '/posts',
+    label: 'Hiring Posts',
+    icon: <ArticleOutlinedIcon />,
+    match: (p: string) => p.startsWith('/posts'),
   },
   {
     to: '/applications',
@@ -64,8 +71,8 @@ const nav = [
 const mobileNav = [
   { to: '/', label: 'Home', icon: <HomeRoundedIcon /> },
   { to: '/jobs', label: 'Jobs', icon: <WorkOutlineRoundedIcon /> },
+  { to: '/posts', label: 'Posts', icon: <ArticleOutlinedIcon /> },
   { to: '/applications', label: 'Apps', icon: <AssignmentOutlinedIcon /> },
-  { to: '/ai-tools', label: 'AI Tools', icon: <AutoAwesomeRoundedIcon /> },
 ];
 
 export function AppShell() {

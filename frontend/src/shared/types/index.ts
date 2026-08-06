@@ -77,8 +77,27 @@ export interface AppStats {
   saved: number;
 }
 
+export interface HiringPost {
+  id: string;
+  title: string;
+  company: string;
+  author: string;
+  body: string;
+  excerpt: string;
+  location: string;
+  isRemote: boolean;
+  source: string;
+  postUrl: string;
+  postedAt?: string;
+  jobId: string;
+  contacts: { email: string | null; phone: string | null };
+  sections: Array<{ heading: string; content: string }>;
+  matchScore?: number;
+}
+
 export interface ApiResponse<T> {
   success: boolean;
   data: T;
   error?: { code: string; message: string };
+  meta?: Record<string, unknown>;
 }
