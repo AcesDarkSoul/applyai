@@ -1,4 +1,5 @@
 import { CssBaseline, ThemeProvider } from '@mui/material';
+import { useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { LoginPage } from '../features/auth/LoginPage';
 import { OverviewPage } from '../features/dashboard/OverviewPage';
@@ -11,38 +12,54 @@ import { SavedJobsPage } from '../features/jobs/SavedJobsPage';
 import { PostDetailPage } from '../features/posts/PostDetailPage';
 import { PostsPage } from '../features/posts/PostsPage';
 import { ProfilePage } from '../features/profile/ProfilePage';
+import { ResumeStudioPage } from '../features/profile/ResumeStudioPage';
 import { AppShell } from '../shared/components/AppShell';
+import { SplashScreen } from '../shared/components/SplashScreen';
 import { useThemeMode } from '../shared/hooks/useThemeMode';
 import { buildTheme } from '../shared/theme/theme';
 import { ProtectedRoute } from './ProtectedRoute';
 
+const SPLASH_MS = 1800;
+
 export default function App() {
   const mode = useThemeMode((s) => s.mode);
   const theme = buildTheme(mode);
+  const [showSplash, setShowSplash] = useState(true);
+
+  useEffect(() => {
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const ms = reduced ? 400 : SPLASH_MS;
+    const t = window.setTimeout(() => setShowSplash(false), ms);
+    return () => window.clearTimeout(t);
+  }, []);
 
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route element={<ProtectedRoute />}>
-            <Route element={<AppShell />}>
-              <Route index element={<OverviewPage />} />
-              <Route path="jobs" element={<JobsPage />} />
-              <Route path="jobs/:id" element={<JobDetailPage />} />
-              <Route path="posts" element={<PostsPage />} />
-              <Route path="posts/:id" element={<PostDetailPage />} />
-              <Route path="saved" element={<SavedJobsPage />} />
-              <Route path="applications" element={<ApplicationsPage />} />
-              <Route path="ai-tools" element={<AiToolsPage />} />
-              <Route path="analytics" element={<AnalyticsPage />} />
-              <Route path="profile" element={<ProfilePage />} />
+      <SplashScreen show={showSplash} />
+      {!showSplash && (
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route element={<ProtectedRoute />}>
+              <Route element={<AppShell />}>
+                <Route index element={<OverviewPage />} />
+                <Route path="jobs" element={<JobsPage />} />
+                <Route path="jobs/:id" element={<JobDetailPage />} />
+                <Route path="posts" element={<PostsPage />} />
+                <Route path="posts/:id" element={<PostDetailPage />} />
+                <Route path="saved" element={<SavedJobsPage />} />
+                <Route path="applications" element={<ApplicationsPage />} />
+                <Route path="ai-tools" element={<AiToolsPage />} />
+                <Route path="analytics" element={<AnalyticsPage />} />
+                <Route path="resume" element={<ResumeStudioPage />} />
+                <Route path="profile" element={<ProfilePage />} />
+              </Route>
             </Route>
-          </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      )}
     </ThemeProvider>
   );
 }

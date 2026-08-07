@@ -3,11 +3,17 @@ import { z } from 'zod';
 import { env } from '../config/env';
 import { AppError } from '../middleware/errorHandler';
 import { jobService } from '../services/jobService';
+import { buildJobSearchQuery } from '../services/jobQuery';
 import { profileService } from '../services/profileService';
 import { memoryStore } from '../repositories/memory/store';
 
 const searchSchema = z.object({
   q: z.string().optional().default(''),
+  minScore: z.coerce.number().min(0).max(100).optional(),
+  matched: z
+    .union([z.literal('true'), z.literal('false'), z.boolean()])
+    .optional()
+    .transform((v) => v === true || v === 'true' || v === undefined),
 });
 
 const ingestSchema = z.object({
@@ -38,10 +44,22 @@ const refreshSchema = z.object({
 
 export async function searchJobs(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { q } = searchSchema.parse(req.query);
+    const { q, minScore, matched } = searchSchema.parse(req.query);
     const profile = await profileService.getOrCreate(req.user!);
-    const jobs = await jobService.search(q, profile);
-    res.json({ success: true, data: jobs, meta: jobService.catalogMeta() });
+    const jobs = await jobService.search(q, profile, {
+      matched,
+      minScore,
+      sortByMatch: true,
+    });
+    res.json({
+      success: true,
+      data: jobs,
+      meta: {
+        ...jobService.catalogMeta(),
+        query: q || buildJobSearchQuery(profile),
+        matched,
+      },
+    });
   } catch (err) {
     next(err);
   }
@@ -61,9 +79,42 @@ export async function getJob(req: Request, res: Response, next: NextFunction): P
 export async function todaysJobs(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const profile = await profileService.getOrCreate(req.user!);
-    const jobs = await jobService.search('', profile);
-    const sorted = [...jobs].sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0));
-    res.json({ success: true, data: sorted, meta: jobService.catalogMeta() });
+    const jobs = await jobService.recommended(profile, { minScore: 40, limit: 40 });
+    res.json({
+      success: true,
+      data: jobs,
+      meta: {
+        ...jobService.catalogMeta(),
+        query: buildJobSearchQuery(profile),
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function recommendedJobs(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const minScore = Number(req.query.minScore || 50);
+    const limit = Number(req.query.limit || 25);
+    const profile = await profileService.getOrCreate(req.user!);
+    const jobs = await jobService.recommended(profile, {
+      minScore: Number.isFinite(minScore) ? minScore : 50,
+      limit: Number.isFinite(limit) ? limit : 25,
+    });
+    res.json({
+      success: true,
+      data: jobs,
+      meta: {
+        ...jobService.catalogMeta(),
+        query: buildJobSearchQuery(profile),
+        minScore,
+      },
+    });
   } catch (err) {
     next(err);
   }
@@ -86,7 +137,7 @@ export async function listSavedJobs(req: Request, res: Response, next: NextFunct
     const uid = req.user!.uid;
     const profile = await profileService.getOrCreate(req.user!);
     const ids = memoryStore.savedJobIds.get(uid) ?? new Set<string>();
-    const all = await jobService.search('', profile);
+    const all = await jobService.search('', profile, { matched: true, sortByMatch: true });
     res.json({ success: true, data: all.filter((j) => ids.has(j.id)) });
   } catch (err) {
     next(err);
@@ -118,11 +169,12 @@ export async function ingestJobs(req: Request, res: Response, next: NextFunction
   }
 }
 
-/** Live refresh from Apify + SerpApi (same sources as n8n). */
+/** Live refresh from Apify + SerpApi — defaults query from resume/profile. */
 export async function refreshJobs(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const body = refreshSchema.parse(req.body ?? {});
-    const result = await jobService.refreshFromProviders(body.query, body.location);
+    const profile = await profileService.getOrCreate(req.user!);
+    const result = await jobService.refreshFromProviders(body.query, body.location, profile);
     res.json({ success: true, data: result });
   } catch (err) {
     next(err);

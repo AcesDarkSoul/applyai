@@ -6,6 +6,7 @@ import { Button, Input } from '@/components/ui';
 import { Screen } from '@/components/layout/Screen';
 import { FadeInView } from '@/components/AnimatedView';
 import { signUp, formatAuthError } from '@/lib/firebase/auth';
+import { useGoogleAuth } from '@/hooks/useGoogleAuth';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 
 export default function SignUpScreen() {
@@ -16,6 +17,11 @@ export default function SignUpScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const { signInWithGoogle, googleAuthReady } = useGoogleAuth(
+    () => router.replace('/(tabs)'),
+    (msg) => { setError(msg); setLoading(false); }
+  );
 
   const handleSignUp = async () => {
     if (!name || !email || !password || !confirmPassword) { setError('Please fill in all fields'); return; }
@@ -52,6 +58,16 @@ export default function SignUpScreen() {
           <Input label="Password" icon="🔒" placeholder="Min. 8 characters" value={password} onChangeText={setPassword} secureTextEntry />
           <Input label="Confirm Password" icon="🔒" placeholder="Re-enter password" value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry />
           <Button title="Create Free Account" onPress={handleSignUp} loading={loading} size="lg" />
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} /><Text style={styles.dividerText}>or</Text><View style={styles.dividerLine} />
+          </View>
+          <Button
+            title="Continue with Google"
+            variant="outline"
+            onPress={async () => { setLoading(true); await signInWithGoogle(); setLoading(false); }}
+            loading={loading}
+            disabled={!googleAuthReady}
+          />
         </View>
       </FadeInView>
 
@@ -76,6 +92,9 @@ const styles = StyleSheet.create({
   form: { marginBottom: Spacing.lg },
   errorBanner: { backgroundColor: '#FEE2E2', padding: Spacing.md, borderRadius: BorderRadius.lg, marginBottom: Spacing.md },
   errorText: { color: Colors.danger, fontSize: FontSize.sm },
+  divider: { flexDirection: 'row', alignItems: 'center', marginVertical: Spacing.lg },
+  dividerLine: { flex: 1, height: 1, backgroundColor: Colors.border },
+  dividerText: { color: Colors.textMuted, paddingHorizontal: Spacing.md, fontSize: FontSize.sm },
   footer: { flexDirection: 'row', justifyContent: 'center', paddingBottom: Spacing.xl },
   footerText: { color: Colors.textSecondary, fontSize: FontSize.md },
   link: { color: Colors.primary, fontSize: FontSize.md, fontWeight: '700' },

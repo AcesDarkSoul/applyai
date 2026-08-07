@@ -39,6 +39,9 @@ coverage/
 # Misc
 *.tgz
 .turbo/
+backend/data/
+frontend/tsconfig.tsbuildinfo
+backend/tsconfig.tsbuildinfo
 
 # Nested repo metadata (preserved locally)
 applyai/.git.nested.bak/

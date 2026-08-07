@@ -25,6 +25,7 @@ import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import SmartToyRoundedIcon from '@mui/icons-material/SmartToyRounded';
 import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined';
 import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import { AnimatePresence } from 'framer-motion';
 import { useMemo, useState } from 'react';
 import { Link as RouterLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
@@ -41,6 +42,12 @@ const nav = [
     label: 'Find Jobs',
     icon: <WorkOutlineRoundedIcon />,
     match: (p: string) => p.startsWith('/jobs') || p === '/saved',
+  },
+  {
+    to: '/resume',
+    label: 'Resume Studio',
+    icon: <DescriptionOutlinedIcon />,
+    match: (p: string) => p.startsWith('/resume') || p.startsWith('/profile'),
   },
   {
     to: '/posts',
@@ -71,7 +78,7 @@ const nav = [
 const mobileNav = [
   { to: '/', label: 'Home', icon: <HomeRoundedIcon /> },
   { to: '/jobs', label: 'Jobs', icon: <WorkOutlineRoundedIcon /> },
-  { to: '/posts', label: 'Posts', icon: <ArticleOutlinedIcon /> },
+  { to: '/resume', label: 'Resume', icon: <DescriptionOutlinedIcon /> },
   { to: '/applications', label: 'Apps', icon: <AssignmentOutlinedIcon /> },
 ];
 
@@ -264,12 +271,20 @@ export function AppShell() {
             <IconButton onClick={toggle} size="small" sx={{ bgcolor: 'background.paper' }}>
               {mode === 'dark' ? <LightModeIcon fontSize="small" /> : <DarkModeIcon fontSize="small" />}
             </IconButton>
-            <IconButton onClick={logout} size="small" sx={{ bgcolor: 'background.paper' }} title="Log out">
+            <IconButton
+              onClick={() => {
+                logout();
+                navigate('/login', { replace: true });
+              }}
+              size="small"
+              sx={{ bgcolor: 'background.paper' }}
+              title="Log out"
+            >
               <LogoutRoundedIcon fontSize="small" />
             </IconButton>
             <Avatar
               component={RouterLink}
-              to="/profile"
+              to="/resume"
               sx={{
                 width: 36,
                 height: 36,

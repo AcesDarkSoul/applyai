@@ -1,4 +1,5 @@
 import type { Application, ApplicationStatus } from '../domain/application';
+import type { CoverLetterDocument, ResumeDocument } from '../domain/resume';
 import type { UserProfile } from '../domain/user';
 
 export interface IUserRepository {
@@ -16,4 +17,16 @@ export interface IApplicationRepository {
     status: ApplicationStatus,
     note?: string,
   ): Promise<Application>;
+}
+
+export interface IResumeRepository {
+  getLatest(userId: string): Promise<ResumeDocument | null>;
+  getById(userId: string, resumeId: string): Promise<ResumeDocument | null>;
+  list(userId: string): Promise<ResumeDocument[]>;
+  upsert(doc: ResumeDocument): Promise<ResumeDocument>;
+}
+
+export interface ICoverLetterRepository {
+  create(doc: CoverLetterDocument): Promise<CoverLetterDocument>;
+  listByUser(userId: string): Promise<CoverLetterDocument[]>;
 }

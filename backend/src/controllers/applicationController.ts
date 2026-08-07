@@ -16,6 +16,13 @@ const outreachApplySchema = z.object({
   confirmed: z.literal(true),
 });
 
+const autoApplySchema = z.object({
+  confirmed: z.literal(true),
+  minScore: z.number().min(0).max(100).optional().default(55),
+  limit: z.number().min(1).max(20).optional().default(8),
+  boardOnly: z.boolean().optional().default(true),
+});
+
 const statusSchema = z.object({
   status: z.enum(['saved', 'applied', 'viewed', 'interview', 'offer', 'rejected', 'withdrawn']),
   note: z.string().max(2000).optional(),
@@ -69,7 +76,7 @@ export async function outreachApplyHandler(
     const job = await jobService.getById(body.jobId, profile);
     if (!job) throw new AppError(404, 'Job not found', 'NOT_FOUND');
 
-    if (!profile.summary && !(profile.skills?.length > 2)) {
+    if (!profile.summary && !(profile.skills?.length > 2) && !profile.title) {
       throw new AppError(
         400,
         'Upload your resume on Profile first so outreach can use your details.',
@@ -89,8 +96,7 @@ export async function outreachApplyHandler(
             : outreach.note
           : 'Smart Apply — opened official posting';
 
-    const application = await applicationService.smartApply(req.user!.uid, job);
-    await applicationService.updateStatus(req.user!.uid, application.id, 'applied', note);
+    const application = await applicationService.smartApply(req.user!.uid, job, note);
 
     res.status(201).json({
       success: true,
@@ -98,6 +104,33 @@ export async function outreachApplyHandler(
         application,
         outreach,
         applyUrl: job.applyUrl,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/** Batch auto-apply to top resume-matched jobs. */
+export async function autoApplyHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const body = autoApplySchema.parse(req.body);
+    const profile = await profileService.getOrCreate(req.user!);
+    const result = await applicationService.autoApplyFromResume(req.user!.uid, profile, {
+      minScore: body.minScore,
+      limit: body.limit,
+      boardOnly: body.boardOnly,
+    });
+    res.status(201).json({
+      success: true,
+      data: {
+        ...result,
+        complianceNote:
+          'Auto-apply emails/WhatsApps when contacts exist; otherwise opens official apply links. LinkedIn/Naukri never receive silent form submits.',
       },
     });
   } catch (err) {

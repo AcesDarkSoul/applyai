@@ -47,8 +47,8 @@ export default function LoginScreen() {
       </FadeInView>
 
       <FadeInView direction="up" delay={100}>
-        <Text style={styles.welcomeTitle}>Welcome back!</Text>
-        <Text style={styles.welcomeSub}>Sign in to continue your job search</Text>
+        <Text style={styles.welcomeTitle}>Sign in required</Text>
+        <Text style={styles.welcomeSub}>Use email & password or Google to continue</Text>
       </FadeInView>
 
       <FadeInView direction="up" delay={200}>

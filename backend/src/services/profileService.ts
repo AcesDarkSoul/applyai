@@ -3,17 +3,21 @@ import type { AuthUser } from '../domain/user';
 import { userRepository } from '../repositories';
 
 function completeness(p: Omit<UserProfile, 'profileCompleteness'>): number {
+  const skills = p.skills ?? [];
+  const education = p.education ?? [];
+  const preferredLocations = p.preferredLocations ?? [];
   const checks = [
     Boolean(p.displayName),
     Boolean(p.email),
     Boolean(p.phone),
     Boolean(p.title),
-    p.skills.length >= 3,
-    p.education.length > 0,
+    skills.length >= 3,
+    education.length > 0 || (p.educationEntries?.length ?? 0) > 0,
     Boolean(p.summary && p.summary.length > 80),
-    p.preferredLocations.length > 0,
+    preferredLocations.length > 0 || Boolean(p.location),
     Boolean(p.expectedSalary) || Boolean(p.experienceYears),
-    Boolean(p.resumeFileName),
+    Boolean(p.resumeFileName) || (p.experienceEntries?.length ?? 0) > 0,
+    (p.projects?.length ?? 0) > 0 || (p.certifications?.length ?? 0) > 0,
   ];
   return Math.round((checks.filter(Boolean).length / checks.length) * 100);
 }
@@ -21,7 +25,27 @@ function completeness(p: Omit<UserProfile, 'profileCompleteness'>): number {
 export class ProfileService {
   async getOrCreate(auth: AuthUser): Promise<UserProfile> {
     const existing = await userRepository.getById(auth.uid);
-    if (existing) return existing;
+    if (existing) {
+      // Normalize older/corrupt docs missing array fields
+      const normalized: UserProfile = {
+        ...existing,
+        skills: existing.skills ?? [],
+        education: existing.education ?? [],
+        preferredLocations: existing.preferredLocations ?? [],
+      };
+      if (
+        !existing.skills ||
+        !existing.education ||
+        !existing.preferredLocations
+      ) {
+        return userRepository.upsert({
+          ...normalized,
+          profileCompleteness: completeness(normalized),
+          updatedAt: new Date().toISOString(),
+        });
+      }
+      return normalized;
+    }
 
     const now = new Date().toISOString();
     const base = {
@@ -29,11 +53,10 @@ export class ProfileService {
       email: auth.email,
       displayName: auth.email.split('@')[0] || 'Candidate',
       role: auth.role,
-      skills: ['TypeScript', 'React', 'Node.js'],
+      skills: [] as string[],
       education: [],
       preferredLocations: [],
       remotePreference: 'any' as const,
-      atsScore: 72,
       createdAt: now,
       updatedAt: now,
     };
@@ -46,12 +69,18 @@ export class ProfileService {
 
   async update(auth: AuthUser, patch: Partial<UserProfile>): Promise<UserProfile> {
     const current = await this.getOrCreate(auth);
+    const cleanPatch = Object.fromEntries(
+      Object.entries(patch).filter(([, v]) => v !== undefined),
+    ) as Partial<UserProfile>;
     const merged = {
       ...current,
-      ...patch,
+      ...cleanPatch,
       uid: current.uid,
       email: current.email,
       role: current.role,
+      skills: cleanPatch.skills ?? current.skills ?? [],
+      education: cleanPatch.education ?? current.education ?? [],
+      preferredLocations: cleanPatch.preferredLocations ?? current.preferredLocations ?? [],
       updatedAt: new Date().toISOString(),
     };
     const profile: UserProfile = {

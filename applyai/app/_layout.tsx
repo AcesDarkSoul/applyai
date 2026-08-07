@@ -15,17 +15,30 @@ export { ErrorBoundary } from 'expo-router';
 
 SplashScreen.preventAutoHideAsync();
 
+const AUTH_ROUTES = new Set(['(auth)']);
+
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, initialized } = useAuthStore();
   const segments = useSegments();
   const router = useRouter();
 
+  const root = segments[0];
+  const inAuthGroup = AUTH_ROUTES.has(String(root ?? ''));
+  // Must be signed in for tabs, jobs, resume, share, etc.
+  const needsAuth = !inAuthGroup;
+
   useEffect(() => {
     if (!initialized) return;
-    const inAuthGroup = segments[0] === '(auth)';
-    if (!user && !inAuthGroup) router.replace('/(auth)/login');
-    else if (user && inAuthGroup) router.replace('/(tabs)');
-  }, [user, initialized, segments]);
+
+    if (!user && needsAuth) {
+      router.replace('/(auth)/login');
+      return;
+    }
+
+    if (user && inAuthGroup) {
+      router.replace('/(tabs)');
+    }
+  }, [user, initialized, needsAuth, inAuthGroup, router]);
 
   if (!initialized) {
     return (
@@ -34,6 +47,24 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
       </View>
     );
   }
+
+  // Never show app screens without a Firebase user (email/password or Google)
+  if (!user && needsAuth) {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
+  }
+
+  if (user && inAuthGroup) {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
+  }
+
   return <>{children}</>;
 }
 
@@ -60,6 +91,7 @@ export default function RootLayout() {
           contentStyle: { backgroundColor: Colors.background },
           animation: Platform.OS === 'ios' ? 'default' : 'fade',
         }}>
+          <Stack.Screen name="index" />
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="job/[id]" options={{

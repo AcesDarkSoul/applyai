@@ -1,7 +1,7 @@
-import { Box, CircularProgress } from '@mui/material';
 import { useEffect } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuthStore } from '../features/auth/authStore';
+import { SplashScreen } from '../shared/components/SplashScreen';
 
 export function ProtectedRoute() {
   const token = useAuthStore((s) => s.token);
@@ -16,11 +16,7 @@ export function ProtectedRoute() {
   if (!token) return <Navigate to="/login" replace />;
 
   if (loading || !profile) {
-    return (
-      <Box className="min-h-screen grid place-items-center">
-        <CircularProgress />
-      </Box>
-    );
+    return <SplashScreen show caption="Loading your workspace…" />;
   }
 
   return <Outlet />;

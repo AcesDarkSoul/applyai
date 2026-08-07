@@ -4,8 +4,13 @@ import { logger } from './config/logger';
 
 const app = createApp();
 
-app.listen(env.PORT, () => {
+const server = app.listen(env.PORT, () => {
   logger.info(`ApplyAI API listening on http://localhost:${env.PORT}`);
   logger.info(`Swagger docs at http://localhost:${env.PORT}/api/docs`);
   logger.info(`Demo mode: ${isDemoMode}`);
+});
+
+server.on('error', (err: NodeJS.ErrnoException) => {
+  logger.error(`HTTP server failed to start ${err.message}`, { code: err.code });
+  process.exit(1);
 });

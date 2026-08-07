@@ -4,6 +4,7 @@ import { AppError } from '../middleware/errorHandler';
 import { aiService } from '../services/aiService';
 import { jobService } from '../services/jobService';
 import { profileService } from '../services/profileService';
+import { resumeService } from '../services/resumeService';
 
 const coverLetterSchema = z.object({
   jobId: z.string().min(1),
@@ -21,11 +22,19 @@ export async function generateCoverLetter(
     if (!job) throw new AppError(404, 'Job not found', 'NOT_FOUND');
 
     const content = await aiService.generateCoverLetter(profile, job);
+    const saved = await resumeService.saveCoverLetter(req.user!, {
+      jobId,
+      jobTitle: job.title,
+      company: job.company,
+      content,
+    });
+
     res.json({
       success: true,
       data: {
         jobId,
         content,
+        coverLetterId: saved.id,
         aiAssisted: true,
         promptVersion: 'cover-letter@v1',
       },
