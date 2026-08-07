@@ -1,3 +1,9 @@
+import type {
+  EducationEntry,
+  ExperienceEntry,
+  ProjectEntry,
+} from './resume';
+
 export type UserRole = 'user' | 'admin';
 
 export interface AuthUser {
@@ -14,6 +20,8 @@ export interface UserProfile {
   phone?: string;
   title?: string;
   linkedinUrl?: string;
+  website?: string;
+  location?: string;
   skills: string[];
   experienceYears?: number;
   education: string[];
@@ -25,6 +33,14 @@ export interface UserProfile {
   profileCompleteness: number;
   resumeFileName?: string;
   resumeParsedAt?: string;
+  resumeId?: string;
+  /** Advanced builder sections — also mirrored on resume docs in Firestore. */
+  experienceEntries?: ExperienceEntry[];
+  educationEntries?: EducationEntry[];
+  projects?: ProjectEntry[];
+  certifications?: string[];
+  languages?: string[];
+  achievements?: string[];
   createdAt: string;
   updatedAt: string;
 }

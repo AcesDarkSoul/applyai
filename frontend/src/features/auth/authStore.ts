@@ -7,10 +7,15 @@ interface AuthState {
   profile: UserProfile | null;
   loading: boolean;
   error: string | null;
-  loginDemo: (asAdmin?: boolean) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   hydrate: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+}
+
+function demoUidFromEmail(email: string): string {
+  const local = email.trim().toLowerCase().split('@')[0] || 'user';
+  return local.replace(/[^a-z0-9_-]/g, '').slice(0, 40) || 'user';
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -19,14 +24,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   loading: false,
   error: null,
 
-  async loginDemo(asAdmin = false) {
+  async login(email, password) {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      set({ error: 'Enter a valid email address' });
+      return;
+    }
+    if (!password || password.length < 6) {
+      set({ error: 'Password must be at least 6 characters' });
+      return;
+    }
+
     set({ loading: true, error: null });
     try {
-      const token = asAdmin ? 'demo-admin-owner' : 'demo-user-sagar';
+      // Demo auth: one candidate session per email (no admin/candidate split).
+      const token = `demo-${demoUidFromEmail(trimmedEmail)}`;
       localStorage.setItem('applyai_token', token);
       set({ token });
       const profile = await profileRepository.me();
-      set({ profile, loading: false });
+      set({ profile, loading: false, error: null });
     } catch (err) {
       set({
         loading: false,
@@ -39,7 +55,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   logout() {
     localStorage.removeItem('applyai_token');
-    set({ token: null, profile: null, error: null });
+    set({ token: null, profile: null, error: null, loading: false });
   },
 
   async hydrate() {

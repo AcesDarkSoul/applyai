@@ -85,6 +85,9 @@ export function JobDetailPage() {
     try {
       const result = await applicationRepository.smartApply(job.id);
       setConfirmOpen(false);
+      setSavedMsg(
+        `Tracked application for ${job.title}. Finish on the official site — then check Applications.`,
+      );
       window.open(result.applyUrl, '_blank', 'noopener,noreferrer');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Smart Apply failed');
@@ -103,6 +106,7 @@ export function JobDetailPage() {
       setOutreachOpen(false);
       const o = result.outreach;
       setOutreachMsg(o.note);
+      setSavedMsg(`Application tracked for ${job.title} at ${job.company}.`);
       if (o.channel === 'whatsapp' && o.waLink && !o.sent) {
         window.open(o.waLink, '_blank', 'noopener,noreferrer');
       } else if (o.channel === 'smart_apply') {

@@ -5,6 +5,9 @@ web-build/
 .env
 functions/.env
 *.jks
+*.keystore
+!android/app/debug.keystore
+android/keystore.properties
 *.p8
 *.p12
 *.key

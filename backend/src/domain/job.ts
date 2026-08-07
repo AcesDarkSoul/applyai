@@ -16,6 +16,7 @@ export interface Job {
 
 export interface MatchBreakdown {
   skills: number;
+  title: number;
   experience: number;
   education: number;
   location: number;

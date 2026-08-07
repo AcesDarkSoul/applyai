@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 import { ZodError } from 'zod';
+import { env } from '../config/env';
 import { logger } from '../config/logger';
 
 export class AppError extends Error {
@@ -50,14 +51,33 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
     return;
   }
 
+  // Resume parse / PDF / DOCX extraction failures should be client-visible
+  if (
+    err instanceof Error &&
+    /PDF|DOCX|\.doc|scanned|extract|Unsupported resume|little\/no text|mammoth|pdf-parse/i.test(
+      err.message,
+    )
+  ) {
+    res.status(400).json({
+      success: false,
+      error: { code: 'RESUME_PARSE', message: err.message },
+    });
+    return;
+  }
+
   logger.error('Unhandled error', {
     requestId: req.requestId,
     err: err instanceof Error ? err.message : err,
     stack: err instanceof Error ? err.stack : undefined,
   });
 
+  const detail =
+    env.NODE_ENV === 'development' && err instanceof Error
+      ? err.message
+      : 'Internal server error';
+
   res.status(500).json({
     success: false,
-    error: { code: 'INTERNAL_ERROR', message: 'Internal server error' },
+    error: { code: 'INTERNAL_ERROR', message: detail },
   });
 }

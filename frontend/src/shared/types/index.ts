@@ -9,6 +9,7 @@ export type ApplicationStatus =
 
 export interface MatchBreakdown {
   skills: number;
+  title?: number;
   experience: number;
   education: number;
   location: number;
@@ -32,6 +33,36 @@ export interface Job {
   matchBreakdown?: MatchBreakdown;
 }
 
+export interface ExperienceEntry {
+  id: string;
+  company: string;
+  title: string;
+  location?: string;
+  startDate: string;
+  endDate: string;
+  current?: boolean;
+  bullets: string[];
+}
+
+export interface EducationEntry {
+  id: string;
+  school: string;
+  degree: string;
+  field?: string;
+  startDate?: string;
+  endDate?: string;
+  details?: string;
+}
+
+export interface ProjectEntry {
+  id: string;
+  name: string;
+  url?: string;
+  tech?: string;
+  description: string;
+  bullets?: string[];
+}
+
 export interface UserProfile {
   uid: string;
   email: string;
@@ -40,6 +71,8 @@ export interface UserProfile {
   phone?: string;
   title?: string;
   linkedinUrl?: string;
+  website?: string;
+  location?: string;
   skills: string[];
   experienceYears?: number;
   education: string[];
@@ -51,6 +84,49 @@ export interface UserProfile {
   profileCompleteness: number;
   resumeFileName?: string;
   resumeParsedAt?: string;
+  resumeId?: string;
+  experienceEntries?: ExperienceEntry[];
+  educationEntries?: EducationEntry[];
+  projects?: ProjectEntry[];
+  certifications?: string[];
+  languages?: string[];
+  achievements?: string[];
+}
+
+export interface ResumeDocument {
+  id: string;
+  userId: string;
+  source: 'upload' | 'builder';
+  fileName: string;
+  mimeType?: string;
+  uploadedAt: string;
+  updatedAt: string;
+  parseMethod?: string;
+  textChars?: number;
+  htmlContent?: string;
+  template?: 'classic' | 'modern' | 'executive';
+  atsScore?: number;
+  parsed?: Record<string, unknown>;
+}
+
+export interface ResumeBuilderInput {
+  displayName: string;
+  title?: string;
+  email?: string;
+  phone?: string;
+  location?: string;
+  linkedinUrl?: string;
+  website?: string;
+  summary?: string;
+  skills: string[];
+  experienceYears?: number;
+  experience: ExperienceEntry[];
+  education: EducationEntry[];
+  projects: ProjectEntry[];
+  certifications: string[];
+  languages: string[];
+  achievements: string[];
+  template?: 'classic' | 'modern' | 'executive';
 }
 
 export interface Application {

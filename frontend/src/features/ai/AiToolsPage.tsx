@@ -16,11 +16,11 @@ const PRIMARY = '#5b5ce2';
 
 const tools = [
   {
-    title: 'Resume Tailoring',
-    body: 'Your tailored resume is ready for ATS screening.',
+    title: 'Resume Builder',
+    body: 'Upload a file or build an advanced multi-section resume from your profile form.',
     scoreLabel: 'ATS Score',
-    cta: 'Download Resume',
-    to: '/profile',
+    cta: 'Open Resume Studio',
+    to: '/resume',
   },
   {
     title: 'Cover Letter Studio',
@@ -92,7 +92,7 @@ export function AiToolsPage() {
               <Typography color="text.secondary" fontSize={13.5} mb={2} sx={{ flex: 1 }}>
                 {tool.body}
               </Typography>
-              {tool.title === 'Resume Tailoring' && (
+              {tool.title === 'Resume Builder' && (
                 <Box mb={2}>
                   <Stack direction="row" justifyContent="space-between" mb={0.75}>
                     <Typography fontSize={12} fontWeight={700} color="text.secondary">
@@ -119,7 +119,7 @@ export function AiToolsPage() {
                 to={tool.to}
                 variant="contained"
                 fullWidth
-                startIcon={tool.title === 'Resume Tailoring' ? <DownloadRoundedIcon /> : undefined}
+                startIcon={tool.title === 'Resume Builder' ? <DownloadRoundedIcon /> : undefined}
               >
                 {tool.cta}
               </Button>

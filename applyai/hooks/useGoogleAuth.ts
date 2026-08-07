@@ -9,9 +9,11 @@ WebBrowser.maybeCompleteAuthSession();
 const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '';
 
 export function useGoogleAuth(onSuccess?: () => void, onError?: (error: string) => void) {
+  const hasGoogleClientId = GOOGLE_WEB_CLIENT_ID.length > 0;
+
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    webClientId: GOOGLE_WEB_CLIENT_ID,
-    clientId: GOOGLE_WEB_CLIENT_ID,
+    webClientId: hasGoogleClientId ? GOOGLE_WEB_CLIENT_ID : undefined,
+    clientId: hasGoogleClientId ? GOOGLE_WEB_CLIENT_ID : undefined,
   });
 
   useEffect(() => {
@@ -42,11 +44,19 @@ export function useGoogleAuth(onSuccess?: () => void, onError?: (error: string) 
       return;
     }
 
+    if (!hasGoogleClientId) {
+      onError?.(
+        'Google Sign-In is not configured. Set EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID in applyai/.env (Firebase Console → Authentication → Google).'
+      );
+      return;
+    }
+
     await promptAsync();
-  }, [promptAsync, onSuccess, onError]);
+  }, [promptAsync, onSuccess, onError, hasGoogleClientId]);
 
   return {
     signInWithGoogle: signInWithGooglePress,
-    googleAuthReady: !!request || Platform.OS === 'web',
+    // Web uses Firebase popup; mobile needs OAuth web client ID
+    googleAuthReady: Platform.OS === 'web' || (hasGoogleClientId && !!request),
   };
 }

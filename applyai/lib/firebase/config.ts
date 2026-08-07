@@ -1,5 +1,5 @@
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
+import { getAuth, type Auth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { Platform } from 'react-native';
 
@@ -13,16 +13,52 @@ const firebaseConfig = {
   measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-function createFirebaseApp() {
+function assertFirebaseConfig() {
+  const required: Array<keyof typeof firebaseConfig> = [
+    'apiKey',
+    'authDomain',
+    'projectId',
+    'appId',
+  ];
+  const missing = required.filter((key) => !firebaseConfig[key]);
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing Firebase config: ${missing.join(', ')}. Copy values into applyai/.env and restart Expo.`
+    );
+  }
+}
+
+function createFirebaseApp(): FirebaseApp {
+  assertFirebaseConfig();
   if (getApps().length > 0) {
     return getApp();
   }
   return initializeApp(firebaseConfig);
 }
 
+function createAuth(app: FirebaseApp): Auth {
+  if (Platform.OS === 'web') {
+    return getAuth(app);
+  }
+
+  try {
+    // RN build of firebase/auth exports persistence helpers (not available in Node/web builds)
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { initializeAuth, getReactNativePersistence } = require('firebase/auth');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+    return initializeAuth(app, {
+      persistence: getReactNativePersistence(AsyncStorage),
+    });
+  } catch {
+    // Already initialized (fast refresh) or persistence unavailable
+    return getAuth(app);
+  }
+}
+
 const app = createFirebaseApp();
 
-export const auth = getAuth(app);
+export const auth = createAuth(app);
 export const db = getFirestore(app);
 // Resume files are stored locally on device — no Firebase Storage needed
 
