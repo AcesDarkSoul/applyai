@@ -19,10 +19,19 @@ export async function authenticate(req: Request, _res: Response, next: NextFunct
 
     if (isDemoMode && token.startsWith('demo-')) {
       const isAdmin = token.startsWith('demo-admin-');
-      const uid = isAdmin ? token.replace('demo-admin-', '') : token.replace('demo-', '');
+      const rawUid = isAdmin ? token.replace('demo-admin-', '') : token.replace('demo-', '');
+      const decodedUid = decodeURIComponent(rawUid).trim();
+
+      let userEmail = 'user@gmail.com';
+      if (decodedUid.includes('@')) {
+        userEmail = decodedUid;
+      } else if (decodedUid && decodedUid !== 'user' && decodedUid !== 'demo-user') {
+        userEmail = `${decodedUid}@gmail.com`;
+      }
+
       req.user = {
-        uid: uid || 'demo-user',
-        email: `${uid || 'demo-user'}@demo.local`,
+        uid: decodedUid || 'demo-user',
+        email: userEmail,
         role: isAdmin ? 'admin' : 'user',
       };
       next();

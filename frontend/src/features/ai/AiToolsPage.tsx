@@ -196,18 +196,25 @@ export function AiToolsPage() {
               'linear-gradient(125deg, rgba(91,92,226,0.16), rgba(15,23,42,0.02) 50%, rgba(236,72,153,0.08))',
           }}
         >
-          <Stack direction="row" spacing={1.25} alignItems="center" mb={1}>
-            <AutoAwesomeRoundedIcon sx={{ color: PRIMARY }} />
-            <Typography fontSize={12.5} fontWeight={700} color="text.secondary">
-              Background outreach from your accounts
-            </Typography>
-          </Stack>
-          <Typography fontWeight={900} fontSize={{ xs: 24, md: 30 }} letterSpacing="-0.03em">
-            AI Tools
+        <Box sx={{ maxWidth: 720 }}>
+          <Chip
+            icon={<AutoAwesomeRoundedIcon fontSize="small" />}
+            label="AUTOMATION & INTEGRATIONS"
+            sx={{
+              bgcolor: 'rgba(91,92,226,0.1)',
+              color: PRIMARY,
+              fontWeight: 700,
+              mb: 1.5,
+              border: '1px solid rgba(91,92,226,0.14)',
+              '& .MuiChip-icon': { color: PRIMARY },
+            }}
+          />
+          <Typography fontWeight={900} sx={{ fontSize: { xs: 24, md: 32 }, letterSpacing: '-0.035em', mb: 1 }}>
+            Smart Automation Hub
           </Typography>
-          <Typography color="text.secondary" maxWidth={620} mt={0.75} fontSize={14.5}>
-            Configure your mailbox and WhatsApp Business API so ApplyAI can message HR contacts in
-            job posts automatically — without opening Gmail or WhatsApp on your device.
+          <Typography color="text.secondary" sx={{ fontSize: 15.5, lineHeight: 1.6 }}>
+            Automate your job discovery and application workflow. Generate tailored cover letters and track new
+            job openings automatically.
           </Typography>
         </Box>
       </motion.div>
@@ -217,8 +224,8 @@ export function AiToolsPage() {
           Daily job fetch + auto-apply
         </Typography>
         <Typography color="text.secondary" fontSize={13.5} mb={1.5} maxWidth={720}>
-          Every day the API refreshes live jobs, then auto-applies to your best matches with an AI
-          cover letter (and background email/WhatsApp when contacts + SMTP/WA are configured).
+          Every day your workspace automatically discovers new live jobs, matches them against your profile, and
+          drafts tailored cover letters for top roles.
         </Typography>
         {statusText && (
           <Alert severity="info" sx={{ mb: 2, borderRadius: 2.5 }}>
@@ -264,7 +271,7 @@ export function AiToolsPage() {
             disabled={runningDaily}
             startIcon={<BoltRoundedIcon />}
           >
-            {runningDaily ? 'Running…' : 'Run daily job fetch + apply now'}
+            {runningDaily ? 'Running…' : 'Run daily job search & match now'}
           </Button>
         </Stack>
       </Box>

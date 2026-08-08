@@ -243,8 +243,7 @@ export function PostsPage() {
           ))}
           {!visible.length && (
             <Alert severity="info">
-              No hiring posts yet. Refresh jobs from the API/n8n pipeline, or check Find Jobs for board
-              listings.
+              No hiring posts available right now. Check back soon or visit Find Jobs to discover active openings.
             </Alert>
           )}
         </Stack>

@@ -378,7 +378,7 @@ export function OverviewPage() {
           </Typography>
           <Stack spacing={1.75}>
             {[
-              { name: 'Job Discovery', detail: 'Apify + SerpApi pipeline' },
+              { name: 'Job Discovery', detail: 'Real-time job matching engine' },
               { name: 'AI Resume Tailoring', detail: 'ATS-ready drafts' },
               { name: 'Smart Apply Assistant', detail: 'Opens official apply URLs' },
             ].map((item) => (

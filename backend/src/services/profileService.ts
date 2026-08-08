@@ -26,14 +26,16 @@ export class ProfileService {
   async getOrCreate(auth: AuthUser): Promise<UserProfile> {
     const existing = await userRepository.getById(auth.uid);
     if (existing) {
-      // Normalize older/corrupt docs missing array fields
+      const needsEmailFix = !existing.email || existing.email.endsWith('@demo.local');
       const normalized: UserProfile = {
         ...existing,
+        email: needsEmailFix ? auth.email : existing.email,
         skills: existing.skills ?? [],
         education: existing.education ?? [],
         preferredLocations: existing.preferredLocations ?? [],
       };
       if (
+        needsEmailFix ||
         !existing.skills ||
         !existing.education ||
         !existing.preferredLocations
@@ -76,7 +78,7 @@ export class ProfileService {
       ...current,
       ...cleanPatch,
       uid: current.uid,
-      email: current.email,
+      email: cleanPatch.email || (current.email && !current.email.endsWith('@demo.local') ? current.email : auth.email),
       role: current.role,
       skills: cleanPatch.skills ?? current.skills ?? [],
       education: cleanPatch.education ?? current.education ?? [],
