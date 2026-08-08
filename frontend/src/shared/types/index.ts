@@ -91,6 +91,19 @@ export interface UserProfile {
   certifications?: string[];
   languages?: string[];
   achievements?: string[];
+  outreach?: {
+    autoSendEnabled?: boolean;
+    smtpHost?: string;
+    smtpPort?: number;
+    smtpSecure?: boolean;
+    smtpUser?: string;
+    smtpPass?: string;
+    whatsappPhoneNumberId?: string;
+    whatsappAccessToken?: string;
+    twilioAccountSid?: string;
+    twilioAuthToken?: string;
+    twilioWhatsappFrom?: string;
+  };
 }
 
 export interface ResumeDocument {
@@ -140,6 +153,8 @@ export interface Application {
   status: ApplicationStatus;
   timeline: Array<{ status: ApplicationStatus; at: string; note?: string }>;
   notes: string;
+  coverLetterId?: string;
+  coverLetter?: string;
   createdAt: string;
   updatedAt: string;
 }

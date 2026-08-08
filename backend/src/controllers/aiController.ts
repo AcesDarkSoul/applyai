@@ -1,10 +1,9 @@
 import type { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { AppError } from '../middleware/errorHandler';
-import { aiService } from '../services/aiService';
+import { generateAndSaveCoverLetter } from '../services/coverLetterService';
 import { jobService } from '../services/jobService';
 import { profileService } from '../services/profileService';
-import { resumeService } from '../services/resumeService';
 
 const coverLetterSchema = z.object({
   jobId: z.string().min(1),
@@ -21,22 +20,24 @@ export async function generateCoverLetter(
     const job = await jobService.getById(jobId, profile);
     if (!job) throw new AppError(404, 'Job not found', 'NOT_FOUND');
 
-    const content = await aiService.generateCoverLetter(profile, job);
-    const saved = await resumeService.saveCoverLetter(req.user!, {
-      jobId,
-      jobTitle: job.title,
-      company: job.company,
-      content,
-    });
+    if (!profile.summary && !(profile.skills?.length > 1) && !profile.title) {
+      throw new AppError(
+        400,
+        'Upload or complete your resume/profile first so we can draft a cover letter.',
+        'PROFILE_INCOMPLETE',
+      );
+    }
+
+    const cover = await generateAndSaveCoverLetter(req.user!, profile, job);
 
     res.json({
       success: true,
       data: {
         jobId,
-        content,
-        coverLetterId: saved.id,
-        aiAssisted: true,
-        promptVersion: 'cover-letter@v1',
+        content: cover.content,
+        coverLetterId: cover.id,
+        aiAssisted: cover.aiAssisted,
+        promptVersion: 'cover-letter@v2',
       },
     });
   } catch (err) {

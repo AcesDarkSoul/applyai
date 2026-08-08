@@ -81,6 +81,9 @@ export class ProfileService {
       skills: cleanPatch.skills ?? current.skills ?? [],
       education: cleanPatch.education ?? current.education ?? [],
       preferredLocations: cleanPatch.preferredLocations ?? current.preferredLocations ?? [],
+      outreach: cleanPatch.outreach
+        ? { ...(current.outreach || {}), ...cleanPatch.outreach }
+        : current.outreach,
       updatedAt: new Date().toISOString(),
     };
     const profile: UserProfile = {

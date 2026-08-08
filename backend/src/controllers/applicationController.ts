@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { AppError } from '../middleware/errorHandler';
 import { applicationService } from '../services/applicationService';
+import { generateAndSaveCoverLetter } from '../services/coverLetterService';
 import { jobService } from '../services/jobService';
 import { profileService } from '../services/profileService';
 import { outreachApply } from '../services/outreachService';
@@ -44,14 +45,23 @@ export async function smartApply(req: Request, res: Response, next: NextFunction
     const job = await jobService.getById(body.jobId, profile);
     if (!job) throw new AppError(404, 'Job not found', 'NOT_FOUND');
 
-    const application = await applicationService.smartApply(req.user!.uid, job);
+    const cover = await generateAndSaveCoverLetter(req.user!, profile, job);
+    const application = await applicationService.smartApply(
+      req.user!.uid,
+      job,
+      'Smart Apply — AI cover letter generated for this posting',
+      { id: cover.id, content: cover.content },
+    );
+
     res.status(201).json({
       success: true,
       data: {
         application,
         applyUrl: job.applyUrl,
+        coverLetter: cover.content,
+        coverLetterId: cover.id,
         complianceNote:
-          'Smart Apply opens the official job posting. You complete the application on the third-party site.',
+          'Smart Apply opens the official job posting and prepares an AI cover letter you can paste on the site.',
       },
     });
   } catch (err) {
@@ -60,10 +70,10 @@ export async function smartApply(req: Request, res: Response, next: NextFunction
 }
 
 /**
- * Auto outreach apply:
- * - email in job post → send application email (SendGrid)
- * - phone in job post → WhatsApp (Twilio) or wa.me fallback
- * - else → Smart Apply URL (no silent LinkedIn/Naukri submit)
+ * Auto outreach apply with AI cover letter:
+ * - email → send cover letter
+ * - phone → WhatsApp pitch from cover letter
+ * - else → Smart Apply URL + cover letter draft
  */
 export async function outreachApplyHandler(
   req: Request,
@@ -79,24 +89,31 @@ export async function outreachApplyHandler(
     if (!profile.summary && !(profile.skills?.length > 2) && !profile.title) {
       throw new AppError(
         400,
-        'Upload your resume on Profile first so outreach can use your details.',
+        'Upload your resume on Profile first so outreach can write your cover letter.',
         'PROFILE_INCOMPLETE',
       );
     }
 
-    const outreach = await outreachApply(profile, job);
+    const cover = await generateAndSaveCoverLetter(req.user!, profile, job);
+    const outreach = await outreachApply(profile, job, {
+      coverLetter: cover.content,
+      coverLetterId: cover.id,
+    });
     const note =
       outreach.channel === 'email'
         ? outreach.sent
-          ? 'Emailed recruiter from resume profile'
+          ? `Emailed AI cover letter from ${outreach.fromAccount || 'your mailbox'} (background)`
           : outreach.note
         : outreach.channel === 'whatsapp'
           ? outreach.sent
-            ? 'WhatsApp sent from resume profile'
+            ? 'WhatsApp pitch sent via your Business API (background — app not opened)'
             : outreach.note
-          : 'Smart Apply — opened official posting';
+          : outreach.note;
 
-    const application = await applicationService.smartApply(req.user!.uid, job, note);
+    const application = await applicationService.smartApply(req.user!.uid, job, note, {
+      id: cover.id,
+      content: cover.content,
+    });
 
     res.status(201).json({
       success: true,
@@ -104,6 +121,9 @@ export async function outreachApplyHandler(
         application,
         outreach,
         applyUrl: job.applyUrl,
+        coverLetter: cover.content,
+        coverLetterId: cover.id,
+        openedExternal: false,
       },
     });
   } catch (err) {
@@ -111,7 +131,7 @@ export async function outreachApplyHandler(
   }
 }
 
-/** Batch auto-apply to top resume-matched jobs. */
+/** Batch auto-apply to top resume-matched jobs — each gets an AI cover letter. */
 export async function autoApplyHandler(
   req: Request,
   res: Response,
@@ -120,7 +140,7 @@ export async function autoApplyHandler(
   try {
     const body = autoApplySchema.parse(req.body);
     const profile = await profileService.getOrCreate(req.user!);
-    const result = await applicationService.autoApplyFromResume(req.user!.uid, profile, {
+    const result = await applicationService.autoApplyFromResume(req.user!, profile, {
       minScore: body.minScore,
       limit: body.limit,
       boardOnly: body.boardOnly,
@@ -130,7 +150,7 @@ export async function autoApplyHandler(
       data: {
         ...result,
         complianceNote:
-          'Auto-apply emails/WhatsApps when contacts exist; otherwise opens official apply links. LinkedIn/Naukri never receive silent form submits.',
+          'Each auto-apply generates an AI cover letter from your resume. Emails/WhatsApp when contacts exist; otherwise official apply links open with the letter ready to paste.',
       },
     });
   } catch (err) {

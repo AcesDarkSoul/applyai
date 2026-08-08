@@ -1,18 +1,21 @@
+import nodemailer from 'nodemailer';
 import { env } from '../config/env';
 import { logger } from '../config/logger';
 import type { Job } from '../domain/job';
-import type { UserProfile } from '../domain/user';
+import type { OutreachCredentials, UserProfile } from '../domain/user';
+import { coverLetterToPitch } from './coverLetterService';
 
 const EMAIL_RE = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
 const PHONE_RE = /(?:\+|00)?[0-9][0-9\s().-]{7,}[0-9]/g;
-const BLOCKED_EMAIL = /(noreply|no-reply|donotreply|do-not-reply|mailer-daemon|example\.com|sentry|github\.com)/i;
+const BLOCKED_EMAIL =
+  /(noreply|no-reply|donotreply|do-not-reply|mailer-daemon|example\.com|sentry|github\.com)/i;
 
 export type JobContacts = {
   email: string | null;
   phone: string | null;
 };
 
-export type OutreachChannel = 'email' | 'whatsapp' | 'smart_apply';
+export type OutreachChannel = 'email' | 'whatsapp' | 'none';
 
 export type OutreachResult = {
   channel: OutreachChannel;
@@ -23,13 +26,19 @@ export type OutreachResult = {
   body?: string;
   to?: string;
   providerMessageId?: string;
+  /** Kept for debugging only — UI must NOT auto-open this. */
   waLink?: string;
   applyUrl: string;
   note: string;
+  coverLetter?: string;
+  coverLetterId?: string;
+  fromAccount?: string;
 };
 
 export function extractContactsFromText(text = ''): JobContacts {
-  const emails = [...new Set((String(text).match(EMAIL_RE) || []).filter((e) => !BLOCKED_EMAIL.test(e)))];
+  const emails = [
+    ...new Set((String(text).match(EMAIL_RE) || []).filter((e) => !BLOCKED_EMAIL.test(e))),
+  ];
   const phones = [
     ...new Set(
       (String(text).match(PHONE_RE) || [])
@@ -40,49 +49,98 @@ export function extractContactsFromText(text = ''): JobContacts {
   return { email: emails[0] || null, phone: phones[0] || null };
 }
 
-function buildApplicationEmail(profile: UserProfile, job: Job): { subject: string; text: string; html: string } {
+function buildApplicationEmail(
+  profile: UserProfile,
+  job: Job,
+  coverLetter: string,
+): { subject: string; text: string; html: string } {
   const name = profile.displayName || 'Candidate';
-  const title = profile.title || 'Software Developer';
-  const skills = (profile.skills || []).slice(0, 8).join(', ') || 'relevant skills';
-  const years = profile.experienceYears ? `${profile.experienceYears}+ years` : 'professional';
-  const summary = (profile.summary || '').slice(0, 400);
-
   const subject = `Application: ${job.title} — ${name}`;
-  const text = `Hello ${job.company} Hiring Team,
+  const text = `${coverLetter.trim()}
 
-I am applying for the ${job.title} role.
-
-I am a ${title} with ${years} experience. Key skills: ${skills}.
-
-${summary}
-
-My resume highlights match this role. I would welcome a conversation.
-
-Apply / posting: ${job.applyUrl}
-
-Best regards,
-${name}
-${profile.email}${profile.phone ? `\n${profile.phone}` : ''}${profile.linkedinUrl ? `\n${profile.linkedinUrl}` : ''}
+---
+Role: ${job.title} at ${job.company}
+Candidate: ${name}${profile.email ? ` <${profile.email}>` : ''}${profile.phone ? ` · ${profile.phone}` : ''}
+Posting: ${job.applyUrl}
 `;
-
   const html = text.replace(/\n/g, '<br/>');
   return { subject, text, html };
 }
 
-function buildWhatsAppMessage(profile: UserProfile, job: Job): string {
+function buildWhatsAppMessage(profile: UserProfile, job: Job, coverLetter: string): string {
   const name = profile.displayName || 'Candidate';
-  return `Hi, I'm ${name}. I'm interested in the ${job.title} role at ${job.company}. ${
-    profile.title ? `I'm a ${profile.title}. ` : ''
-  }Skills: ${(profile.skills || []).slice(0, 5).join(', ') || 'see resume'}. Posting: ${job.applyUrl}`;
+  const pitch = coverLetterToPitch(coverLetter, 550);
+  return `Hi, I'm ${name}. Applying for ${job.title} at ${job.company}.
+
+${pitch}
+
+Posting: ${job.applyUrl}`;
 }
 
 function toE164ish(phone: string): string {
   const digits = phone.replace(/\D/g, '');
-  if (digits.length === 10) return `91${digits}`; // India default for local numbers
+  if (digits.length === 10) return `91${digits}`;
   return digits;
 }
 
-async function sendSendGrid(
+function resolveOutreach(profile: UserProfile): OutreachCredentials {
+  const o = profile.outreach || {};
+  return {
+    autoSendEnabled: o.autoSendEnabled,
+    smtpHost: o.smtpHost || env.USER_SMTP_HOST || '',
+    smtpPort: o.smtpPort || env.USER_SMTP_PORT || 587,
+    smtpSecure: o.smtpSecure ?? env.USER_SMTP_SECURE,
+    smtpUser: o.smtpUser || env.USER_SMTP_USER || profile.email || '',
+    smtpPass: o.smtpPass || env.USER_SMTP_PASS || '',
+    whatsappPhoneNumberId: o.whatsappPhoneNumberId || env.WHATSAPP_PHONE_NUMBER_ID || '',
+    whatsappAccessToken: o.whatsappAccessToken || env.WHATSAPP_ACCESS_TOKEN || '',
+    twilioAccountSid: o.twilioAccountSid || env.TWILIO_ACCOUNT_SID || '',
+    twilioAuthToken: o.twilioAuthToken || env.TWILIO_AUTH_TOKEN || '',
+    twilioWhatsappFrom: o.twilioWhatsappFrom || env.TWILIO_WHATSAPP_FROM || '',
+  };
+}
+
+function canSendUserEmail(c: OutreachCredentials): boolean {
+  return Boolean(c.smtpHost && c.smtpUser && c.smtpPass);
+}
+
+function canSendUserWhatsApp(c: OutreachCredentials): boolean {
+  if (c.whatsappPhoneNumberId && c.whatsappAccessToken) return true;
+  if (c.twilioAccountSid && c.twilioAuthToken && c.twilioWhatsappFrom) return true;
+  return false;
+}
+
+/** Send FROM the user's mailbox via their SMTP (Gmail App Password, Outlook, etc.). */
+async function sendUserSmtp(
+  creds: OutreachCredentials,
+  to: string,
+  subject: string,
+  text: string,
+  html: string,
+  fromName?: string,
+): Promise<string | undefined> {
+  const transporter = nodemailer.createTransport({
+    host: creds.smtpHost,
+    port: creds.smtpPort || 587,
+    secure: Boolean(creds.smtpSecure),
+    auth: {
+      user: creds.smtpUser!,
+      pass: creds.smtpPass!,
+    },
+  });
+  const info = await transporter.sendMail({
+    from: `"${fromName || 'Candidate'}" <${creds.smtpUser}>`,
+    to,
+    replyTo: creds.smtpUser,
+    subject,
+    text,
+    html,
+  });
+  return info.messageId;
+}
+
+/** Optional platform fallback (not the user's mailbox). */
+async function sendSendGridFallback(
   to: string,
   subject: string,
   text: string,
@@ -90,7 +148,7 @@ async function sendSendGrid(
   replyTo?: { email: string; name?: string },
 ): Promise<string | undefined> {
   if (!env.SENDGRID_API_KEY || !env.SENDGRID_FROM_EMAIL) {
-    throw new Error('SendGrid not configured (SENDGRID_API_KEY / SENDGRID_FROM_EMAIL)');
+    throw new Error('No user SMTP configured and SendGrid fallback missing');
   }
   const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
     method: 'POST',
@@ -100,8 +158,10 @@ async function sendSendGrid(
     },
     body: JSON.stringify({
       personalizations: [{ to: [{ email: to }] }],
-      from: { email: env.SENDGRID_FROM_EMAIL, name: 'ApplyAI' },
-      ...(replyTo?.email ? { reply_to: { email: replyTo.email, name: replyTo.name || 'Candidate' } } : {}),
+      from: { email: env.SENDGRID_FROM_EMAIL, name: replyTo?.name || 'ApplyAI' },
+      ...(replyTo?.email
+        ? { reply_to: { email: replyTo.email, name: replyTo.name || 'Candidate' } }
+        : {}),
       subject,
       content: [
         { type: 'text/plain', value: text },
@@ -116,19 +176,51 @@ async function sendSendGrid(
   return res.headers.get('x-message-id') || undefined;
 }
 
-async function sendTwilioWhatsApp(toPhone: string, body: string): Promise<string | undefined> {
-  if (!env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN || !env.TWILIO_WHATSAPP_FROM) {
-    throw new Error('Twilio WhatsApp not configured (TWILIO_ACCOUNT_SID / AUTH_TOKEN / WHATSAPP_FROM)');
+/** Meta WhatsApp Cloud API — background send from user's WA Business number. */
+async function sendMetaWhatsApp(
+  phoneNumberId: string,
+  accessToken: string,
+  toPhone: string,
+  body: string,
+): Promise<string | undefined> {
+  const to = toE164ish(toPhone);
+  const res = await fetch(`https://graph.facebook.com/v19.0/${phoneNumberId}/messages`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      to,
+      type: 'text',
+      text: { preview_url: false, body: body.slice(0, 4000) },
+    }),
+  });
+  const json = (await res.json()) as {
+    messages?: Array<{ id?: string }>;
+    error?: { message?: string };
+  };
+  if (!res.ok) {
+    throw new Error(`WhatsApp Cloud API: ${json.error?.message || res.status}`);
   }
-  const to = `whatsapp:+${toE164ish(toPhone)}`;
-  const from = env.TWILIO_WHATSAPP_FROM.startsWith('whatsapp:')
-    ? env.TWILIO_WHATSAPP_FROM
-    : `whatsapp:${env.TWILIO_WHATSAPP_FROM}`;
+  return json.messages?.[0]?.id;
+}
 
-  const auth = Buffer.from(`${env.TWILIO_ACCOUNT_SID}:${env.TWILIO_AUTH_TOKEN}`).toString('base64');
+async function sendTwilioWhatsApp(
+  creds: OutreachCredentials,
+  toPhone: string,
+  body: string,
+): Promise<string | undefined> {
+  const to = `whatsapp:+${toE164ish(toPhone)}`;
+  const from = creds.twilioWhatsappFrom!.startsWith('whatsapp:')
+    ? creds.twilioWhatsappFrom!
+    : `whatsapp:${creds.twilioWhatsappFrom}`;
+
+  const auth = Buffer.from(`${creds.twilioAccountSid}:${creds.twilioAuthToken}`).toString('base64');
   const params = new URLSearchParams({ To: to, From: from, Body: body });
   const res = await fetch(
-    `https://api.twilio.com/2010-04-01/Accounts/${env.TWILIO_ACCOUNT_SID}/Messages.json`,
+    `https://api.twilio.com/2010-04-01/Accounts/${creds.twilioAccountSid}/Messages.json`,
     {
       method: 'POST',
       headers: {
@@ -145,21 +237,55 @@ async function sendTwilioWhatsApp(toPhone: string, body: string): Promise<string
   return json.sid;
 }
 
+async function sendUserWhatsApp(
+  creds: OutreachCredentials,
+  toPhone: string,
+  body: string,
+): Promise<{ id?: string; fromAccount: string }> {
+  if (creds.whatsappPhoneNumberId && creds.whatsappAccessToken) {
+    const id = await sendMetaWhatsApp(
+      creds.whatsappPhoneNumberId,
+      creds.whatsappAccessToken,
+      toPhone,
+      body,
+    );
+    return { id, fromAccount: `WhatsApp Business (${creds.whatsappPhoneNumberId})` };
+  }
+  const id = await sendTwilioWhatsApp(creds, toPhone, body);
+  return { id, fromAccount: creds.twilioWhatsappFrom || 'Twilio WhatsApp' };
+}
+
+export type OutreachOptions = {
+  coverLetter: string;
+  coverLetterId?: string;
+};
+
 /**
- * Prefer public email → auto email.
- * Else public phone → WhatsApp.
- * Else Smart Apply URL (user completes on site — no silent platform submit).
+ * Background outreach — never opens apps.
+ * 1) Public email in post → send FROM user's SMTP mailbox
+ * 2) Else public phone → send FROM user's WhatsApp Business / Twilio WA
+ * 3) Else save cover letter only (no browser/WhatsApp open)
  */
-export async function outreachApply(profile: UserProfile, job: Job): Promise<OutreachResult> {
+export async function outreachApply(
+  profile: UserProfile,
+  job: Job,
+  options: OutreachOptions,
+): Promise<OutreachResult> {
   const blob = `${job.description || ''} ${job.title} ${job.company} ${job.applyUrl}`;
   const contacts = extractContactsFromText(blob);
-  const dryRun = env.OUTREACH_DRY_RUN;
+  const creds = resolveOutreach(profile);
+  // User opt-in to live background send overrides global dry-run
+  const dryRun = creds.autoSendEnabled ? false : env.OUTREACH_DRY_RUN;
   const applyUrl = job.applyUrl;
+  const coverLetter = options.coverLetter;
+  const coverLetterId = options.coverLetterId;
 
   if (contacts.email) {
-    const mail = buildApplicationEmail(profile, job);
+    const mail = buildApplicationEmail(profile, job, coverLetter);
+    const fromAccount = canSendUserEmail(creds) ? creds.smtpUser! : env.SENDGRID_FROM_EMAIL || '';
+
     if (dryRun) {
-      logger.info('Outreach email dry-run', { to: contacts.email, job: job.id });
+      logger.info('Outreach email dry-run (background)', { to: contacts.email, from: fromAccount });
       return {
         channel: 'email',
         contacts,
@@ -169,14 +295,50 @@ export async function outreachApply(profile: UserProfile, job: Job): Promise<Out
         body: mail.text,
         to: contacts.email,
         applyUrl,
-        note: `Dry-run: would email ${contacts.email}. Set OUTREACH_DRY_RUN=false + SendGrid to send.`,
+        coverLetter,
+        coverLetterId,
+        fromAccount: fromAccount || undefined,
+        note: `Dry-run: would email HR at ${contacts.email} from ${fromAccount || 'your SMTP'}. Enable Auto-send in AI Tools and save SMTP (Gmail App Password).`,
       };
     }
+
+    if (!canSendUserEmail(creds) && !(env.SENDGRID_API_KEY && env.SENDGRID_FROM_EMAIL)) {
+      return {
+        channel: 'email',
+        contacts,
+        dryRun: false,
+        sent: false,
+        subject: mail.subject,
+        body: mail.text,
+        to: contacts.email,
+        applyUrl,
+        coverLetter,
+        coverLetterId,
+        note: `HR email found (${contacts.email}) but no mailbox configured. Add your SMTP in AI Tools → Outreach (Gmail App Password) for background send from your email.`,
+      };
+    }
+
     try {
-      const id = await sendSendGrid(contacts.email, mail.subject, mail.text, mail.html, {
-        email: profile.email,
-        name: profile.displayName,
-      });
+      let id: string | undefined;
+      let usedFrom = fromAccount;
+      if (canSendUserEmail(creds)) {
+        id = await sendUserSmtp(
+          creds,
+          contacts.email,
+          mail.subject,
+          mail.text,
+          mail.html,
+          profile.displayName,
+        );
+        usedFrom = creds.smtpUser!;
+      } else {
+        id = await sendSendGridFallback(contacts.email, mail.subject, mail.text, mail.html, {
+          email: profile.email,
+          name: profile.displayName,
+        });
+        usedFrom = env.SENDGRID_FROM_EMAIL;
+      }
+      logger.info('Outreach email sent in background', { to: contacts.email, from: usedFrom });
       return {
         channel: 'email',
         contacts,
@@ -187,10 +349,13 @@ export async function outreachApply(profile: UserProfile, job: Job): Promise<Out
         to: contacts.email,
         providerMessageId: id,
         applyUrl,
-        note: `Application email sent to ${contacts.email}`,
+        coverLetter,
+        coverLetterId,
+        fromAccount: usedFrom,
+        note: `Emailed AI cover letter to ${contacts.email} from ${usedFrom} (background — no app opened).`,
       };
     } catch (err) {
-      logger.warn('SendGrid failed', { err: err instanceof Error ? err.message : err });
+      logger.warn('Background email failed', { err: err instanceof Error ? err.message : err });
       return {
         channel: 'email',
         contacts,
@@ -200,16 +365,19 @@ export async function outreachApply(profile: UserProfile, job: Job): Promise<Out
         body: mail.text,
         to: contacts.email,
         applyUrl,
-        note: `Email found but send failed: ${err instanceof Error ? err.message : 'error'}. Draft kept.`,
+        coverLetter,
+        coverLetterId,
+        note: `Email send failed: ${err instanceof Error ? err.message : 'error'}. Cover letter saved — nothing was opened.`,
       };
     }
   }
 
   if (contacts.phone) {
-    const msg = buildWhatsAppMessage(profile, job);
+    const msg = buildWhatsAppMessage(profile, job, coverLetter);
     const waLink = `https://wa.me/${toE164ish(contacts.phone)}?text=${encodeURIComponent(msg)}`;
+
     if (dryRun) {
-      logger.info('Outreach WhatsApp dry-run', { to: contacts.phone, job: job.id });
+      logger.info('Outreach WhatsApp dry-run (background)', { to: contacts.phone });
       return {
         channel: 'whatsapp',
         contacts,
@@ -219,11 +387,31 @@ export async function outreachApply(profile: UserProfile, job: Job): Promise<Out
         to: contacts.phone,
         waLink,
         applyUrl,
-        note: `Dry-run: would WhatsApp ${contacts.phone}. Set OUTREACH_DRY_RUN=false + Twilio WhatsApp to send.`,
+        coverLetter,
+        coverLetterId,
+        note: `Dry-run: would WhatsApp ${contacts.phone} from your WhatsApp Business API (background). Enable Auto-send + add Cloud API / Twilio keys in AI Tools.`,
       };
     }
+
+    if (!canSendUserWhatsApp(creds)) {
+      return {
+        channel: 'whatsapp',
+        contacts,
+        dryRun: false,
+        sent: false,
+        body: msg,
+        to: contacts.phone,
+        waLink,
+        applyUrl,
+        coverLetter,
+        coverLetterId,
+        note: `Phone found (${contacts.phone}) but WhatsApp API not configured. Personal WhatsApp app cannot send in background — add Meta Cloud API or Twilio WhatsApp (your Business number) in AI Tools. Nothing was opened.`,
+      };
+    }
+
     try {
-      const id = await sendTwilioWhatsApp(contacts.phone, msg);
+      const { id, fromAccount } = await sendUserWhatsApp(creds, contacts.phone, msg);
+      logger.info('Outreach WhatsApp sent in background', { to: contacts.phone, fromAccount });
       return {
         channel: 'whatsapp',
         contacts,
@@ -234,12 +422,13 @@ export async function outreachApply(profile: UserProfile, job: Job): Promise<Out
         providerMessageId: id,
         waLink,
         applyUrl,
-        note: `WhatsApp message sent to ${contacts.phone}`,
+        coverLetter,
+        coverLetterId,
+        fromAccount,
+        note: `WhatsApp pitch sent to ${contacts.phone} via ${fromAccount} (background — WhatsApp app not opened).`,
       };
     } catch (err) {
-      logger.warn('Twilio WhatsApp failed; returning wa.me link', {
-        err: err instanceof Error ? err.message : err,
-      });
+      logger.warn('Background WhatsApp failed', { err: err instanceof Error ? err.message : err });
       return {
         channel: 'whatsapp',
         contacts,
@@ -249,18 +438,23 @@ export async function outreachApply(profile: UserProfile, job: Job): Promise<Out
         to: contacts.phone,
         waLink,
         applyUrl,
-        note: `WhatsApp API failed — open wa.me link to send manually.`,
+        coverLetter,
+        coverLetterId,
+        note: `WhatsApp API failed: ${err instanceof Error ? err.message : 'error'}. Cover letter saved — app was NOT opened.`,
       };
     }
   }
 
   return {
-    channel: 'smart_apply',
+    channel: 'none',
     contacts,
     dryRun,
     sent: false,
     applyUrl,
+    body: coverLetter,
+    coverLetter,
+    coverLetterId,
     note:
-      'No public email/phone in this posting (common on LinkedIn). Opening official apply URL — you complete apply on the site.',
+      'No public HR email or phone in this posting. Application + AI cover letter saved in background — nothing opened. Paste the letter on the board when you choose.',
   };
 }

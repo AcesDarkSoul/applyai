@@ -1,15 +1,11 @@
 import {
-  Avatar,
   Box,
   Button,
   Drawer,
-  IconButton,
-  InputAdornment,
   List,
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  TextField,
   Typography,
   useMediaQuery,
 } from '@mui/material';
@@ -18,20 +14,17 @@ import WorkOutlineRoundedIcon from '@mui/icons-material/WorkOutlineRounded';
 import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined';
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
 import InsightsRoundedIcon from '@mui/icons-material/InsightsRounded';
-import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
-import DarkModeIcon from '@mui/icons-material/DarkMode';
-import LightModeIcon from '@mui/icons-material/LightMode';
-import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import SmartToyRoundedIcon from '@mui/icons-material/SmartToyRounded';
 import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined';
 import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useMemo, useState } from 'react';
 import { Link as RouterLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../features/auth/authStore';
 import { useThemeMode } from '../hooks/useThemeMode';
 import { PageTransition } from './PageTransition';
+import { TopBar } from './TopBar';
 
 const PRIMARY = '#5b5ce2';
 
@@ -90,43 +83,64 @@ export function AppShell() {
   const { mode, toggle } = useThemeMode();
   const isMobile = useMediaQuery('(max-width:900px)');
   const [open, setOpen] = useState(false);
-  const [q, setQ] = useState('');
 
   const pageTitle = useMemo(() => {
     const hit = nav.find((n) => n.match(location.pathname));
     return hit?.label || 'Dashboard';
   }, [location.pathname]);
 
+  const pageHint = useMemo(() => {
+    if (location.pathname.startsWith('/jobs')) return 'Roles ranked to your resume';
+    if (location.pathname.startsWith('/resume')) return 'Build, parse, and polish your CV';
+    if (location.pathname.startsWith('/posts')) return 'Full hiring posts with contacts';
+    if (location.pathname.startsWith('/applications')) return 'Track every outreach';
+    if (location.pathname.startsWith('/ai-tools')) return 'Assistants that keep you in control';
+    if (location.pathname.startsWith('/analytics')) return 'See what is converting';
+    return `Welcome back, ${profile?.displayName || 'there'}`;
+  }, [location.pathname, profile?.displayName]);
+
   const drawer = (
     <Box
       className="h-full flex flex-col"
       sx={{
-        width: 260,
+        width: 268,
         bgcolor: 'background.paper',
         borderRight: '1px solid',
         borderColor: 'divider',
+        backgroundImage:
+          mode === 'dark'
+            ? 'linear-gradient(180deg, rgba(91,92,226,0.08) 0%, transparent 28%)'
+            : 'linear-gradient(180deg, rgba(91,92,226,0.06) 0%, transparent 32%)',
       }}
     >
       <Box className="px-5 pt-6 pb-4 flex items-center gap-2.5">
         <Box
+          component={motion.div}
+          whileHover={{ rotate: -6, scale: 1.04 }}
           sx={{
-            width: 36,
-            height: 36,
-            borderRadius: '10px',
-            bgcolor: PRIMARY,
+            width: 40,
+            height: 40,
+            borderRadius: '12px',
+            background: `linear-gradient(145deg, ${PRIMARY}, #8183f0)`,
             display: 'grid',
             placeItems: 'center',
             color: '#fff',
+            boxShadow: '0 10px 24px rgba(91,92,226,0.35)',
           }}
         >
           <SmartToyRoundedIcon sx={{ fontSize: 22 }} />
         </Box>
-        <Typography sx={{ fontWeight: 800, fontSize: 18, letterSpacing: '-0.02em' }}>
-          ApplyAI
-        </Typography>
+        <Box>
+          <Typography sx={{ fontWeight: 900, fontSize: 18, letterSpacing: '-0.03em', lineHeight: 1.1 }}>
+            ApplyAI
+          </Typography>
+          <Typography fontSize={11} fontWeight={700} color="text.secondary" letterSpacing="0.04em">
+            JOB WORKSPACE
+          </Typography>
+        </Box>
       </Box>
 
-      <List sx={{ px: 2, flex: 1 }}>
+      <List sx={{ px: 2, flex: 1 }} className="aa-scroll-thin">
         {nav.map((item) => {
           const selected = item.match(location.pathname);
           return (
@@ -138,12 +152,14 @@ export function AppShell() {
               onClick={() => setOpen(false)}
               className={selected ? 'aa-nav-active' : undefined}
               sx={{
-                mb: 0.6,
+                mb: 0.55,
                 borderRadius: 2.5,
-                py: 1.15,
+                py: 1.1,
                 color: selected ? '#fff' : 'text.secondary',
+                transition: 'transform 0.18s ease, background 0.18s ease',
                 '&:hover': {
                   bgcolor: selected ? PRIMARY : 'rgba(91,92,226,0.08)',
+                  transform: 'translateX(2px)',
                 },
               }}
             >
@@ -152,30 +168,46 @@ export function AppShell() {
               </ListItemIcon>
               <ListItemText
                 primary={item.label}
-                primaryTypographyProps={{ fontWeight: selected ? 700 : 600, fontSize: 14.5 }}
+                primaryTypographyProps={{ fontWeight: selected ? 800 : 650, fontSize: 14.5 }}
               />
             </ListItemButton>
           );
         })}
       </List>
 
-      <Box sx={{ px: 2, pb: 2 }}>
+      <Box sx={{ px: 2, pb: 2.5 }}>
         <Box
           sx={{
-            borderRadius: 3,
-            p: 2,
-            background: 'linear-gradient(160deg, #5b5ce2 0%, #7c7ef0 100%)',
+            borderRadius: 3.5,
+            p: 2.25,
+            background: 'linear-gradient(155deg, #5b5ce2 0%, #6d6ff0 55%, #8b5cf6 120%)',
             color: '#fff',
+            boxShadow: '0 16px 32px rgba(91,92,226,0.28)',
+            position: 'relative',
+            overflow: 'hidden',
+            '&::after': {
+              content: '""',
+              position: 'absolute',
+              right: -24,
+              bottom: -28,
+              width: 100,
+              height: 100,
+              borderRadius: '50%',
+              bgcolor: 'rgba(255,255,255,0.12)',
+            },
           }}
         >
-          <Box display="flex" alignItems="center" gap={1} mb={1}>
-            <SmartToyRoundedIcon sx={{ fontSize: 20 }} />
-            <Typography fontWeight={700} fontSize={13}>
-              AI Assistant
+          <Box display="flex" alignItems="center" gap={1} mb={1} position="relative" zIndex={1}>
+            <AutoAwesomeRoundedIcon sx={{ fontSize: 20 }} />
+            <Typography fontWeight={800} fontSize={13.5}>
+              Match boost
             </Typography>
           </Box>
-          <Typography fontSize={12.5} sx={{ opacity: 0.92, mb: 1.5, lineHeight: 1.45 }}>
-            I found new jobs that match your profile.
+          <Typography
+            fontSize={12.5}
+            sx={{ opacity: 0.94, mb: 1.75, lineHeight: 1.5, position: 'relative', zIndex: 1 }}
+          >
+            Fresh roles lined up from your resume skills and title.
           </Typography>
           <Button
             fullWidth
@@ -188,10 +220,12 @@ export function AppShell() {
               color: PRIMARY,
               fontWeight: 800,
               borderRadius: 2,
+              position: 'relative',
+              zIndex: 1,
               '&:hover': { bgcolor: '#f0f1ff' },
             }}
           >
-            View Jobs
+            Browse matches
           </Button>
         </Box>
       </Box>
@@ -199,19 +233,20 @@ export function AppShell() {
   );
 
   return (
-    <Box className="min-h-screen flex" sx={{ bgcolor: 'background.default' }}>
+    <Box className="min-h-screen flex" sx={{ bgcolor: 'transparent' }}>
       {!isMobile && (
         <Drawer
           variant="permanent"
           open
           sx={{
-            width: 260,
+            width: 268,
             flexShrink: 0,
             [`& .MuiDrawer-paper`]: {
-              width: 260,
+              width: 268,
               position: 'relative',
               border: 'none',
               boxShadow: 'none',
+              bgcolor: 'transparent',
             },
           }}
         >
@@ -219,87 +254,22 @@ export function AppShell() {
         </Drawer>
       )}
 
-      <Box className="flex-1 min-w-0 flex flex-col" sx={{ pb: isMobile ? '72px' : 0 }}>
-        <Box
-          sx={{
-            px: { xs: 2, md: 3.5 },
-            pt: { xs: 2, md: 2.5 },
-            pb: 1,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2,
-            flexWrap: 'wrap',
+      <Box className="flex-1 min-w-0 flex flex-col" sx={{ pb: isMobile ? '84px' : 0 }}>
+        <TopBar
+          title={pageTitle}
+          hint={pageHint}
+          isDark={mode === 'dark'}
+          onToggleTheme={toggle}
+          onLogout={() => {
+            logout();
+            navigate('/login', { replace: true });
           }}
-        >
-          <Box className="flex-1 min-w-[180px]">
-            <Typography variant="h4" className="aa-page-title" sx={{ fontSize: { xs: 26, md: 30 } }}>
-              {pageTitle}
-            </Typography>
-            <Typography color="text.secondary" fontSize={14}>
-              Welcome back, {profile?.displayName || 'there'}! Let&apos;s get you that dream job.
-            </Typography>
-          </Box>
+          showMenuButton={isMobile}
+          onOpenNav={() => setOpen(true)}
+          displayName={profile?.displayName || 'A'}
+        />
 
-          <TextField
-            size="small"
-            placeholder="Search jobs, companies…"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && q.trim()) {
-                navigate(`/jobs?q=${encodeURIComponent(q.trim())}`);
-              }
-            }}
-            sx={{
-              width: { xs: '100%', sm: 280 },
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 99,
-                bgcolor: 'background.paper',
-                boxShadow: 'var(--shadow-card)',
-              },
-            }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchRoundedIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
-                </InputAdornment>
-              ),
-            }}
-          />
-
-          <Box display="flex" alignItems="center" gap={1}>
-            <IconButton onClick={toggle} size="small" sx={{ bgcolor: 'background.paper' }}>
-              {mode === 'dark' ? <LightModeIcon fontSize="small" /> : <DarkModeIcon fontSize="small" />}
-            </IconButton>
-            <IconButton
-              onClick={() => {
-                logout();
-                navigate('/login', { replace: true });
-              }}
-              size="small"
-              sx={{ bgcolor: 'background.paper' }}
-              title="Log out"
-            >
-              <LogoutRoundedIcon fontSize="small" />
-            </IconButton>
-            <Avatar
-              component={RouterLink}
-              to="/resume"
-              sx={{
-                width: 36,
-                height: 36,
-                bgcolor: PRIMARY,
-                fontWeight: 800,
-                fontSize: 14,
-                textDecoration: 'none',
-              }}
-            >
-              {(profile?.displayName || 'A').slice(0, 1).toUpperCase()}
-            </Avatar>
-          </Box>
-        </Box>
-
-        <Box className="px-4 md:px-8 pb-8 flex-1 max-w-[1200px] w-full mx-auto">
+        <Box className="px-4 md:px-8 pb-8 pt-2 flex-1 max-w-[1200px] w-full mx-auto">
           <AnimatePresence mode="wait">
             <PageTransition key={location.pathname}>
               <Outlet />
@@ -316,18 +286,20 @@ export function AppShell() {
         <Box
           sx={{
             position: 'fixed',
-            left: 0,
-            right: 0,
-            bottom: 0,
+            left: 10,
+            right: 10,
+            bottom: 10,
             zIndex: 1200,
-            bgcolor: 'background.paper',
-            borderTop: '1px solid',
+            bgcolor: mode === 'dark' ? 'rgba(21,23,42,0.92)' : 'rgba(255,255,255,0.92)',
+            border: '1px solid',
             borderColor: 'divider',
             display: 'flex',
             justifyContent: 'space-around',
-            py: 0.75,
-            px: 1,
-            boxShadow: '0 -8px 24px rgba(91,92,226,0.08)',
+            py: 0.85,
+            px: 0.75,
+            borderRadius: 4,
+            boxShadow: '0 12px 36px rgba(91,92,226,0.16)',
+            backdropFilter: 'blur(14px)',
           }}
         >
           {mobileNav.map((item) => {
@@ -344,12 +316,15 @@ export function AppShell() {
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
-                  gap: 0.25,
-                  py: 0.5,
-                  px: 1.5,
-                  borderRadius: 2,
+                  gap: 0.2,
+                  py: 0.55,
+                  px: 1.25,
+                  borderRadius: 2.5,
                   color: active ? PRIMARY : 'text.secondary',
-                  minWidth: 64,
+                  bgcolor: active ? 'rgba(91,92,226,0.12)' : 'transparent',
+                  minWidth: 60,
+                  transition: 'background 0.18s ease, transform 0.18s ease',
+                  transform: active ? 'translateY(-1px)' : 'none',
                 }}
               >
                 {item.icon}

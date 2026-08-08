@@ -24,6 +24,9 @@ export interface Application {
   status: ApplicationStatus;
   timeline: StatusEvent[];
   notes: string;
+  /** Latest AI/heuristic cover letter used for this apply. */
+  coverLetterId?: string;
+  coverLetter?: string;
   interviewAt?: string;
   createdAt: string;
   updatedAt: string;

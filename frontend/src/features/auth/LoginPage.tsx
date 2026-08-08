@@ -54,12 +54,23 @@ export function LoginPage() {
         width: '100%',
         maxWidth: 420,
         mx: 'auto',
-        p: { xs: 2.5, sm: 3.5 },
-        borderRadius: { xs: 3, sm: 4 },
+        p: { xs: 2.75, sm: 3.75 },
+        borderRadius: { xs: 3.5, sm: 4.5 },
         bgcolor: 'background.paper',
         border: '1px solid',
         borderColor: 'divider',
-        boxShadow: '0 16px 40px rgba(30,31,54,0.08)',
+        boxShadow: '0 24px 60px rgba(30,31,54,0.12)',
+        position: 'relative',
+        overflow: 'hidden',
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 4,
+          background: `linear-gradient(90deg, ${PRIMARY}, #14b8a6, #ec4899)`,
+        },
       }}
     >
       <Stack spacing={2.25}>
@@ -67,34 +78,35 @@ export function LoginPage() {
           <Stack direction="row" spacing={1.25} alignItems="center" justifyContent="center" mb={0.5}>
             <Box
               sx={{
-                width: 40,
-                height: 40,
-                borderRadius: 2.5,
-                bgcolor: PRIMARY,
+                width: 42,
+                height: 42,
+                borderRadius: 2.75,
+                background: `linear-gradient(145deg, ${PRIMARY}, #8183f0)`,
                 color: '#fff',
                 display: 'grid',
                 placeItems: 'center',
+                boxShadow: '0 10px 24px rgba(91,92,226,0.35)',
               }}
             >
               <SmartToyRoundedIcon fontSize="small" />
             </Box>
-            <Typography fontWeight={800} fontSize={20}>
+            <Typography fontWeight={900} fontSize={22} letterSpacing="-0.03em">
               ApplyAI
             </Typography>
           </Stack>
         )}
 
         <Box textAlign={{ xs: 'center', md: 'left' }}>
-          <Typography fontWeight={800} sx={{ fontSize: { xs: 22, sm: 26 }, letterSpacing: '-0.03em' }}>
+          <Typography fontWeight={900} sx={{ fontSize: { xs: 24, sm: 28 }, letterSpacing: '-0.035em' }}>
             Welcome back
           </Typography>
           <Typography color="text.secondary" sx={{ mt: 0.5, fontSize: { xs: 14, sm: 15 } }}>
-            Sign in with your email to continue
+            Sign in to continue your job search
           </Typography>
         </Box>
 
         {error && (
-          <Alert severity="error" sx={{ borderRadius: 2 }}>
+          <Alert severity="error" sx={{ borderRadius: 2.5 }}>
             {error}
           </Alert>
         )}
@@ -109,7 +121,6 @@ export function LoginPage() {
           fullWidth
           required
           inputProps={{ inputMode: 'email' }}
-          sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
         />
 
         <TextField
@@ -121,7 +132,6 @@ export function LoginPage() {
           fullWidth
           required
           helperText="Minimum 6 characters"
-          sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
           InputProps={{
             endAdornment: (
               <InputAdornment position="end">
@@ -144,12 +154,7 @@ export function LoginPage() {
           size="large"
           disabled={loading}
           endIcon={<ArrowForwardRoundedIcon />}
-          sx={{
-            py: 1.45,
-            borderRadius: 2.5,
-            fontSize: 16,
-            mt: 0.5,
-          }}
+          sx={{ py: 1.5, fontSize: 16, mt: 0.5 }}
           fullWidth
         >
           {loading ? 'Signing in…' : 'Sign in'}
@@ -164,12 +169,33 @@ export function LoginPage() {
         minHeight: '100dvh',
         display: 'flex',
         flexDirection: 'column',
+        position: 'relative',
+        overflow: 'hidden',
         background: {
-          xs: `linear-gradient(180deg, rgba(91,92,226,0.12) 0%, #f4f5fb 42%)`,
-          md: '#f4f5fb',
+          xs: `radial-gradient(700px 360px at 50% -10%, rgba(91,92,226,0.22), transparent 55%),
+            linear-gradient(180deg, rgba(91,92,226,0.1) 0%, #f3f4fb 45%)`,
+          md: `radial-gradient(900px 480px at 8% -10%, rgba(91,92,226,0.2), transparent 55%),
+            radial-gradient(700px 420px at 95% 10%, rgba(236,72,153,0.1), transparent 50%),
+            linear-gradient(160deg, #eef0ff 0%, #f3f4fb 40%, #f8fafc 100%)`,
         },
       }}
     >
+      <Box
+        aria-hidden
+        sx={{
+          display: { xs: 'none', md: 'block' },
+          position: 'absolute',
+          width: 280,
+          height: 280,
+          borderRadius: '40% 60% 55% 45%',
+          background: 'linear-gradient(135deg, rgba(91,92,226,0.18), rgba(20,184,166,0.12))',
+          filter: 'blur(2px)',
+          top: '18%',
+          left: '6%',
+          animation: 'float-y 7s ease-in-out infinite',
+        }}
+      />
+
       <Box
         sx={{
           flex: 1,
@@ -182,9 +208,10 @@ export function LoginPage() {
           gridTemplateColumns: { xs: '1fr', md: '1.05fr 0.95fr' },
           gap: { xs: 3, md: 5 },
           alignItems: 'center',
+          position: 'relative',
+          zIndex: 1,
         }}
       >
-        {/* Brand / marketing — compact on mobile, full on desktop */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -194,35 +221,42 @@ export function LoginPage() {
             <Stack direction="row" spacing={1.5} alignItems="center">
               <Box
                 sx={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: 3,
-                  bgcolor: PRIMARY,
+                  width: 52,
+                  height: 52,
+                  borderRadius: 3.25,
+                  background: `linear-gradient(145deg, ${PRIMARY}, #8183f0)`,
                   color: '#fff',
                   display: 'grid',
                   placeItems: 'center',
+                  boxShadow: '0 14px 32px rgba(91,92,226,0.35)',
                 }}
               >
                 <SmartToyRoundedIcon />
               </Box>
-              <Typography fontWeight={800} fontSize={24}>
-                ApplyAI
-              </Typography>
+              <Box>
+                <Typography fontWeight={900} fontSize={26} letterSpacing="-0.03em" lineHeight={1.1}>
+                  ApplyAI
+                </Typography>
+                <Typography fontSize={12} fontWeight={700} color="text.secondary" letterSpacing="0.05em">
+                  JOB SEARCH WORKSPACE
+                </Typography>
+              </Box>
             </Stack>
 
             <Typography
               sx={{
-                fontWeight: 800,
-                fontSize: { md: 36, lg: 40 },
-                letterSpacing: '-0.03em',
-                lineHeight: 1.15,
-                maxWidth: 460,
+                fontWeight: 900,
+                fontSize: { md: 38, lg: 44 },
+                letterSpacing: '-0.04em',
+                lineHeight: 1.1,
+                maxWidth: 480,
               }}
             >
-              Your AI job search workspace
+              Land roles faster with a calm AI workspace
             </Typography>
-            <Typography color="text.secondary" sx={{ maxWidth: 440, fontSize: 16, lineHeight: 1.6 }}>
-              Match roles, tailor your resume, and track applications — all in one place.
+            <Typography color="text.secondary" sx={{ maxWidth: 440, fontSize: 16.5, lineHeight: 1.65 }}>
+              Match roles to your resume, tailor drafts, generate cover letters, and track every
+              application — without losing control of submit.
             </Typography>
 
             <Stack direction="row" flexWrap="wrap" useFlexGap spacing={1} sx={{ pt: 0.5 }}>
@@ -235,6 +269,7 @@ export function LoginPage() {
                     bgcolor: 'rgba(91,92,226,0.1)',
                     color: PRIMARY,
                     fontWeight: 700,
+                    border: '1px solid rgba(91,92,226,0.12)',
                     '& .MuiChip-icon': { color: PRIMARY },
                   }}
                 />
@@ -242,7 +277,6 @@ export function LoginPage() {
             </Stack>
           </Stack>
 
-          {/* Mobile intro — short & friendly */}
           <Box sx={{ display: { xs: 'block', md: 'none' }, textAlign: 'center', mb: 0.5 }}>
             <Typography color="text.secondary" sx={{ fontSize: 14, lineHeight: 1.5, px: 1 }}>
               Match roles, tailor resumes, and track applications.
@@ -286,7 +320,7 @@ export function LoginPage() {
         variant="caption"
         color="text.secondary"
         textAlign="center"
-        sx={{ pb: { xs: 2.5, md: 3 }, px: 2 }}
+        sx={{ pb: { xs: 2.5, md: 3 }, px: 2, position: 'relative', zIndex: 1 }}
       >
         Secure sign-in · Demo-ready workspace
       </Typography>

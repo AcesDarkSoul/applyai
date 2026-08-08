@@ -23,6 +23,7 @@ import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined';
 import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined';
 import WorkOutlineRoundedIcon from '@mui/icons-material/WorkOutlineRounded';
 import ScheduleRoundedIcon from '@mui/icons-material/ScheduleRounded';
+import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded';
 import { motion } from 'framer-motion';
 import { useEffect, useMemo, useState } from 'react';
 import { Link as RouterLink, useParams } from 'react-router-dom';
@@ -51,6 +52,7 @@ export function JobDetailPage() {
   const [busy, setBusy] = useState(false);
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
   const [outreachMsg, setOutreachMsg] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -85,10 +87,10 @@ export function JobDetailPage() {
     try {
       const result = await applicationRepository.smartApply(job.id);
       setConfirmOpen(false);
+      if (result.coverLetter) setLetter(result.coverLetter);
       setSavedMsg(
-        `Tracked application for ${job.title}. Finish on the official site — then check Applications.`,
+        `Tracked application for ${job.title}. AI cover letter ready below — nothing was opened.`,
       );
-      window.open(result.applyUrl, '_blank', 'noopener,noreferrer');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Smart Apply failed');
     } finally {
@@ -106,14 +108,14 @@ export function JobDetailPage() {
       setOutreachOpen(false);
       const o = result.outreach;
       setOutreachMsg(o.note);
-      setSavedMsg(`Application tracked for ${job.title} at ${job.company}.`);
-      if (o.channel === 'whatsapp' && o.waLink && !o.sent) {
-        window.open(o.waLink, '_blank', 'noopener,noreferrer');
-      } else if (o.channel === 'smart_apply') {
-        window.open(result.applyUrl, '_blank', 'noopener,noreferrer');
-      } else if (o.channel === 'email' && o.body) {
-        setLetter(o.body);
-      }
+      const letterText = result.coverLetter || o.coverLetter || o.body || '';
+      if (letterText) setLetter(letterText);
+      setSavedMsg(
+        o.sent
+          ? `Sent in background for ${job.title} — ${o.channel} to ${o.to || 'contact'}.`
+          : `Application tracked for ${job.title}. ${o.note}`,
+      );
+      // Never open WhatsApp / browser — background automation only
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Outreach apply failed');
     } finally {
@@ -128,10 +130,22 @@ export function JobDetailPage() {
     try {
       const content = await aiRepository.coverLetter(job.id);
       setLetter(content);
+      setSavedMsg('AI cover letter ready — edit and copy anytime.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Cover letter failed');
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function copyLetter() {
+    if (!letter) return;
+    try {
+      await navigator.clipboard.writeText(letter);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {
+      setError('Could not copy cover letter');
     }
   }
 
@@ -162,9 +176,10 @@ export function JobDetailPage() {
 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
         <Box
-          className="aa-card p-5 md:p-7"
+          className="aa-card aa-hero-mesh p-5 md:p-7"
           sx={{
-            background: 'linear-gradient(135deg, rgba(91,92,226,0.12), rgba(124,126,240,0.06))',
+            background:
+              'linear-gradient(135deg, rgba(91,92,226,0.14), rgba(124,126,240,0.05) 50%, rgba(236,72,153,0.08))',
           }}
         >
           <Stack direction="row" gap={1} mb={1.5} flexWrap="wrap">
@@ -180,10 +195,10 @@ export function JobDetailPage() {
               />
             )}
           </Stack>
-          <Typography fontWeight={800} fontSize={{ xs: 24, md: 30 }} letterSpacing="-0.03em" gutterBottom>
+          <Typography fontWeight={900} fontSize={{ xs: 26, md: 32 }} letterSpacing="-0.03em" gutterBottom>
             {job.title}
           </Typography>
-          <Typography color="text.secondary" fontWeight={600}>
+          <Typography color="text.secondary" fontWeight={600} fontSize={15}>
             {job.company} · {job.location}
           </Typography>
         </Box>
@@ -292,95 +307,173 @@ export function JobDetailPage() {
         </Typography>
       </Box>
 
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} flexWrap="wrap" useFlexGap>
-        <Button
-          variant="contained"
-          size="large"
-          onClick={() => setOutreachOpen(true)}
-          disabled={busy}
-          startIcon={<SendRoundedIcon />}
-        >
-          Apply with Outreach
-        </Button>
-        <Button
-          variant="outlined"
-          size="large"
-          onClick={() => setConfirmOpen(true)}
-          disabled={busy}
-          startIcon={<OpenInNewRoundedIcon />}
-        >
-          Smart Apply
-        </Button>
-        <Button
-          variant="outlined"
-          size="large"
-          onClick={() => void onCoverLetter()}
-          disabled={busy}
-          startIcon={<AutoAwesomeRoundedIcon />}
-        >
-          Generate cover letter
-        </Button>
-        <Button
-          size="large"
-          startIcon={<BookmarkBorderIcon />}
-          onClick={async () => {
-            await jobRepository.save(job.id);
-            setSavedMsg('Saved to shortlist');
-          }}
-        >
-          Save
-        </Button>
-        {isPostLike && (
-          <Button component={RouterLink} to={`/posts/post-${job.id}`} size="large">
-            View as post
+      <Box
+        className="aa-card p-4"
+        sx={{
+          position: { lg: 'sticky' },
+          bottom: { lg: 16 },
+          zIndex: 2,
+          backdropFilter: 'blur(8px)',
+          background: 'color-mix(in srgb, var(--surface) 92%, transparent)',
+          border: '1px solid rgba(91,92,226,0.12)',
+          boxShadow: '0 12px 40px rgba(91,92,226,0.12)',
+        }}
+      >
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.25} flexWrap="wrap" useFlexGap>
+          <Button
+            variant="contained"
+            size="large"
+            onClick={() => setOutreachOpen(true)}
+            disabled={busy}
+            startIcon={busy ? <CircularProgress size={18} color="inherit" /> : <SendRoundedIcon />}
+            sx={{
+              borderRadius: 2.5,
+              fontWeight: 800,
+              background: 'linear-gradient(120deg, #5b5ce2, #7c3aed 60%, #ec4899)',
+            }}
+          >
+            Apply with Outreach
           </Button>
-        )}
-      </Stack>
+          <Button
+            variant="outlined"
+            size="large"
+            onClick={() => setConfirmOpen(true)}
+            disabled={busy}
+            startIcon={<OpenInNewRoundedIcon />}
+            sx={{ borderRadius: 2.5, fontWeight: 800 }}
+          >
+            Smart Apply
+          </Button>
+          <Button
+            variant="outlined"
+            size="large"
+            onClick={() => void onCoverLetter()}
+            disabled={busy}
+            startIcon={<AutoAwesomeRoundedIcon />}
+            sx={{ borderRadius: 2.5, fontWeight: 800 }}
+          >
+            Generate cover letter
+          </Button>
+          <Button
+            size="large"
+            startIcon={<BookmarkBorderIcon />}
+            sx={{ borderRadius: 2.5 }}
+            onClick={async () => {
+              await jobRepository.save(job.id);
+              setSavedMsg('Saved to shortlist');
+            }}
+          >
+            Save
+          </Button>
+          {isPostLike && (
+            <Button component={RouterLink} to={`/posts/post-${job.id}`} size="large" sx={{ borderRadius: 2.5 }}>
+              View as post
+            </Button>
+          )}
+        </Stack>
+      </Box>
 
       {letter && (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          <TextField
-            label="AI cover letter / outreach draft — edit freely"
-            multiline
-            minRows={10}
-            value={letter}
-            onChange={(e) => setLetter(e.target.value)}
-            fullWidth
-            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3, bgcolor: 'background.paper' } }}
-          />
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+          <Box
+            className="aa-card p-4 md:p-5"
+            sx={{
+              background: 'linear-gradient(160deg, rgba(91,92,226,0.06), transparent 55%)',
+            }}
+          >
+            <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1.5}>
+              <Box>
+                <Typography fontWeight={900} fontSize={16}>
+                  AI cover letter
+                </Typography>
+                <Typography color="text.secondary" fontSize={13}>
+                  Edit freely, then copy into the application form or email.
+                </Typography>
+              </Box>
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<ContentCopyRoundedIcon />}
+                onClick={() => void copyLetter()}
+                sx={{ borderRadius: 2, fontWeight: 800 }}
+              >
+                {copied ? 'Copied' : 'Copy'}
+              </Button>
+            </Stack>
+            <TextField
+              multiline
+              minRows={10}
+              value={letter}
+              onChange={(e) => setLetter(e.target.value)}
+              fullWidth
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3, bgcolor: 'background.paper' } }}
+            />
+          </Box>
         </motion.div>
       )}
 
-      <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle sx={{ fontWeight: 800 }}>Confirm Smart Apply</DialogTitle>
+      <Dialog
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        fullWidth
+        maxWidth="sm"
+        PaperProps={{ sx: { borderRadius: 4 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 900 }}>Confirm Smart Apply</DialogTitle>
         <DialogContent>
           <Typography>
-            We&apos;ll open the official posting for <strong>{job.title}</strong> at{' '}
-            <strong>{job.company}</strong> and start tracking it here. You finish the application on
-            the company site.
+            We&apos;ll generate an AI cover letter from your resume, open the official posting for{' '}
+            <strong>{job.title}</strong> at <strong>{job.company}</strong>, and start tracking it
+            here. Paste the letter on the company site to finish.
           </Typography>
         </DialogContent>
         <DialogActions sx={{ p: 2.5 }}>
-          <Button onClick={() => setConfirmOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={() => void onSmartApply()} disabled={busy}>
-            Confirm & open
+          <Button onClick={() => setConfirmOpen(false)} sx={{ borderRadius: 2 }}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => void onSmartApply()}
+            disabled={busy}
+            sx={{ borderRadius: 2.5, fontWeight: 800 }}
+          >
+            Confirm & track
           </Button>
         </DialogActions>
       </Dialog>
 
-      <Dialog open={outreachOpen} onClose={() => setOutreachOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle sx={{ fontWeight: 800 }}>Apply with Outreach</DialogTitle>
+      <Dialog
+        open={outreachOpen}
+        onClose={() => setOutreachOpen(false)}
+        fullWidth
+        maxWidth="sm"
+        PaperProps={{ sx: { borderRadius: 4 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 900 }}>Apply with Outreach</DialogTitle>
         <DialogContent>
           <Typography paragraph>
-            We scan this listing for a public email or phone, then use your resume profile.
+            We draft an AI cover letter, find a public HR email or phone in the post, then send in
+            the <strong>background</strong> from your mailbox (SMTP) or WhatsApp Business API —
+            WhatsApp and Gmail apps are <strong>not</strong> opened.
           </Typography>
           <Typography fontSize={14} color="text.secondary">
             Detected — Email: {contacts.email || 'none'} · Phone: {contacts.phone || 'none'}
           </Typography>
+          <Typography fontSize={13} color="text.secondary" sx={{ mt: 1.25 }}>
+            Configure Auto-send under AI Tools first (Gmail App Password + optional WhatsApp Cloud
+            API).
+          </Typography>
         </DialogContent>
         <DialogActions sx={{ p: 2.5 }}>
-          <Button onClick={() => setOutreachOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={() => void onOutreachApply()} disabled={busy}>
+          <Button onClick={() => setOutreachOpen(false)} sx={{ borderRadius: 2 }}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => void onOutreachApply()}
+            disabled={busy}
+            sx={{ borderRadius: 2.5, fontWeight: 800 }}
+          >
             {busy ? 'Working…' : 'Confirm outreach'}
           </Button>
         </DialogActions>

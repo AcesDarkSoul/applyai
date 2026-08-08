@@ -25,8 +25,9 @@ export function SplashScreen({ show, caption = 'Find. Match. Tailor. Apply.' }: 
             zIndex: 9999,
             display: 'grid',
             placeItems: 'center',
-            background: `radial-gradient(1200px 600px at 50% 20%, rgba(91,92,226,0.28), transparent 55%),
-              linear-gradient(160deg, #0f1020 0%, #1a1b3a 45%, #5b5ce2 140%)`,
+            background: `radial-gradient(1000px 520px at 50% 15%, rgba(91,92,226,0.35), transparent 55%),
+              radial-gradient(700px 400px at 85% 80%, rgba(236,72,153,0.18), transparent 50%),
+              linear-gradient(160deg, #0b0c18 0%, #15172a 42%, #2a2d6b 130%)`,
             color: '#fff',
             px: 3,
           }}
@@ -38,19 +39,19 @@ export function SplashScreen({ show, caption = 'Find. Match. Tailor. Apply.' }: 
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: 'spring', stiffness: 260, damping: 18 }}
               sx={{
-                width: { xs: 72, sm: 84 },
-                height: { xs: 72, sm: 84 },
-                borderRadius: 3.5,
+                width: { xs: 76, sm: 88 },
+                height: { xs: 76, sm: 88 },
+                borderRadius: 4,
                 mx: 'auto',
-                mb: 2.5,
+                mb: 2.75,
                 display: 'grid',
                 placeItems: 'center',
-                bgcolor: 'rgba(255,255,255,0.14)',
+                background: `linear-gradient(145deg, ${PRIMARY}, #8183f0)`,
                 border: '1px solid rgba(255,255,255,0.22)',
-                boxShadow: '0 20px 50px rgba(0,0,0,0.35)',
+                boxShadow: '0 24px 56px rgba(91,92,226,0.45)',
               }}
             >
-              <SmartToyRoundedIcon sx={{ fontSize: { xs: 36, sm: 42 } }} />
+              <SmartToyRoundedIcon sx={{ fontSize: { xs: 38, sm: 44 } }} />
             </Box>
 
             <Typography
@@ -58,8 +59,8 @@ export function SplashScreen({ show, caption = 'Find. Match. Tailor. Apply.' }: 
               initial={{ y: 12, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.12 }}
-              fontWeight={800}
-              sx={{ fontSize: { xs: 28, sm: 34 }, letterSpacing: '-0.04em' }}
+              fontWeight={900}
+              sx={{ fontSize: { xs: 30, sm: 38 }, letterSpacing: '-0.045em' }}
             >
               ApplyAI
             </Typography>
@@ -69,7 +70,7 @@ export function SplashScreen({ show, caption = 'Find. Match. Tailor. Apply.' }: 
               initial={{ y: 10, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.22 }}
-              sx={{ mt: 1, color: 'rgba(255,255,255,0.78)', fontSize: { xs: 14, sm: 15 } }}
+              sx={{ mt: 1, color: 'rgba(255,255,255,0.78)', fontSize: { xs: 14, sm: 15.5 } }}
             >
               {caption}
             </Typography>
@@ -83,10 +84,10 @@ export function SplashScreen({ show, caption = 'Find. Match. Tailor. Apply.' }: 
                 mt: 3.5,
                 mx: 'auto',
                 height: 3,
-                width: 96,
+                width: 104,
                 borderRadius: 99,
                 transformOrigin: 'left center',
-                background: 'linear-gradient(90deg, rgba(255,255,255,0.2), #fff, rgba(255,255,255,0.2))',
+                background: 'linear-gradient(90deg, rgba(255,255,255,0.15), #fff, rgba(255,255,255,0.15))',
               }}
             />
           </Box>

@@ -54,6 +54,21 @@ const updateSchema = z.object({
   certifications: z.array(z.string().max(200)).max(30).optional(),
   languages: z.array(z.string().max(80)).max(20).optional(),
   achievements: z.array(z.string().max(400)).max(20).optional(),
+  outreach: z
+    .object({
+      autoSendEnabled: z.boolean().optional(),
+      smtpHost: z.string().max(200).optional(),
+      smtpPort: z.number().min(1).max(65535).optional(),
+      smtpSecure: z.boolean().optional(),
+      smtpUser: z.string().max(200).optional(),
+      smtpPass: z.string().max(200).optional(),
+      whatsappPhoneNumberId: z.string().max(120).optional(),
+      whatsappAccessToken: z.string().max(500).optional(),
+      twilioAccountSid: z.string().max(80).optional(),
+      twilioAuthToken: z.string().max(120).optional(),
+      twilioWhatsappFrom: z.string().max(80).optional(),
+    })
+    .optional(),
 });
 
 const buildResumeSchema = z.object({

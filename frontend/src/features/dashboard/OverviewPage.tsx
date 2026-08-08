@@ -114,6 +114,56 @@ export function OverviewPage() {
     <Stack spacing={2.5}>
       {error && <Alert severity="error">{error}</Alert>}
 
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <Box
+          className="aa-card aa-hero-mesh p-5 md:p-7"
+          sx={{
+            background:
+              'linear-gradient(125deg, rgba(91,92,226,0.16), rgba(15,23,42,0.02) 48%, rgba(20,184,166,0.1))',
+          }}
+        >
+          <Stack
+            direction={{ xs: 'column', md: 'row' }}
+            justifyContent="space-between"
+            gap={2.5}
+            alignItems={{ md: 'center' }}
+          >
+            <Box>
+              <Stack direction="row" spacing={1} alignItems="center" mb={1}>
+                <Box className="aa-pulse-dot" />
+                <Typography fontSize={12.5} fontWeight={700} color="text.secondary">
+                  Your job search HQ
+                </Typography>
+              </Stack>
+              <Typography fontWeight={900} fontSize={{ xs: 24, md: 30 }} letterSpacing="-0.03em">
+                Ready for your next move?
+              </Typography>
+              <Typography color="text.secondary" fontSize={14.5} sx={{ maxWidth: 520, mt: 0.75 }}>
+                Review matches, track applications, and let AI draft cover letters when you apply.
+              </Typography>
+            </Box>
+            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+              <Button
+                component={RouterLink}
+                to="/jobs"
+                variant="contained"
+                endIcon={<ArrowForwardRoundedIcon />}
+                sx={{ px: 2.5 }}
+              >
+                Find matches
+              </Button>
+              <Button component={RouterLink} to="/resume" variant="outlined" sx={{ px: 2.25 }}>
+                Resume Studio
+              </Button>
+            </Stack>
+          </Stack>
+        </Box>
+      </motion.div>
+
       <Box className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatTile
           label="Jobs Found"
