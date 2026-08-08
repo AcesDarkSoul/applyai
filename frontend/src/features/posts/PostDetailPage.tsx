@@ -78,7 +78,8 @@ export function PostDetailPage() {
     try {
       const result = await applicationRepository.smartApply(post.jobId);
       setConfirmOpen(false);
-      window.open(result.applyUrl, '_blank', 'noopener,noreferrer');
+      if (result.coverLetter) setLetter(result.coverLetter);
+      setMsg('AI cover letter ready below — nothing was opened.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Smart Apply failed');
     } finally {
@@ -96,13 +97,9 @@ export function PostDetailPage() {
       setOutreachOpen(false);
       const o = result.outreach;
       setMsg(o.note);
-      if (o.channel === 'whatsapp' && o.waLink && !o.sent) {
-        window.open(o.waLink, '_blank', 'noopener,noreferrer');
-      } else if (o.channel === 'smart_apply') {
-        window.open(result.applyUrl, '_blank', 'noopener,noreferrer');
-      } else if (o.channel === 'email' && o.body) {
-        setLetter(o.body);
-      }
+      const letterText = result.coverLetter || o.coverLetter || o.body || '';
+      if (letterText) setLetter(letterText);
+      // Background only — never open WhatsApp or apply URLs
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Outreach failed');
     } finally {

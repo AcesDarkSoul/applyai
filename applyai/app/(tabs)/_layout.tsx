@@ -2,6 +2,20 @@ import { Tabs } from 'expo-router';
 import { Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Shadows, Spacing } from '@/constants/theme';
+import { AppTopBar } from '@/components/layout/AppTopBar';
+
+const TAB_META: Record<string, { title: string; subtitle: string }> = {
+  index: { title: 'Home', subtitle: 'Your job search HQ' },
+  jobs: { title: 'Find Jobs', subtitle: 'Matched to your resume' },
+  apply: { title: 'Smart Apply', subtitle: 'Apply with one tap' },
+  applications: { title: 'Applications', subtitle: 'Track every outreach' },
+  profile: { title: 'Profile', subtitle: 'Resume & account' },
+};
+
+function TabHeader({ routeName }: { routeName: string }) {
+  const meta = TAB_META[routeName] || { title: 'ApplyAI', subtitle: '' };
+  return <AppTopBar title={meta.title} subtitle={meta.subtitle} />;
+}
 
 export default function TabLayout() {
   const { width } = useWindowDimensions();
@@ -10,21 +24,16 @@ export default function TabLayout() {
   return (
     <View style={styles.wrapper}>
       <Tabs
-        screenOptions={{
+        screenOptions={({ route }) => ({
           tabBarActiveTintColor: Colors.primary,
           tabBarInactiveTintColor: Colors.textMuted,
-          tabBarStyle: [
-            styles.tabBar,
-            isWebDesktop && styles.tabBarWeb,
-          ],
+          tabBarStyle: [styles.tabBar, isWebDesktop && styles.tabBarWeb],
           tabBarLabelStyle: styles.tabLabel,
           tabBarItemStyle: styles.tabItem,
-          headerStyle: { backgroundColor: Colors.white },
-          headerTintColor: Colors.text,
-          headerTitleStyle: { fontWeight: '800', fontSize: 18 },
+          header: () => <TabHeader routeName={route.name} />,
           headerShadowVisible: false,
           sceneStyle: { backgroundColor: Colors.background },
-        }}
+        })}
       >
         <Tabs.Screen
           name="index"
@@ -60,7 +69,11 @@ export default function TabLayout() {
           options={{
             title: 'Applied',
             tabBarIcon: ({ color, focused }) => (
-              <Ionicons name={focused ? 'checkmark-circle' : 'checkmark-circle-outline'} size={24} color={color} />
+              <Ionicons
+                name={focused ? 'checkmark-circle' : 'checkmark-circle-outline'}
+                size={24}
+                color={color}
+              />
             ),
           }}
         />
@@ -69,7 +82,11 @@ export default function TabLayout() {
           options={{
             title: 'Profile',
             tabBarIcon: ({ color, focused }) => (
-              <Ionicons name={focused ? 'person-circle' : 'person-circle-outline'} size={24} color={color} />
+              <Ionicons
+                name={focused ? 'person-circle' : 'person-circle-outline'}
+                size={24}
+                color={color}
+              />
             ),
           }}
         />

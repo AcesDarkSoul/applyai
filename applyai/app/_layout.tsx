@@ -10,6 +10,7 @@ import 'react-native-reanimated';
 import { useAuthStore } from '@/stores/authStore';
 import { useResumeStore } from '@/stores/resumeStore';
 import { Colors } from '@/constants/theme';
+import { AppTopBar } from '@/components/layout/AppTopBar';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -24,7 +25,6 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
   const root = segments[0];
   const inAuthGroup = AUTH_ROUTES.has(String(root ?? ''));
-  // Must be signed in for tabs, jobs, resume, share, etc.
   const needsAuth = !inAuthGroup;
 
   useEffect(() => {
@@ -48,7 +48,6 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Never show app screens without a Firebase user (email/password or Google)
   if (!user && needsAuth) {
     return (
       <View style={styles.loading}>
@@ -75,10 +74,19 @@ export default function RootLayout() {
   const initialize = useAuthStore((s) => s.initialize);
   const refreshResume = useResumeStore((s) => s.refresh);
 
-  useEffect(() => { if (error) throw error; }, [error]);
-  useEffect(() => { const unsub = initialize(); return unsub; }, []);
-  useEffect(() => { refreshResume(); }, []);
-  useEffect(() => { if (loaded) SplashScreen.hideAsync(); }, [loaded]);
+  useEffect(() => {
+    if (error) throw error;
+  }, [error]);
+  useEffect(() => {
+    const unsub = initialize();
+    return unsub;
+  }, []);
+  useEffect(() => {
+    refreshResume();
+  }, []);
+  useEffect(() => {
+    if (loaded) SplashScreen.hideAsync();
+  }, [loaded]);
 
   if (!loaded) return null;
 
@@ -86,38 +94,51 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <AuthGuard>
         <StatusBar style="dark" />
-        <Stack screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: Colors.background },
-          animation: Platform.OS === 'ios' ? 'default' : 'fade',
-        }}>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: Colors.background },
+            animation: Platform.OS === 'ios' ? 'default' : 'fade',
+          }}
+        >
           <Stack.Screen name="index" />
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="job/[id]" options={{
-            headerShown: true,
-            headerStyle: { backgroundColor: Colors.white },
-            headerTintColor: Colors.primary,
-            headerTitleStyle: { fontWeight: '800', fontSize: 18 },
-            headerShadowVisible: false,
-            title: 'Job Details',
-          }} />
-          <Stack.Screen name="share/linkedin" options={{
-            headerShown: true,
-            headerStyle: { backgroundColor: Colors.white },
-            headerTintColor: Colors.primary,
-            headerShadowVisible: false,
-            title: 'AI Social Posts',
-            presentation: 'modal',
-          }} />
-          <Stack.Screen name="resume/upload" options={{
-            headerShown: true,
-            headerStyle: { backgroundColor: Colors.white },
-            headerTintColor: Colors.primary,
-            headerShadowVisible: false,
-            title: 'Save Resume',
-            presentation: 'modal',
-          }} />
+          <Stack.Screen
+            name="job/[id]"
+            options={{
+              headerShown: true,
+              header: () => (
+                <AppTopBar title="Job Details" subtitle="Match, apply, follow up" showBack />
+              ),
+              headerShadowVisible: false,
+              title: 'Job Details',
+            }}
+          />
+          <Stack.Screen
+            name="share/linkedin"
+            options={{
+              headerShown: true,
+              header: () => (
+                <AppTopBar title="AI Social Posts" subtitle="Share your wins" showBack />
+              ),
+              headerShadowVisible: false,
+              title: 'AI Social Posts',
+              presentation: 'modal',
+            }}
+          />
+          <Stack.Screen
+            name="resume/upload"
+            options={{
+              headerShown: true,
+              header: () => (
+                <AppTopBar title="Save Resume" subtitle="Unlock smarter matches" showBack />
+              ),
+              headerShadowVisible: false,
+              title: 'Save Resume',
+              presentation: 'modal',
+            }}
+          />
         </Stack>
       </AuthGuard>
     </SafeAreaProvider>

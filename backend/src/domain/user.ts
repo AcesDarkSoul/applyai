@@ -12,6 +12,30 @@ export interface AuthUser {
   role: UserRole;
 }
 
+/**
+ * Credentials for background outreach FROM the user's own accounts.
+ * Email uses SMTP (e.g. Gmail App Password) so From = user's address.
+ * WhatsApp uses Meta Cloud API or Twilio WhatsApp on the user's Business number
+ * (personal WhatsApp mobile app cannot send silently — Meta/OS restriction).
+ */
+export interface OutreachCredentials {
+  /** Master switch — when true, skip dry-run and send in background. */
+  autoSendEnabled?: boolean;
+  /** SMTP — send email as the user */
+  smtpHost?: string;
+  smtpPort?: number;
+  smtpSecure?: boolean;
+  smtpUser?: string;
+  smtpPass?: string;
+  /** Meta WhatsApp Cloud API (preferred for "your" WA business number) */
+  whatsappPhoneNumberId?: string;
+  whatsappAccessToken?: string;
+  /** Twilio WhatsApp (alternative) */
+  twilioAccountSid?: string;
+  twilioAuthToken?: string;
+  twilioWhatsappFrom?: string;
+}
+
 export interface UserProfile {
   uid: string;
   email: string;
@@ -34,13 +58,14 @@ export interface UserProfile {
   resumeFileName?: string;
   resumeParsedAt?: string;
   resumeId?: string;
-  /** Advanced builder sections — also mirrored on resume docs in Firestore. */
   experienceEntries?: ExperienceEntry[];
   educationEntries?: EducationEntry[];
   projects?: ProjectEntry[];
   certifications?: string[];
   languages?: string[];
   achievements?: string[];
+  /** Background email / WhatsApp send settings (user's accounts). */
+  outreach?: OutreachCredentials;
   createdAt: string;
   updatedAt: string;
 }

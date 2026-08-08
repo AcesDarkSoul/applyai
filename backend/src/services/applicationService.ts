@@ -1,10 +1,11 @@
 import { randomUUID } from 'crypto';
 import type { Application, ApplicationStatus } from '../domain/application';
 import type { Job } from '../domain/job';
-import type { UserProfile } from '../domain/user';
+import type { AuthUser, UserProfile } from '../domain/user';
 import { AppError } from '../middleware/errorHandler';
 import { applicationRepository } from '../repositories';
 import { isHiringPost } from './contentParse';
+import { generateAndSaveCoverLetter, type CoverLetterBundle } from './coverLetterService';
 import { jobService } from './jobService';
 import { outreachApply, type OutreachResult } from './outreachService';
 
@@ -12,6 +13,7 @@ export type AutoApplyItem = {
   job: Pick<Job, 'id' | 'title' | 'company' | 'applyUrl' | 'source' | 'matchScore'>;
   application: Application;
   outreach: OutreachResult;
+  coverLetter: CoverLetterBundle;
 };
 
 export class ApplicationService {
@@ -19,20 +21,35 @@ export class ApplicationService {
     return applicationRepository.listByUser(userId);
   }
 
-  async smartApply(userId: string, job: Job, note?: string): Promise<Application> {
+  async smartApply(
+    userId: string,
+    job: Job,
+    note?: string,
+    cover?: { id?: string; content?: string },
+  ): Promise<Application> {
     const existing = (await applicationRepository.listByUser(userId)).find(
       (a) => a.jobId === job.id && a.status !== 'withdrawn',
     );
+    const now = new Date().toISOString();
+
     if (existing) {
-      return applicationRepository.updateStatus(
-        userId,
-        existing.id,
-        'applied',
-        note || 'Smart Apply confirmed',
-      );
+      const merged: Application = {
+        ...existing,
+        status: 'applied',
+        coverLetter: cover?.content || existing.coverLetter,
+        coverLetterId: cover?.id || existing.coverLetterId,
+        notes: cover?.content
+          ? `${existing.notes}\n[Cover letter]\n${cover.content}`.trim()
+          : existing.notes,
+        updatedAt: now,
+        timeline: [
+          ...existing.timeline,
+          { status: 'applied', at: now, note: note || 'Smart Apply confirmed' },
+        ],
+      };
+      return applicationRepository.create(merged);
     }
 
-    const now = new Date().toISOString();
     const app: Application = {
       id: randomUUID(),
       userId,
@@ -49,7 +66,9 @@ export class ApplicationService {
           note: note || 'Smart Apply confirmed — opened official posting',
         },
       ],
-      notes: '',
+      notes: cover?.content ? `[Cover letter]\n${cover.content}` : '',
+      coverLetterId: cover?.id,
+      coverLetter: cover?.content,
       createdAt: now,
       updatedAt: now,
     };
@@ -57,11 +76,10 @@ export class ApplicationService {
   }
 
   /**
-   * Auto-apply to top resume-matched jobs:
-   * email/WhatsApp when contacts exist, otherwise Smart Apply URL + tracked application.
+   * Auto-apply to top resume-matched jobs with an AI cover letter on every apply.
    */
   async autoApplyFromResume(
-    userId: string,
+    auth: AuthUser,
     profile: UserProfile,
     opts?: {
       minScore?: number;
@@ -90,14 +108,13 @@ export class ApplicationService {
     }
     jobs = jobs.slice(0, limit);
 
-    const existing = await applicationRepository.listByUser(userId);
+    const existing = await applicationRepository.listByUser(auth.uid);
     const already = new Set(
       existing.filter((a) => a.status !== 'withdrawn').map((a) => a.jobId),
     );
 
     const applied: AutoApplyItem[] = [];
     const skipped: Array<{ jobId: string; title: string; reason: string }> = [];
-    const applyUrls: string[] = [];
 
     for (const job of jobs) {
       if (already.has(job.id)) {
@@ -105,19 +122,26 @@ export class ApplicationService {
         continue;
       }
 
-      const outreach = await outreachApply(profile, job);
+      const cover = await generateAndSaveCoverLetter(auth, profile, job);
+      const outreach = await outreachApply(profile, job, {
+        coverLetter: cover.content,
+        coverLetterId: cover.id,
+      });
       const note =
         outreach.channel === 'email'
           ? outreach.sent
-            ? `Auto-apply: emailed ${outreach.to}`
-            : `Auto-apply email draft: ${outreach.note}`
+            ? `Auto-apply: emailed AI cover letter to ${outreach.to} from ${outreach.fromAccount || 'your mailbox'}`
+            : `Auto-apply email: ${outreach.note}`
           : outreach.channel === 'whatsapp'
             ? outreach.sent
-              ? `Auto-apply: WhatsApp ${outreach.to}`
+              ? `Auto-apply: WhatsApp pitch to ${outreach.to} (background)`
               : `Auto-apply WhatsApp: ${outreach.note}`
-            : 'Auto-apply: Smart Apply — complete on official posting';
+            : 'Auto-apply: cover letter saved (no public contact in post — nothing opened)';
 
-      const application = await this.smartApply(userId, job, note);
+      const application = await this.smartApply(auth.uid, job, note, {
+        id: cover.id,
+        content: cover.content,
+      });
       applied.push({
         job: {
           id: job.id,
@@ -129,10 +153,8 @@ export class ApplicationService {
         },
         application,
         outreach,
+        coverLetter: cover,
       });
-      if (outreach.channel === 'smart_apply' || (outreach.channel === 'whatsapp' && !outreach.sent)) {
-        applyUrls.push(outreach.waLink || job.applyUrl);
-      }
       already.add(job.id);
     }
 
@@ -140,7 +162,7 @@ export class ApplicationService {
       queryHint: [profile.title, ...(profile.skills || []).slice(0, 3)].filter(Boolean).join(' · '),
       applied,
       skipped,
-      applyUrls: [...new Set(applyUrls)],
+      applyUrls: [],
     };
   }
 

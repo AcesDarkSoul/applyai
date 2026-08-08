@@ -39,6 +39,19 @@ const envSchema = z.object({
     .transform((v) => v === 'true' || v === '1'),
   SENDGRID_API_KEY: z.string().optional().default(''),
   SENDGRID_FROM_EMAIL: z.string().optional().default(''),
+  /** Optional global user mailbox (prefer per-profile outreach.smtp*) */
+  USER_SMTP_HOST: z.string().optional().default(''),
+  USER_SMTP_PORT: z.coerce.number().optional().default(587),
+  USER_SMTP_SECURE: z
+    .string()
+    .optional()
+    .default('false')
+    .transform((v) => v === 'true' || v === '1'),
+  USER_SMTP_USER: z.string().optional().default(''),
+  USER_SMTP_PASS: z.string().optional().default(''),
+  /** Meta WhatsApp Cloud API (user Business number) */
+  WHATSAPP_PHONE_NUMBER_ID: z.string().optional().default(''),
+  WHATSAPP_ACCESS_TOKEN: z.string().optional().default(''),
   TWILIO_ACCOUNT_SID: z.string().optional().default(''),
   TWILIO_AUTH_TOKEN: z.string().optional().default(''),
   // e.g. whatsapp:+14155238886 (Twilio sandbox) or your WhatsApp-enabled number

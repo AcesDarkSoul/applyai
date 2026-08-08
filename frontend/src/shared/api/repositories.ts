@@ -164,8 +164,14 @@ export const applicationRepository = {
   },
   async smartApply(jobId: string) {
     const { data } = await api.post<
-      ApiResponse<{ application: Application; applyUrl: string; complianceNote: string }>
-    >('/applications/smart-apply', { jobId, confirmed: true });
+      ApiResponse<{
+        application: Application;
+        applyUrl: string;
+        complianceNote: string;
+        coverLetter?: string;
+        coverLetterId?: string;
+      }>
+    >('/applications/smart-apply', { jobId, confirmed: true }, { timeout: 90_000 });
     return data.data;
   },
   async outreachApply(jobId: string) {
@@ -173,8 +179,10 @@ export const applicationRepository = {
       ApiResponse<{
         application: Application;
         applyUrl: string;
+        coverLetter?: string;
+        coverLetterId?: string;
         outreach: {
-          channel: 'email' | 'whatsapp' | 'smart_apply';
+          channel: 'email' | 'whatsapp' | 'none';
           contacts: { email: string | null; phone: string | null };
           dryRun: boolean;
           sent: boolean;
@@ -183,9 +191,12 @@ export const applicationRepository = {
           to?: string;
           waLink?: string;
           note: string;
+          fromAccount?: string;
+          coverLetter?: string;
         };
+        openedExternal?: boolean;
       }>
-    >('/applications/outreach-apply', { jobId, confirmed: true }, { timeout: 60_000 });
+    >('/applications/outreach-apply', { jobId, confirmed: true }, { timeout: 90_000 });
     return data.data;
   },
   async autoApply(opts?: { minScore?: number; limit?: number; boardOnly?: boolean }) {
@@ -202,11 +213,14 @@ export const applicationRepository = {
             matchScore?: number;
           };
           application: Application;
+          coverLetter?: { id: string; content: string };
           outreach: {
-            channel: 'email' | 'whatsapp' | 'smart_apply';
+            channel: 'email' | 'whatsapp' | 'none';
             sent: boolean;
             note: string;
             waLink?: string;
+            fromAccount?: string;
+            coverLetter?: string;
           };
         }>;
         skipped: Array<{ jobId: string; title: string; reason: string }>;
@@ -221,7 +235,7 @@ export const applicationRepository = {
         limit: opts?.limit ?? 8,
         boardOnly: opts?.boardOnly ?? true,
       },
-      { timeout: 120_000 },
+      { timeout: 180_000 },
     );
     return data.data;
   },
@@ -236,9 +250,9 @@ export const applicationRepository = {
 
 export const aiRepository = {
   async coverLetter(jobId: string): Promise<string> {
-    const { data } = await api.post<ApiResponse<{ content: string }>>('/ai/cover-letter', {
-      jobId,
-    });
+    const { data } = await api.post<
+      ApiResponse<{ content: string; coverLetterId?: string; aiAssisted?: boolean }>
+    >('/ai/cover-letter', { jobId }, { timeout: 90_000 });
     return data.data.content;
   },
 };

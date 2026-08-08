@@ -472,12 +472,16 @@ export function ResumeStudioPage() {
 
   return (
     <Stack spacing={2.5} maxWidth={1280}>
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+      >
         <Box
-          className="aa-card p-5 md:p-6"
+          className="aa-card aa-hero-mesh p-5 md:p-7"
           sx={{
             background:
-              'linear-gradient(125deg, rgba(91,92,226,0.14), rgba(15,23,42,0.04) 55%, rgba(236,72,153,0.06))',
+              'linear-gradient(125deg, rgba(91,92,226,0.16), rgba(15,23,42,0.04) 55%, rgba(236,72,153,0.08))',
           }}
         >
           <Stack
@@ -487,10 +491,16 @@ export function ResumeStudioPage() {
             alignItems={{ md: 'center' }}
           >
             <Box>
-              <Typography fontWeight={900} fontSize={26} letterSpacing="-0.03em">
+              <Stack direction="row" spacing={1} alignItems="center" mb={1}>
+                <Box className="aa-pulse-dot" />
+                <Typography fontSize={12.5} fontWeight={700} color="text.secondary">
+                  Source of truth for matching
+                </Typography>
+              </Stack>
+              <Typography fontWeight={900} fontSize={{ xs: 24, md: 28 }} letterSpacing="-0.03em">
                 Resume Studio
               </Typography>
-              <Typography color="text.secondary" fontSize={14} mt={0.5} maxWidth={560}>
+              <Typography color="text.secondary" fontSize={14.5} mt={0.75} maxWidth={560}>
                 Upload your resume — we prioritize that file as the source of truth, show every
                 section on screen, then optionally tailor skills and bullets to a job description.
               </Typography>
@@ -506,7 +516,7 @@ export function ResumeStudioPage() {
               )}
             </Stack>
           </Stack>
-          <Box mt={2}>
+          <Box mt={2.25}>
             <LinearProgress
               variant="determinate"
               value={Math.min(100, atsScore || completeness)}

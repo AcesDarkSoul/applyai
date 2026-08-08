@@ -72,15 +72,31 @@ export function PostsPage() {
 
   return (
     <Stack spacing={2.5}>
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-        <Box className="aa-card p-5 md:p-6">
-          <Stack direction="row" spacing={1.5} alignItems="center" mb={1}>
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <Box
+          className="aa-card aa-hero-mesh p-5 md:p-7"
+          sx={{
+            background:
+              'linear-gradient(125deg, rgba(10,102,194,0.1), rgba(91,92,226,0.12) 45%, rgba(59,130,246,0.08))',
+          }}
+        >
+          <Stack direction="row" spacing={1} alignItems="center" mb={1}>
+            <Box className="aa-pulse-dot" />
+            <Typography fontSize={12.5} fontWeight={700} color="text.secondary">
+              LinkedIn & Google Jobs posts
+            </Typography>
+          </Stack>
+          <Stack direction="row" spacing={1.5} alignItems="center" mb={0.75}>
             <ArticleOutlinedIcon sx={{ color: PRIMARY }} />
-            <Typography fontWeight={800} fontSize={22} letterSpacing="-0.02em">
+            <Typography fontWeight={900} fontSize={{ xs: 24, md: 28 }} letterSpacing="-0.03em">
               Hiring Posts
             </Typography>
           </Stack>
-          <Typography color="text.secondary" fontSize={14} sx={{ maxWidth: 640, mb: 2 }}>
+          <Typography color="text.secondary" fontSize={14.5} sx={{ maxWidth: 640, mb: 2.25 }}>
             Full LinkedIn & Google Jobs posts with complete text, contacts, and structured sections.
             Formal board roles live under Find Jobs.
           </Typography>
@@ -99,7 +115,7 @@ export function PostsPage() {
                   </InputAdornment>
                 ),
               }}
-              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3, bgcolor: 'background.default' } }}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3, bgcolor: 'background.paper' } }}
             />
             <Button variant="contained" onClick={() => void load(q)} disabled={loading} sx={{ minWidth: 120 }}>
               Search
