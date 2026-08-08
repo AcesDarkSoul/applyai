@@ -11,4 +11,8 @@ export class MemoryUserRepository implements IUserRepository {
     memoryStore.users.set(profile.uid, profile);
     return profile;
   }
+
+  async listAll(): Promise<UserProfile[]> {
+    return [...memoryStore.users.values()];
+  }
 }

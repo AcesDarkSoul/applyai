@@ -66,6 +66,9 @@ export function AiToolsPage() {
   const ats = profile?.atsScore ?? 98;
 
   const [autoSendEnabled, setAutoSendEnabled] = useState(false);
+  const [dailyAutoApplyEnabled, setDailyAutoApplyEnabled] = useState(true);
+  const [dailyLimit, setDailyLimit] = useState('8');
+  const [dailyMinScore, setDailyMinScore] = useState('55');
   const [smtpHost, setSmtpHost] = useState('smtp.gmail.com');
   const [smtpPort, setSmtpPort] = useState('587');
   const [smtpUser, setSmtpUser] = useState('');
@@ -76,6 +79,8 @@ export function AiToolsPage() {
   const [twilioToken, setTwilioToken] = useState('');
   const [twilioFrom, setTwilioFrom] = useState('');
   const [saving, setSaving] = useState(false);
+  const [runningDaily, setRunningDaily] = useState(false);
+  const [statusText, setStatusText] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -83,9 +88,13 @@ export function AiToolsPage() {
     const o = profile?.outreach;
     if (!o) {
       setSmtpUser(profile?.email || '');
+      setDailyAutoApplyEnabled(true);
       return;
     }
     setAutoSendEnabled(Boolean(o.autoSendEnabled));
+    setDailyAutoApplyEnabled(o.dailyAutoApplyEnabled !== false);
+    setDailyLimit(String(o.dailyAutoApplyLimit ?? 8));
+    setDailyMinScore(String(o.dailyMinScore ?? 55));
     setSmtpHost(o.smtpHost || 'smtp.gmail.com');
     setSmtpPort(String(o.smtpPort || 587));
     setSmtpUser(o.smtpUser || profile?.email || '');
@@ -97,6 +106,24 @@ export function AiToolsPage() {
     setTwilioFrom(o.twilioWhatsappFrom || '');
   }, [profile]);
 
+  useEffect(() => {
+    void (async () => {
+      try {
+        const { automationRepository } = await import('../../shared/api/repositories');
+        const s = await automationRepository.dailyStatus();
+        setStatusText(
+          s.enabled
+            ? `Scheduler ON · ${s.cron} (${s.timezone})${
+                s.lastFinishedAt ? ` · last run ${new Date(s.lastFinishedAt).toLocaleString()}` : ''
+              }${s.running ? ' · running now…' : ''}`
+            : 'Scheduler OFF in backend env (DAILY_AUTOMATION_ENABLED=false)',
+        );
+      } catch {
+        setStatusText(null);
+      }
+    })();
+  }, []);
+
   async function saveOutreach() {
     setSaving(true);
     setError(null);
@@ -105,6 +132,9 @@ export function AiToolsPage() {
       await profileRepository.update({
         outreach: {
           autoSendEnabled,
+          dailyAutoApplyEnabled,
+          dailyAutoApplyLimit: Math.min(20, Math.max(1, Number(dailyLimit) || 8)),
+          dailyMinScore: Math.min(100, Math.max(0, Number(dailyMinScore) || 55)),
           smtpHost: smtpHost.trim() || undefined,
           smtpPort: Number(smtpPort) || 587,
           smtpSecure: false,
@@ -119,9 +149,9 @@ export function AiToolsPage() {
       });
       await refreshProfile();
       setMsg(
-        autoSendEnabled
-          ? 'Saved. Auto-send is ON — Outreach / Auto apply will email & WhatsApp in the background from your accounts.'
-          : 'Saved. Auto-send is OFF (dry-run). Turn it on when SMTP / WhatsApp API are ready.',
+        `Saved. Daily auto-apply ${dailyAutoApplyEnabled ? 'ON' : 'OFF'}; background email/WhatsApp ${
+          autoSendEnabled ? 'ON' : 'OFF (dry-run)'
+        }.`,
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save outreach settings');
@@ -130,6 +160,28 @@ export function AiToolsPage() {
     }
   }
 
+  async function runDailyNow() {
+    setRunningDaily(true);
+    setError(null);
+    setMsg(null);
+    try {
+      const { automationRepository } = await import('../../shared/api/repositories');
+      const s = await automationRepository.runDailyNow();
+      const applied = (s.lastUsers || []).reduce((n, u) => n + u.applied, 0);
+      setMsg(
+        `Daily run finished. Jobs fetched: ${s.lastFetch?.ingested ?? 0}. Auto-applied: ${applied}.`,
+      );
+      setStatusText(
+        `Scheduler ${s.enabled ? 'ON' : 'OFF'} · last run ${
+          s.lastFinishedAt ? new Date(s.lastFinishedAt).toLocaleString() : 'just now'
+        }`,
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Daily automation failed');
+    } finally {
+      setRunningDaily(false);
+    }
+  }
   return (
     <Stack spacing={3}>
       <motion.div
@@ -159,6 +211,63 @@ export function AiToolsPage() {
           </Typography>
         </Box>
       </motion.div>
+
+      <Box className="aa-card p-5 md:p-6">
+        <Typography fontWeight={900} fontSize={18} mb={0.5}>
+          Daily job fetch + auto-apply
+        </Typography>
+        <Typography color="text.secondary" fontSize={13.5} mb={1.5} maxWidth={720}>
+          Every day the API refreshes live jobs, then auto-applies to your best matches with an AI
+          cover letter (and background email/WhatsApp when contacts + SMTP/WA are configured).
+        </Typography>
+        {statusText && (
+          <Alert severity="info" sx={{ mb: 2, borderRadius: 2.5 }}>
+            {statusText}
+          </Alert>
+        )}
+        <FormControlLabel
+          control={
+            <Switch
+              checked={dailyAutoApplyEnabled}
+              onChange={(e) => setDailyAutoApplyEnabled(e.target.checked)}
+              color="primary"
+            />
+          }
+          label={
+            <Typography fontWeight={700} fontSize={14}>
+              Include me in the daily auto-apply run
+            </Typography>
+          }
+          sx={{ mb: 1.5, display: 'block' }}
+        />
+        <Box className="grid gap-2 md:grid-cols-2 mb-2">
+          <TextField
+            label="Daily apply limit"
+            size="small"
+            value={dailyLimit}
+            onChange={(e) => setDailyLimit(e.target.value)}
+          />
+          <TextField
+            label="Min match score"
+            size="small"
+            value={dailyMinScore}
+            onChange={(e) => setDailyMinScore(e.target.value)}
+          />
+        </Box>
+        <Stack direction="row" spacing={1.25} useFlexGap flexWrap="wrap" mb={1}>
+          <Button variant="outlined" onClick={() => void saveOutreach()} disabled={saving}>
+            Save daily settings
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => void runDailyNow()}
+            disabled={runningDaily}
+            startIcon={<BoltRoundedIcon />}
+          >
+            {runningDaily ? 'Running…' : 'Run daily job fetch + apply now'}
+          </Button>
+        </Stack>
+      </Box>
 
       <Box className="aa-card p-5 md:p-6">
         <Typography fontWeight={900} fontSize={18} mb={0.5}>

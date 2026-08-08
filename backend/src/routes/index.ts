@@ -9,6 +9,7 @@ import * as jobController from '../controllers/jobController';
 import * as applicationController from '../controllers/applicationController';
 import * as postController from '../controllers/postController';
 import * as aiController from '../controllers/aiController';
+import * as automationController from '../controllers/automationController';
 
 const aiLimiter = rateLimit({
   windowMs: env.RATE_LIMIT_WINDOW_MS,
@@ -27,6 +28,9 @@ apiRouter.get('/health', healthController.health);
 
 // n8n pushes normalized jobs here (X-Ingest-Key) — no user JWT required
 apiRouter.post('/jobs/ingest', jobController.ingestJobs);
+
+// Daily automation can be triggered with ingest key before auth (for cron/n8n)
+apiRouter.post('/automation/daily/run', automationController.runDailyNow);
 
 apiRouter.use(authenticate);
 
@@ -58,6 +62,9 @@ apiRouter.post('/applications/smart-apply', applicationController.smartApply);
 apiRouter.post('/applications/outreach-apply', applicationController.outreachApplyHandler);
 apiRouter.post('/applications/auto-apply', applicationController.autoApplyHandler);
 apiRouter.patch('/applications/:id/status', applicationController.updateApplicationStatus);
+
+apiRouter.get('/automation/daily/status', automationController.getDailyStatus);
+apiRouter.post('/automation/daily/run-auth', automationController.runDailyNow);
 
 apiRouter.post('/ai/cover-letter', aiLimiter, aiController.generateCoverLetter);
 

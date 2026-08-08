@@ -93,6 +93,9 @@ export interface UserProfile {
   achievements?: string[];
   outreach?: {
     autoSendEnabled?: boolean;
+    dailyAutoApplyEnabled?: boolean;
+    dailyAutoApplyLimit?: number;
+    dailyMinScore?: number;
     smtpHost?: string;
     smtpPort?: number;
     smtpSecure?: boolean;

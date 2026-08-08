@@ -57,6 +57,9 @@ const updateSchema = z.object({
   outreach: z
     .object({
       autoSendEnabled: z.boolean().optional(),
+      dailyAutoApplyEnabled: z.boolean().optional(),
+      dailyAutoApplyLimit: z.number().min(1).max(20).optional(),
+      dailyMinScore: z.number().min(0).max(100).optional(),
       smtpHost: z.string().max(200).optional(),
       smtpPort: z.number().min(1).max(65535).optional(),
       smtpSecure: z.boolean().optional(),

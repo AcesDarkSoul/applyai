@@ -256,3 +256,43 @@ export const aiRepository = {
     return data.data.content;
   },
 };
+
+export type DailyAutomationStatus = {
+  enabled: boolean;
+  cron: string;
+  timezone: string;
+  lastStartedAt?: string;
+  lastFinishedAt?: string;
+  lastError?: string | null;
+  lastFetch?: {
+    query?: string;
+    ingested?: number;
+    sources?: string[];
+    error?: string;
+  };
+  lastUsers?: Array<{
+    uid: string;
+    email: string;
+    applied: number;
+    skipped: number;
+    sentEmail: number;
+    sentWhatsapp: number;
+    error?: string;
+  }>;
+  running: boolean;
+};
+
+export const automationRepository = {
+  async dailyStatus(): Promise<DailyAutomationStatus> {
+    const { data } = await api.get<ApiResponse<DailyAutomationStatus>>('/automation/daily/status');
+    return data.data;
+  },
+  async runDailyNow(): Promise<DailyAutomationStatus> {
+    const { data } = await api.post<ApiResponse<DailyAutomationStatus>>(
+      '/automation/daily/run-auth',
+      {},
+      { timeout: 300_000 },
+    );
+    return data.data;
+  },
+};

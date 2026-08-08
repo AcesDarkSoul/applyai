@@ -21,6 +21,12 @@ export interface AuthUser {
 export interface OutreachCredentials {
   /** Master switch — when true, skip dry-run and send in background. */
   autoSendEnabled?: boolean;
+  /** Opt into daily background auto-apply (default true when resume exists). */
+  dailyAutoApplyEnabled?: boolean;
+  /** Max roles to auto-apply per daily run. */
+  dailyAutoApplyLimit?: number;
+  /** Minimum match score for daily auto-apply. */
+  dailyMinScore?: number;
   /** SMTP — send email as the user */
   smtpHost?: string;
   smtpPort?: number;
