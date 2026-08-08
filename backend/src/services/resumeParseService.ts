@@ -111,11 +111,11 @@ Return ONLY valid JSON with this exact structure:
   ],
   "education": [
     {
-      "school": "institution",
-      "degree": "degree name",
-      "field": "field of study or empty",
-      "startDate": "year or empty",
-      "endDate": "year or empty"
+      "school": "institution name ONLY (e.g. JMIT Radaur, Delhi University)",
+      "degree": "degree/qualification ONLY (e.g. B.Tech Computer Science, 12th)",
+      "field": "field of study or major (e.g. Computer Science)",
+      "startDate": "start year or empty",
+      "endDate": "end year or empty"
     }
   ],
   "projects": [
@@ -133,6 +133,7 @@ Return ONLY valid JSON with this exact structure:
 }
 Rules:
 - Extract real values only — do not invent employers, degrees, or metrics.
+- MUST keep 'degree' and 'school' strictly separate: 'degree' is ONLY qualification (B.Tech/12th/etc.), 'school' is ONLY institution name.
 - Prefer the uploaded resume content over assumptions.
 - Keep experience bullets close to the original wording.
 - Use empty arrays for missing sections.`;
@@ -204,27 +205,57 @@ function normalizeExperience(raw: unknown): ExperienceEntry[] {
 
 function normalizeEducation(raw: unknown): EducationEntry[] {
   if (!Array.isArray(raw)) return [];
+  const degreeRe =
+    /\b(b\.?tech|b\.?e\.|m\.?tech|m\.?s\.|mba|bachelor|master|bsc|msc|bca|mca|diploma|matriculation|intermediate|higher\s+secondary|senior\s+secondary|ph\.?d|high\s+school|10th|12th|class\s+x|class\s+xii|b\.com|m\.com|bba)\b/i;
+  const schoolRe = /\b(university|institute|college|school|board|academy|polytechnic|vidyalaya|kanya|public|campus|faculty|jmit|iit|nit|bits|iiit)\b/i;
+
   return raw
     .map((row) => {
       if (typeof row === 'string') {
         const line = row.trim();
         if (!line) return null;
+        const parts = line.split(/\s*[,|@–—]|\s+(?:at|from)\s+/i).map((p) => p.trim()).filter(Boolean);
+        let deg = '';
+        let sch = '';
+        if (parts.length >= 2) {
+          if (degreeRe.test(parts[0])) {
+            deg = parts[0];
+            sch = parts.slice(1).join(' ');
+          } else {
+            sch = parts[0];
+            deg = parts.slice(1).join(' ');
+          }
+        } else if (degreeRe.test(line)) {
+          deg = line;
+        } else if (schoolRe.test(line)) {
+          sch = line;
+        } else {
+          deg = line;
+        }
         return {
           id: newId(),
-          school: line,
-          degree: line,
+          school: sch || (deg ? 'Institution' : ''),
+          degree: deg || (sch ? 'Degree' : ''),
           field: '',
         } satisfies EducationEntry;
       }
       const r = (row || {}) as Record<string, unknown>;
-      const school = asString(r.school) || asString(r.institution);
-      const degree = asString(r.degree);
+      let school = asString(r.school) || asString(r.institution) || asString(r.university) || asString(r.college);
+      let degree = asString(r.degree) || asString(r.qualification) || asString(r.course);
+
+      // Auto-fix if degree contains school keywords and not degree keywords
+      if (degree && schoolRe.test(degree) && !degreeRe.test(degree) && (!school || degreeRe.test(school))) {
+        const temp = degree;
+        degree = school;
+        school = temp;
+      }
+
       if (!school && !degree) return null;
       return {
         id: newId(),
-        school: school || degree,
-        degree: degree || school,
-        field: asString(r.field) || undefined,
+        school: school || 'Institution',
+        degree: degree || 'Degree',
+        field: asString(r.field) || asString(r.major) || undefined,
         startDate: asString(r.startDate) || (r.startYear != null ? String(r.startYear) : undefined),
         endDate: asString(r.endDate) || (r.endYear != null ? String(r.endYear) : undefined),
         details: asString(r.details) || undefined,
@@ -663,37 +694,105 @@ function guessEducationEntries(sectionText: string, fullText: string): Education
   const body = sectionText || '';
   const lines = (body || fullText)
     .split(/\n/)
-    .map((l) => l.trim())
+    .map((l) => stripBullet(l).trim())
     .filter(Boolean)
     .filter((l) => !matchSectionHeader(l));
 
-  const out: EducationEntry[] = [];
   const degreeRe =
-    /(b\.?tech|b\.?e\.|m\.?tech|m\.?s\.|mba|bachelor|master|bsc|msc|bca|mca|diploma|matriculation|intermediate|higher\s+secondary|senior\s+secondary|ph\.?d)/i;
+    /\b(b\.?tech|b\.?e\.|m\.?tech|m\.?s\.|mba|bachelor|master|bsc|msc|bca|mca|diploma|matriculation|intermediate|higher\s+secondary|senior\s+secondary|ph\.?d|high\s+school|10th|12th|class\s+x|class\s+xii|b\.com|m\.com|bba)\b/i;
+  const schoolRe = /\b(university|institute|college|school|board|academy|polytechnic|vidyalaya|kanya|public|campus|faculty|jmit|iit|nit|bits|iiit)\b/i;
 
-  for (const line of lines) {
-    if (!degreeRe.test(line) && !/university|institute|college|school|board of/i.test(line)) {
+  const entries: EducationEntry[] = [];
+  let currentEntry: { degree?: string; school?: string; field?: string; startDate?: string; endDate?: string } | null = null;
+
+  const buildEduEntry = (raw: { degree?: string; school?: string; field?: string; startDate?: string; endDate?: string }): EducationEntry => {
+    let deg = (raw.degree || '').trim();
+    let sch = (raw.school || '').trim();
+
+    if (deg && schoolRe.test(deg) && !degreeRe.test(deg) && (!sch || degreeRe.test(sch))) {
+      const temp = deg;
+      deg = sch;
+      sch = temp;
+    }
+
+    return {
+      id: newId(),
+      degree: (deg || (sch ? 'Degree' : '')).slice(0, 160),
+      school: (sch || (deg ? 'Institution' : '')).slice(0, 160),
+      field: raw.field?.slice(0, 160) || '',
+      startDate: raw.startDate || '',
+      endDate: raw.endDate || '',
+    };
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (line.length > 180 || /organized|conducted|led the|hackathon|developed|managed/i.test(line)) continue;
+
+    const hasDegree = degreeRe.test(line);
+    const hasSchool = schoolRe.test(line);
+    const isDate = isDateLine(line);
+
+    if (isDate && currentEntry) {
+      const dates = parseDateRange(line);
+      if (dates) {
+        currentEntry.startDate = dates.startDate;
+        currentEntry.endDate = dates.endDate;
+      }
       continue;
     }
-    // Skip achievement lines that mention an institute
-    if (/organized|conducted|led the|hackathon/i.test(line) && !degreeRe.test(line)) continue;
-    if (line.length < 8) continue;
-    let degree = line;
-    let school = line;
-    const comma = line.match(/^(.+?),\s*(.+)$/);
-    if (comma && degreeRe.test(comma[1])) {
-      degree = comma[1].trim();
-      school = comma[2].replace(/\s*[-–—].*$/, '').trim();
+
+    if (hasDegree && hasSchool) {
+      if (currentEntry?.degree || currentEntry?.school) {
+        entries.push(buildEduEntry(currentEntry));
+      }
+      const parts = line.split(/\s*[,|@–—]|\s+(?:at|from)\s+/i).map((p) => p.trim()).filter(Boolean);
+      let deg = '';
+      let sch = '';
+      for (const p of parts) {
+        if (degreeRe.test(p) && !deg) deg = p;
+        else if (schoolRe.test(p) && !sch) sch = p;
+        else if (!deg) deg = p;
+        else if (!sch) sch = p;
+      }
+      currentEntry = { degree: deg, school: sch };
+      continue;
     }
-    out.push({
-      id: newId(),
-      school: school.slice(0, 160),
-      degree: degree.slice(0, 160),
-      field: '',
-    });
-    if (out.length >= 6) break;
+
+    if (hasDegree) {
+      if (currentEntry?.degree && !currentEntry?.school) {
+        entries.push(buildEduEntry(currentEntry));
+        currentEntry = null;
+      }
+      if (!currentEntry) currentEntry = {};
+      currentEntry.degree = line.replace(/\s*[,|–—].*$/, '').trim();
+      continue;
+    }
+
+    if (hasSchool) {
+      if (currentEntry && !currentEntry.school) {
+        currentEntry.school = line.replace(/\s*[,|–—].*$/, '').trim();
+        continue;
+      }
+      if (currentEntry?.degree || currentEntry?.school) {
+        entries.push(buildEduEntry(currentEntry));
+        currentEntry = null;
+      }
+      if (!currentEntry) currentEntry = {};
+      currentEntry.school = line.replace(/\s*[,|–—].*$/, '').trim();
+      continue;
+    }
+
+    if (currentEntry && !currentEntry.field && line.length < 80 && !/phone|email|linkedin|github/i.test(line)) {
+      currentEntry.field = line;
+    }
   }
-  return out;
+
+  if (currentEntry?.degree || currentEntry?.school) {
+    entries.push(buildEduEntry(currentEntry));
+  }
+
+  return entries.slice(0, 10);
 }
 
 function guessProjectEntries(sectionText: string): ProjectEntry[] {
@@ -1087,23 +1186,23 @@ export function parsedToProfilePatch(
 
   return {
     displayName: parsed.name || undefined,
-    phone: parsed.phone || undefined,
-    title: parsed.title || undefined,
-    linkedinUrl: parsed.linkedin || undefined,
-    website: parsed.website || undefined,
-    location: parsed.location || undefined,
-    skills: parsed.skills.length ? parsed.skills : undefined,
-    experienceYears: parsed.experience || undefined,
-    education: educationLines.length ? educationLines : undefined,
-    summary: parsed.summary || undefined,
-    preferredLocations: locations.length ? locations : undefined,
+    phone: parsed.phone || '',
+    title: parsed.title || '',
+    linkedinUrl: parsed.linkedin || '',
+    website: parsed.website || '',
+    location: parsed.location || '',
+    skills: parsed.skills,
+    experienceYears: parsed.experience,
+    education: educationLines,
+    summary: parsed.summary || '',
+    preferredLocations: locations,
     remotePreference: /remote/i.test(parsed.location) ? 'remote' : undefined,
-    experienceEntries: parsed.experienceEntries.length ? parsed.experienceEntries : undefined,
-    educationEntries: parsed.educationEntries.length ? parsed.educationEntries : undefined,
-    projects: parsed.projects.length ? parsed.projects : undefined,
-    certifications: parsed.certifications.length ? parsed.certifications : undefined,
-    languages: parsed.languages.length ? parsed.languages : undefined,
-    achievements: parsed.achievements.length ? parsed.achievements : undefined,
+    experienceEntries: parsed.experienceEntries,
+    educationEntries: parsed.educationEntries,
+    projects: parsed.projects,
+    certifications: parsed.certifications,
+    languages: parsed.languages,
+    achievements: parsed.achievements,
     atsScore: scoreAts(parsed),
     resumeFileName: fileName,
     resumeParsedAt: new Date().toISOString(),

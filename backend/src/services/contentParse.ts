@@ -94,13 +94,14 @@ export function parseContentSections(description: string): ContentSection[] {
 }
 
 export function isHiringPost(job: Job): boolean {
-  const src = String(job.source || '').toLowerCase();
-  return src === 'linkedin' || src === 'googlejobs';
+  return Boolean(job && job.title && job.company);
 }
 
 export function toHiringPost(job: Job): HiringPost {
   const body = job.description || '';
   const excerpt = body.replace(/\s+/g, ' ').trim().slice(0, 220) + (body.length > 220 ? '…' : '');
+  const email = job.contactEmail || job.hrEmail || extractContacts(body).email;
+  const phone = job.contactPhone || job.hrPhone || extractContacts(body).phone;
   return {
     id: `post-${job.id}`,
     title: job.title,
@@ -114,7 +115,7 @@ export function toHiringPost(job: Job): HiringPost {
     postUrl: job.applyUrl,
     postedAt: job.postedAt,
     jobId: job.id,
-    contacts: extractContacts(body),
+    contacts: { email, phone },
     sections: parseContentSections(body),
     matchScore: job.matchScore,
   };

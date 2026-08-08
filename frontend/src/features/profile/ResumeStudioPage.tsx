@@ -69,19 +69,47 @@ function profileToForm(profile: UserProfile | null): ResumeBuilderInput {
     skills: profile?.skills || [],
     experienceYears: profile?.experienceYears,
     experience: profile?.experienceEntries?.length
-      ? profile.experienceEntries
+      ? profile.experienceEntries.map((e) => ({
+          id: e.id || uid(),
+          company: e.company || '',
+          title: e.title || '',
+          location: e.location || '',
+          startDate: e.startDate || '',
+          endDate: e.endDate || '',
+          bullets: e.bullets?.length ? e.bullets : [''],
+        }))
       : [emptyExp()],
     education: profile?.educationEntries?.length
-      ? profile.educationEntries
+      ? profile.educationEntries.map((e) => ({
+          id: e.id || uid(),
+          school: e.school || e.degree || '',
+          degree: e.degree || e.school || '',
+          field: e.field || '',
+          startDate: e.startDate || '',
+          endDate: e.endDate || '',
+        }))
       : profile?.education?.length
-        ? profile.education.map((line) => ({
-            id: uid(),
-            school: line,
-            degree: line,
-            field: '',
-          }))
+        ? profile.education.map((line) => {
+            const parts = line.split(/\s*—\s*|\s*,\s*/);
+            const deg = parts[0] || line;
+            const sch = parts.slice(1).join(', ') || parts[0] || line;
+            return {
+              id: uid(),
+              degree: deg.trim(),
+              school: sch.trim(),
+              field: '',
+            };
+          })
         : [emptyEdu()],
-    projects: profile?.projects?.length ? profile.projects : [emptyProject()],
+    projects: profile?.projects?.length
+      ? profile.projects.map((p) => ({
+          id: p.id || uid(),
+          name: p.name || '',
+          tech: p.tech || '',
+          description: p.description || '',
+          bullets: p.bullets?.length ? p.bullets : [''],
+        }))
+      : [emptyProject()],
     certifications: profile?.certifications || [],
     languages: profile?.languages || [],
     achievements: profile?.achievements || [],
@@ -272,16 +300,32 @@ export function ResumeStudioPage() {
     languages: split(langsText),
     achievements: split(achievementsText, /\n/),
     experience: form.experience
-      .filter((e) => e.company.trim() || e.title.trim())
+      .filter((e) => e.company.trim() || e.title.trim() || e.bullets.some((b) => b.trim()))
       .map((e) => ({
-        ...e,
+        id: e.id || uid(),
+        company: e.company.trim(),
+        title: e.title.trim(),
+        location: (e.location || '').trim(),
+        startDate: (e.startDate || '').trim(),
+        endDate: (e.endDate || '').trim(),
         bullets: e.bullets.map((b) => b.trim()).filter(Boolean),
       })),
-    education: form.education.filter((e) => e.school.trim() || e.degree.trim()),
+    education: form.education
+      .filter((e) => e.school.trim() || e.degree.trim() || (e.field || '').trim())
+      .map((e) => ({
+        id: e.id || uid(),
+        school: e.school.trim(),
+        degree: e.degree.trim(),
+        field: (e.field || '').trim(),
+        endDate: (e.endDate || '').trim(),
+      })),
     projects: form.projects
-      .filter((p) => p.name.trim())
+      .filter((p) => p.name.trim() || (p.description || '').trim())
       .map((p) => ({
-        ...p,
+        id: p.id || uid(),
+        name: p.name.trim(),
+        tech: (p.tech || '').trim(),
+        description: (p.description || '').trim(),
         bullets: (p.bullets || []).map((b) => b.trim()).filter(Boolean),
       })),
   });
@@ -311,6 +355,9 @@ export function ResumeStudioPage() {
     setError(null);
     setMessage(null);
     setPreviewHtml(null);
+    setTips([]);
+    setTargetJobTitle('');
+    setTargetJobDescription('');
     try {
       const result = await profileRepository.uploadResume(file);
       // Uploaded resume is source of truth — hydrate form from parsed profile immediately
@@ -325,7 +372,7 @@ export function ResumeStudioPage() {
         }, ATS ${result.profile.atsScore ?? result.parsed.atsScore ?? '—'}).`,
       );
 
-      // Auto-generate ATS resume from uploaded structured data (optionally JD-aligned)
+      // Auto-generate ATS resume from uploaded structured data
       try {
         const fromUpload = profileToForm(result.profile);
         const optimized = await profileRepository.optimizeResume({
@@ -339,8 +386,8 @@ export function ResumeStudioPage() {
           ),
           education: fromUpload.education.filter((e) => e.school.trim() || e.degree.trim()),
           projects: fromUpload.projects.filter((p) => p.name.trim()),
-          jobTitle: targetJobTitle.trim() || undefined,
-          jobDescription: targetJobDescription.trim() || undefined,
+          jobTitle: undefined,
+          jobDescription: undefined,
         });
         syncFromProfile(optimized.profile);
         setPreviewHtml(optimized.resume.htmlContent || null);
@@ -589,14 +636,29 @@ export function ResumeStudioPage() {
           <Box className="aa-card p-5">
             <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
               <Typography fontWeight={800}>2. Edit profile</Typography>
-              <Button
-                size="small"
-                startIcon={<SaveRoundedIcon />}
-                disabled={saving}
-                onClick={() => void handleSaveProfile()}
-              >
-                {saving ? 'Saving…' : 'Save profile'}
-              </Button>
+              <Stack direction="row" spacing={1}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => {
+                    syncFromProfile(null);
+                    setTargetJobTitle('');
+                    setTargetJobDescription('');
+                    setPreviewHtml(null);
+                    setMessage('Form reset to default empty state.');
+                  }}
+                >
+                  Reset form
+                </Button>
+                <Button
+                  size="small"
+                  startIcon={<SaveRoundedIcon />}
+                  disabled={saving}
+                  onClick={() => void handleSaveProfile()}
+                >
+                  {saving ? 'Saving…' : 'Save profile'}
+                </Button>
+              </Stack>
             </Stack>
             <Stack spacing={1.75}>
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>

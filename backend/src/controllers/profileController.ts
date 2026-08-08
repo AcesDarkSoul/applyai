@@ -5,7 +5,7 @@ import { profileService } from '../services/profileService';
 import { resumeService } from '../services/resumeService';
 
 const experienceEntrySchema = z.object({
-  id: z.string().min(1),
+  id: z.string().optional(),
   company: z.string().max(160).default(''),
   title: z.string().max(160).default(''),
   location: z.string().max(120).optional(),
@@ -16,9 +16,9 @@ const experienceEntrySchema = z.object({
 });
 
 const educationEntrySchema = z.object({
-  id: z.string().min(1),
-  school: z.string().min(1).max(160),
-  degree: z.string().min(1).max(160),
+  id: z.string().optional(),
+  school: z.string().max(160).default(''),
+  degree: z.string().max(160).default(''),
   field: z.string().max(120).optional(),
   startDate: z.string().max(40).optional(),
   endDate: z.string().max(40).optional(),
@@ -26,11 +26,11 @@ const educationEntrySchema = z.object({
 });
 
 const projectEntrySchema = z.object({
-  id: z.string().min(1),
-  name: z.string().min(1).max(160),
+  id: z.string().optional(),
+  name: z.string().max(160).default(''),
   url: z.string().max(300).optional(),
   tech: z.string().max(200).optional(),
-  description: z.string().max(800),
+  description: z.string().max(800).default(''),
   bullets: z.array(z.string().max(400)).max(8).optional(),
 });
 

@@ -75,10 +75,13 @@ export function JobDetailPage() {
     () => (job ? parseContentSections(job.description || '') : []),
     [job],
   );
-  const contacts = useMemo(
-    () => (job ? extractContacts(job.description || '') : { email: null, phone: null }),
-    [job],
-  );
+  const contacts = useMemo(() => {
+    if (!job) return { email: null, phone: null };
+    const extracted = extractContacts(job.description || '');
+    const email = job.contactEmail || job.hrEmail || extracted.email || null;
+    const phone = job.contactPhone || job.hrPhone || extracted.phone || null;
+    return { email, phone };
+  }, [job]);
 
   async function onSmartApply() {
     if (!job) return;

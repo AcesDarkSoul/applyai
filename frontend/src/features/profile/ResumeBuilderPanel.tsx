@@ -80,25 +80,49 @@ function fromProfile(profile: UserProfile | null): ResumeBuilderInput {
     summary: profile?.summary || '',
     skills: profile?.skills || [],
     experienceYears: profile?.experienceYears,
-    experience:
-      profile?.experienceEntries?.length
-        ? profile.experienceEntries
-        : [emptyExperience()],
-    education:
-      profile?.educationEntries?.length
-        ? profile.educationEntries
-        : profile?.education?.length
-          ? profile.education.map((line) => ({
-              id: uid(),
-              school: line,
-              degree: line,
-              field: '',
-              startDate: '',
-              endDate: '',
-              details: '',
-            }))
-          : [emptyEducation()],
-    projects: profile?.projects?.length ? profile.projects : [emptyProject()],
+    experience: profile?.experienceEntries?.length
+      ? profile.experienceEntries.map((e) => ({
+          id: e.id || uid(),
+          company: e.company || '',
+          title: e.title || '',
+          location: e.location || '',
+          startDate: e.startDate || '',
+          endDate: e.endDate || '',
+          current: e.current ?? false,
+          bullets: e.bullets?.length ? e.bullets : [''],
+        }))
+      : [emptyExperience()],
+    education: profile?.educationEntries?.length
+      ? profile.educationEntries.map((e) => ({
+          id: e.id || uid(),
+          school: e.school || '',
+          degree: e.degree || '',
+          field: e.field || '',
+          startDate: e.startDate || '',
+          endDate: e.endDate || '',
+          details: e.details || '',
+        }))
+      : profile?.education?.length
+        ? profile.education.map((line) => ({
+            id: uid(),
+            school: line,
+            degree: line,
+            field: '',
+            startDate: '',
+            endDate: '',
+            details: '',
+          }))
+        : [emptyEducation()],
+    projects: profile?.projects?.length
+      ? profile.projects.map((p) => ({
+          id: p.id || uid(),
+          name: p.name || '',
+          url: p.url || '',
+          tech: p.tech || '',
+          description: p.description || '',
+          bullets: p.bullets?.length ? p.bullets : [''],
+        }))
+      : [emptyProject()],
     certifications: profile?.certifications || [],
     languages: profile?.languages || [],
     achievements: profile?.achievements || [],

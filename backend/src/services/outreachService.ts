@@ -271,8 +271,11 @@ export async function outreachApply(
   job: Job,
   options: OutreachOptions,
 ): Promise<OutreachResult> {
-  const blob = `${job.description || ''} ${job.title} ${job.company} ${job.applyUrl}`;
-  const contacts = extractContactsFromText(blob);
+  const contacts: JobContacts = {
+    email: explicitEmail || extracted.email || null,
+    phone: explicitPhone || extracted.phone || null,
+  };
+
   const creds = resolveOutreach(profile);
   // User opt-in to live background send overrides global dry-run
   const dryRun = creds.autoSendEnabled ? false : env.OUTREACH_DRY_RUN;

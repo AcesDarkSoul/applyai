@@ -2,6 +2,7 @@ import {
   Alert,
   Box,
   Button,
+  Chip,
   FormControlLabel,
   LinearProgress,
   Stack,
@@ -196,26 +197,27 @@ export function AiToolsPage() {
               'linear-gradient(125deg, rgba(91,92,226,0.16), rgba(15,23,42,0.02) 50%, rgba(236,72,153,0.08))',
           }}
         >
-        <Box sx={{ maxWidth: 720 }}>
-          <Chip
-            icon={<AutoAwesomeRoundedIcon fontSize="small" />}
-            label="AUTOMATION & INTEGRATIONS"
-            sx={{
-              bgcolor: 'rgba(91,92,226,0.1)',
-              color: PRIMARY,
-              fontWeight: 700,
-              mb: 1.5,
-              border: '1px solid rgba(91,92,226,0.14)',
-              '& .MuiChip-icon': { color: PRIMARY },
-            }}
-          />
-          <Typography fontWeight={900} sx={{ fontSize: { xs: 24, md: 32 }, letterSpacing: '-0.035em', mb: 1 }}>
-            Smart Automation Hub
-          </Typography>
-          <Typography color="text.secondary" sx={{ fontSize: 15.5, lineHeight: 1.6 }}>
-            Automate your job discovery and application workflow. Generate tailored cover letters and track new
-            job openings automatically.
-          </Typography>
+          <Box sx={{ maxWidth: 720 }}>
+            <Chip
+              icon={<AutoAwesomeRoundedIcon fontSize="small" />}
+              label="AUTOMATION & INTEGRATIONS"
+              sx={{
+                bgcolor: 'rgba(91,92,226,0.1)',
+                color: PRIMARY,
+                fontWeight: 700,
+                mb: 1.5,
+                border: '1px solid rgba(91,92,226,0.14)',
+                '& .MuiChip-icon': { color: PRIMARY },
+              }}
+            />
+            <Typography fontWeight={900} sx={{ fontSize: { xs: 24, md: 32 }, letterSpacing: '-0.035em', mb: 1 }}>
+              Smart Automation Hub
+            </Typography>
+            <Typography color="text.secondary" sx={{ fontSize: 15.5, lineHeight: 1.6 }}>
+              Automate your job discovery and application workflow. Generate tailored cover letters and track new
+              job openings automatically.
+            </Typography>
+          </Box>
         </Box>
       </motion.div>
 

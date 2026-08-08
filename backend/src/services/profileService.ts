@@ -80,9 +80,15 @@ export class ProfileService {
       uid: current.uid,
       email: cleanPatch.email || (current.email && !current.email.endsWith('@demo.local') ? current.email : auth.email),
       role: current.role,
-      skills: cleanPatch.skills ?? current.skills ?? [],
-      education: cleanPatch.education ?? current.education ?? [],
-      preferredLocations: cleanPatch.preferredLocations ?? current.preferredLocations ?? [],
+      skills: cleanPatch.skills !== undefined ? cleanPatch.skills : (current.skills ?? []),
+      education: cleanPatch.education !== undefined ? cleanPatch.education : (current.education ?? []),
+      experienceEntries: cleanPatch.experienceEntries !== undefined ? cleanPatch.experienceEntries : (current.experienceEntries ?? []),
+      educationEntries: cleanPatch.educationEntries !== undefined ? cleanPatch.educationEntries : (current.educationEntries ?? []),
+      projects: cleanPatch.projects !== undefined ? cleanPatch.projects : (current.projects ?? []),
+      certifications: cleanPatch.certifications !== undefined ? cleanPatch.certifications : (current.certifications ?? []),
+      languages: cleanPatch.languages !== undefined ? cleanPatch.languages : (current.languages ?? []),
+      achievements: cleanPatch.achievements !== undefined ? cleanPatch.achievements : (current.achievements ?? []),
+      preferredLocations: cleanPatch.preferredLocations !== undefined ? cleanPatch.preferredLocations : (current.preferredLocations ?? []),
       outreach: cleanPatch.outreach
         ? { ...(current.outreach || {}), ...cleanPatch.outreach }
         : current.outreach,

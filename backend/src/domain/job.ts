@@ -9,6 +9,10 @@ export interface Job {
   salary?: string;
   source: 'linkedin' | 'indeed' | 'naukri' | 'googlejobs' | 'other';
   applyUrl: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  hrEmail?: string;
+  hrPhone?: string;
   postedAt?: string;
   matchScore?: number;
   matchBreakdown?: MatchBreakdown;

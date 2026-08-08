@@ -16,232 +16,7 @@ export type JobSearchOptions = {
   limit?: number;
 };
 
-const SAMPLE_JOBS: Job[] = [
-  {
-    id: 'job-1',
-    title: 'Senior Full Stack Engineer',
-    company: 'Nimbus Labs',
-    location: 'Bengaluru, India',
-    description:
-      'Build React and Node.js platforms. TypeScript, Firebase, OpenAI integrations. 5+ years experience preferred.',
-    employmentType: 'Full-time',
-    isRemote: true,
-    salary: 'INR 30L - 45L',
-    source: 'linkedin',
-    applyUrl: 'https://www.linkedin.com/jobs/',
-    postedAt: new Date().toISOString(),
-  },
-  {
-    id: 'job-2',
-    title: 'Frontend React Developer',
-    company: 'PixelForge',
-    location: 'Hyderabad, India',
-    description:
-      'Craft responsive UIs with React, TypeScript, TailwindCSS and Material UI. Strong CSS and accessibility skills.',
-    employmentType: 'Full-time',
-    isRemote: false,
-    salary: 'INR 12L - 20L',
-    source: 'naukri',
-    applyUrl: 'https://www.naukri.com/',
-    postedAt: new Date().toISOString(),
-  },
-  {
-    id: 'job-3',
-    title: 'Backend Node.js Engineer',
-    company: 'Orbit Pay',
-    location: 'Remote',
-    description:
-      'Design REST APIs with Express, JWT auth, Firestore, rate limiting, and observability. Experience with OpenAI a plus.',
-    employmentType: 'Full-time',
-    isRemote: true,
-    salary: '$90k – $120k',
-    source: 'indeed',
-    applyUrl: 'https://www.indeed.com/',
-    postedAt: new Date().toISOString(),
-  },
-  {
-    id: 'job-4',
-    title: 'AI Product Engineer',
-    company: 'ApplyAI Partner Co',
-    location: 'Pune, India',
-    description:
-      'Ship AI features: resume parsing, job matching, prompt versioning. Python or Node.js, LLM prompt engineering.',
-    employmentType: 'Full-time',
-    isRemote: true,
-    salary: 'INR 25L - 40L',
-    source: 'linkedin',
-    applyUrl: 'https://www.linkedin.com/jobs/',
-    postedAt: new Date().toISOString(),
-  },
-  {
-    id: 'job-5',
-    title: 'React Native Mobile Developer',
-    company: 'Trailblaze Apps',
-    location: 'Mumbai, India',
-    description:
-      'Build cross-platform mobile apps with React Native, TypeScript, and Firebase. Push notifications and offline-first UX.',
-    employmentType: 'Full-time',
-    isRemote: false,
-    salary: 'INR 15L - 25L',
-    source: 'naukri',
-    applyUrl: 'https://www.naukri.com/',
-    postedAt: new Date().toISOString(),
-  },
-  {
-    id: 'job-6',
-    title: 'DevOps Engineer',
-    company: 'CloudNest',
-    location: 'Remote (India)',
-    description:
-      'Own CI/CD, Docker, Kubernetes, AWS. Terraform and monitoring experience preferred. Collaborate with full-stack teams.',
-    employmentType: 'Full-time',
-    isRemote: true,
-    salary: 'INR 20L - 35L',
-    source: 'linkedin',
-    applyUrl: 'https://www.linkedin.com/jobs/',
-    postedAt: new Date().toISOString(),
-  },
-  {
-    id: 'job-7',
-    title: 'Full Stack Developer (MERN)',
-    company: 'BrightCart',
-    location: 'Noida, India',
-    description:
-      'MongoDB, Express, React, Node.js e-commerce platform. REST APIs, payment integrations, and performance tuning.',
-    employmentType: 'Full-time',
-    isRemote: false,
-    salary: 'INR 10L - 18L',
-    source: 'indeed',
-    applyUrl: 'https://www.indeed.com/',
-    postedAt: new Date().toISOString(),
-  },
-  {
-    id: 'job-8',
-    title: 'TypeScript Platform Engineer',
-    company: 'Ledgerly',
-    location: 'Bengaluru, India',
-    description:
-      'Design typed services, event-driven workflows, and developer tooling. Node.js, PostgreSQL, Redis, GraphQL.',
-    employmentType: 'Full-time',
-    isRemote: true,
-    salary: 'INR 28L - 42L',
-    source: 'linkedin',
-    applyUrl: 'https://www.linkedin.com/jobs/',
-    postedAt: new Date().toISOString(),
-  },
-  {
-    id: 'job-9',
-    title: 'Junior Software Engineer',
-    company: 'StartHive',
-    location: 'Pune, India',
-    description:
-      'Entry-level role for JavaScript/TypeScript developers. Mentorship on React, Node.js, Git, and Agile delivery.',
-    employmentType: 'Full-time',
-    isRemote: false,
-    salary: 'INR 6L - 10L',
-    source: 'naukri',
-    applyUrl: 'https://www.naukri.com/',
-    postedAt: new Date().toISOString(),
-  },
-  {
-    id: 'job-10',
-    title: 'QA Automation Engineer',
-    company: 'QualityForge',
-    location: 'Chennai, India',
-    description:
-      'Playwright/Cypress automation, API testing, CI pipelines. Experience with Node.js test tooling is a plus.',
-    employmentType: 'Full-time',
-    isRemote: true,
-    salary: 'INR 12L - 20L',
-    source: 'other',
-    applyUrl: 'https://careers.example.com/qa-automation',
-    postedAt: new Date().toISOString(),
-  },
-  {
-    id: 'job-11',
-    title: 'Solutions Engineer',
-    company: 'StackBridge',
-    location: 'Remote',
-    description:
-      'Customer-facing technical role: demos, PoCs, and integrations using REST APIs, webhooks, and JavaScript.',
-    employmentType: 'Full-time',
-    isRemote: true,
-    salary: '$80k – $110k',
-    source: 'indeed',
-    applyUrl: 'https://www.indeed.com/',
-    postedAt: new Date().toISOString(),
-  },
-  {
-    id: 'job-12',
-    title: 'Software Engineer – Intern',
-    company: 'CampusCode',
-    location: 'Hyderabad, India',
-    description:
-      'Internship building internal tools with React and Express. Strong fundamentals in data structures preferred.',
-    employmentType: 'Internship',
-    isRemote: false,
-    salary: 'Stipend',
-    source: 'other',
-    applyUrl: 'https://careers.example.com/intern',
-    postedAt: new Date().toISOString(),
-  },
-  {
-    id: 'job-13',
-    title: 'Android Developer',
-    company: 'Mobivibe',
-    location: 'Bengaluru, India',
-    description:
-      'Build production Android apps with Kotlin, Jetpack Compose, MVVM, Room, Retrofit, and Firebase. Experience with WorkManager and Material Design preferred.',
-    employmentType: 'Full-time',
-    isRemote: true,
-    salary: 'INR 12L - 22L',
-    source: 'naukri',
-    applyUrl: 'https://www.naukri.com/',
-    postedAt: new Date().toISOString(),
-  },
-  {
-    id: 'job-14',
-    title: 'Android Engineer (Kotlin)',
-    company: 'PayNest Mobile',
-    location: 'Gurgaon, India',
-    description:
-      'Kotlin, Jetpack Compose, Hilt, Coroutines, REST APIs, Firebase Auth. Ship digital payment features with clean architecture and strong UI polish.',
-    employmentType: 'Full-time',
-    isRemote: false,
-    salary: 'INR 15L - 28L',
-    source: 'indeed',
-    applyUrl: 'https://www.indeed.com/',
-    postedAt: new Date().toISOString(),
-  },
-  {
-    id: 'job-15',
-    title: 'Mobile Android Developer',
-    company: 'TravelLoop',
-    location: 'Remote (India)',
-    description:
-      'Android SDK, Kotlin, Jetpack Navigation, Google Maps, Firebase realtime sync. Build travel companion experiences with offline Room caching.',
-    employmentType: 'Full-time',
-    isRemote: true,
-    salary: 'INR 10L - 18L',
-    source: 'naukri',
-    applyUrl: 'https://www.naukri.com/',
-    postedAt: new Date().toISOString(),
-  },
-  {
-    id: 'job-16',
-    title: 'Senior Android Developer',
-    company: 'Crimson Labs',
-    location: 'Pune, India',
-    description:
-      'Lead Android development using Kotlin, Jetpack Compose, MVVM, Retrofit, OkHttp, and CI. Mentor juniors and own app performance.',
-    employmentType: 'Full-time',
-    isRemote: true,
-    salary: 'INR 22L - 35L',
-    source: 'indeed',
-    applyUrl: 'https://www.indeed.com/',
-    postedAt: new Date().toISOString(),
-  },
-];
+
 
 function detectSource(url: string): Job['source'] {
   const u = url.toLowerCase();
@@ -264,24 +39,19 @@ export class JobService {
       ? buildJobSearchQuery(profile, explicitQ)
       : explicitQ || buildJobSearchQuery(profile);
 
-    let jobs = SAMPLE_JOBS;
     const catalog = jobCatalog.list();
+    let jobs: Job[] = catalog.length > 0 ? this.dedupeJobs(catalog) : [];
 
-    if (env.PREFER_LIVE_CATALOG && catalog.length > 0) {
-      // Keep live catalog + samples so resume-specific roles still appear
-      jobs = this.dedupeJobs([...catalog, ...SAMPLE_JOBS]);
-    } else if (env.RAPIDAPI_KEY) {
+    if (!jobs.length && env.RAPIDAPI_KEY) {
       try {
         jobs = await this.fetchFromJSearch(effectiveQuery);
-        jobs = this.dedupeJobs([...jobs, ...catalog, ...SAMPLE_JOBS]);
+        jobs = this.dedupeJobs(jobs);
       } catch (err) {
-        logger.warn('JSearch failed; using sample/catalog jobs', {
+        logger.warn('JSearch failed', {
           err: err instanceof Error ? err.message : err,
         });
-        jobs = catalog.length > 0 ? this.dedupeJobs([...catalog, ...SAMPLE_JOBS]) : SAMPLE_JOBS;
+        jobs = [];
       }
-    } else if (catalog.length > 0) {
-      jobs = this.dedupeJobs([...catalog, ...SAMPLE_JOBS]);
     }
 
     // Only hard-filter by typed search text. Profile-derived query ranks via match score.
@@ -370,7 +140,7 @@ export class JobService {
       return { ...fromCatalog, matchScore: breakdown.overall, matchBreakdown: breakdown };
     }
     const jobs = await this.search('', profile, { matched: true, sortByMatch: true });
-    return jobs.find((j) => j.id === id) ?? SAMPLE_JOBS.find((j) => j.id === id) ?? null;
+    return jobs.find((j) => j.id === id) ?? null;
   }
 
   async ingestNormalized(rawJobs: NormalizedJobInput[], sourceLabel = 'n8n') {

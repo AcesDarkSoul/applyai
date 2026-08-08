@@ -2,6 +2,8 @@ import { Box, Button, Chip, LinearProgress, Stack, Typography } from '@mui/mater
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined';
+import MailOutlineIcon from '@mui/icons-material/MailOutline';
+import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined';
 import { motion } from 'framer-motion';
 import { Link as RouterLink } from 'react-router-dom';
 import type { Job } from '../types';
@@ -26,6 +28,8 @@ export function JobCard({ job, onSave, index = 0 }: JobCardProps) {
   const accent = sourceColor[job.source] || sourceColor.other;
   const match = typeof job.matchScore === 'number' ? job.matchScore : null;
   const blurb = (job.description || '').replace(/\s+/g, ' ').trim().slice(0, 140);
+  const email = job.contactEmail || job.hrEmail;
+  const phone = job.contactPhone || job.hrPhone;
 
   return (
     <motion.div
@@ -76,6 +80,24 @@ export function JobCard({ job, onSave, index = 0 }: JobCardProps) {
                 )}
                 {job.employmentType && (
                   <Chip size="small" label={job.employmentType} variant="outlined" />
+                )}
+                {email && (
+                  <Chip
+                    size="small"
+                    icon={<MailOutlineIcon fontSize="small" />}
+                    label={email}
+                    variant="outlined"
+                    sx={{ fontWeight: 600, fontSize: 11.5 }}
+                  />
+                )}
+                {phone && (
+                  <Chip
+                    size="small"
+                    icon={<PhoneOutlinedIcon fontSize="small" />}
+                    label={phone}
+                    variant="outlined"
+                    sx={{ fontWeight: 600, fontSize: 11.5 }}
+                  />
                 )}
               </Stack>
               <Typography fontWeight={800} fontSize={18} letterSpacing="-0.02em" gutterBottom>

@@ -35,7 +35,7 @@ export function PostsPage() {
   const [posts, setPosts] = useState<HiringPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [source, setSource] = useState<'all' | 'linkedin' | 'googlejobs'>('all');
+  const [source, setSource] = useState<string>('all');
 
   async function load(query = '') {
     setLoading(true);
@@ -58,14 +58,18 @@ export function PostsPage() {
 
   const visible = useMemo(() => {
     if (source === 'all') return posts;
-    return posts.filter((p) => p.source === source);
+    return posts.filter((p) => p.source?.toLowerCase() === source.toLowerCase());
   }, [posts, source]);
 
   const counts = useMemo(() => {
-    const base = { all: posts.length, linkedin: 0, googlejobs: 0 };
+    const base: Record<string, number> = { all: posts.length, indeed: 0, linkedin: 0, naukri: 0, googlejobs: 0, other: 0 };
     for (const p of posts) {
-      if (p.source === 'linkedin') base.linkedin += 1;
-      if (p.source === 'googlejobs') base.googlejobs += 1;
+      const src = p.source?.toLowerCase() || 'other';
+      if (src in base) {
+        base[src] += 1;
+      } else {
+        base.other += 1;
+      }
     }
     return base;
   }, [posts]);
@@ -87,7 +91,7 @@ export function PostsPage() {
           <Stack direction="row" spacing={1} alignItems="center" mb={1}>
             <Box className="aa-pulse-dot" />
             <Typography fontSize={12.5} fontWeight={700} color="text.secondary">
-              LinkedIn & Google Jobs posts
+              Live Hiring Posts
             </Typography>
           </Stack>
           <Stack direction="row" spacing={1.5} alignItems="center" mb={0.75}>
@@ -97,8 +101,7 @@ export function PostsPage() {
             </Typography>
           </Stack>
           <Typography color="text.secondary" fontSize={14.5} sx={{ maxWidth: 640, mb: 2.25 }}>
-            Full LinkedIn & Google Jobs posts with complete text, contacts, and structured sections.
-            Formal board roles live under Find Jobs.
+            Explore live hiring posts with complete details and original contact info extracted directly from active listings.
           </Typography>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
             <TextField
@@ -125,29 +128,32 @@ export function PostsPage() {
       </motion.div>
 
       <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
-        {(
-          [
-            { id: 'all' as const, label: 'All', color: PRIMARY, count: counts.all },
-            { id: 'linkedin' as const, label: 'LinkedIn', color: '#0a66c2', count: counts.linkedin },
-            { id: 'googlejobs' as const, label: 'Google Jobs', color: '#3b82f6', count: counts.googlejobs },
-          ] as const
-        ).map((f) => {
-          const selected = source === f.id;
-          return (
-            <Chip
-              key={f.id}
-              label={`${f.label} (${f.count})`}
-              onClick={() => setSource(f.id)}
-              sx={{
-                fontWeight: 700,
-                border: '1px solid',
-                borderColor: f.color,
-                bgcolor: selected ? f.color : 'transparent',
-                color: selected ? '#fff' : 'text.primary',
-              }}
-            />
-          );
-        })}
+        {[
+          { id: 'all', label: 'All', color: PRIMARY, count: counts.all },
+          { id: 'indeed', label: 'Indeed', color: '#14b8a6', count: counts.indeed },
+          { id: 'linkedin', label: 'LinkedIn', color: '#0a66c2', count: counts.linkedin },
+          { id: 'naukri', label: 'Naukri', color: '#ec4899', count: counts.naukri },
+          { id: 'googlejobs', label: 'Google Jobs', color: '#3b82f6', count: counts.googlejobs },
+          { id: 'other', label: 'Other', color: '#f59e0b', count: counts.other },
+        ]
+          .filter((f) => f.id === 'all' || f.count > 0)
+          .map((f) => {
+            const selected = source === f.id;
+            return (
+              <Chip
+                key={f.id}
+                label={`${f.label} (${f.count})`}
+                onClick={() => setSource(f.id)}
+                sx={{
+                  fontWeight: 700,
+                  border: '1px solid',
+                  borderColor: f.color,
+                  bgcolor: selected ? f.color : 'transparent',
+                  color: selected ? '#fff' : 'text.primary',
+                }}
+              />
+            );
+          })}
       </Stack>
 
       {error && <Alert severity="error">{error}</Alert>}
