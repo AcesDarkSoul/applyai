@@ -6,9 +6,14 @@ import { fileURLToPath, URL } from 'node:url';
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
+    // Prevent "Invalid hook call" from multiple React copies (common with Zustand/MUI + Vite)
+    dedupe: ['react', 'react-dom'],
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
+  },
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'react/jsx-runtime', 'zustand'],
   },
   server: {
     port: 5173,

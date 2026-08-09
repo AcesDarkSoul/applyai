@@ -254,7 +254,10 @@ export function AppShell() {
         </Drawer>
       )}
 
-      <Box className="flex-1 min-w-0 flex flex-col" sx={{ pb: isMobile ? '84px' : 0 }}>
+      <Box
+        className="flex-1 min-w-0 flex flex-col"
+        sx={{ pb: isMobile ? 'calc(84px + env(safe-area-inset-bottom, 0px))' : 0 }}
+      >
         <TopBar
           title={pageTitle}
           hint={pageHint}
@@ -269,7 +272,15 @@ export function AppShell() {
           displayName={profile?.displayName || 'A'}
         />
 
-        <Box className="px-4 md:px-8 pb-8 pt-2 flex-1 max-w-[1200px] w-full mx-auto">
+        <Box
+          className="flex-1 w-full mx-auto"
+          sx={{
+            px: { xs: 1.75, sm: 2.5, md: 3.5, lg: 4 },
+            pb: { xs: 3, md: 4 },
+            pt: { xs: 1, md: 1.5 },
+            maxWidth: 1200,
+          }}
+        >
           <AnimatePresence mode="wait">
             <PageTransition key={location.pathname}>
               <Outlet />
@@ -278,7 +289,16 @@ export function AppShell() {
         </Box>
       </Box>
 
-      <Drawer open={open} onClose={() => setOpen(false)}>
+      <Drawer
+        open={open}
+        onClose={() => setOpen(false)}
+        PaperProps={{
+          sx: {
+            width: 280,
+            borderRadius: { xs: '0 20px 20px 0', sm: 0 },
+          },
+        }}
+      >
         {drawer}
       </Drawer>
 
@@ -286,20 +306,23 @@ export function AppShell() {
         <Box
           sx={{
             position: 'fixed',
-            left: 10,
-            right: 10,
-            bottom: 10,
+            left: 12,
+            right: 12,
+            bottom: 'calc(10px + env(safe-area-inset-bottom, 0px))',
             zIndex: 1200,
-            bgcolor: mode === 'dark' ? 'rgba(21,23,42,0.92)' : 'rgba(255,255,255,0.92)',
+            bgcolor: mode === 'dark' ? 'rgba(21,23,42,0.94)' : 'rgba(255,255,255,0.94)',
             border: '1px solid',
             borderColor: 'divider',
             display: 'flex',
             justifyContent: 'space-around',
-            py: 0.85,
-            px: 0.75,
-            borderRadius: 4,
-            boxShadow: '0 12px 36px rgba(91,92,226,0.16)',
-            backdropFilter: 'blur(14px)',
+            alignItems: 'center',
+            py: 0.65,
+            px: 0.5,
+            borderRadius: 4.5,
+            boxShadow: mode === 'dark'
+              ? '0 14px 40px rgba(0,0,0,0.4)'
+              : '0 14px 40px rgba(91,92,226,0.18)',
+            backdropFilter: 'blur(18px) saturate(1.15)',
           }}
         >
           {mobileNav.map((item) => {
@@ -316,19 +339,33 @@ export function AppShell() {
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
-                  gap: 0.2,
-                  py: 0.55,
-                  px: 1.25,
-                  borderRadius: 2.5,
+                  gap: 0.35,
+                  py: 0.75,
+                  px: 1.5,
+                  borderRadius: 3,
                   color: active ? PRIMARY : 'text.secondary',
                   bgcolor: active ? 'rgba(91,92,226,0.12)' : 'transparent',
-                  minWidth: 60,
-                  transition: 'background 0.18s ease, transform 0.18s ease',
-                  transform: active ? 'translateY(-1px)' : 'none',
+                  minWidth: 64,
+                  minHeight: 52,
+                  justifyContent: 'center',
+                  transition: 'background 0.18s ease, transform 0.18s ease, color 0.18s ease',
+                  transform: active ? 'translateY(-2px)' : 'none',
+                  position: 'relative',
+                  '&::after': active
+                    ? {
+                        content: '""',
+                        position: 'absolute',
+                        top: 6,
+                        width: 18,
+                        height: 3,
+                        borderRadius: 99,
+                        bgcolor: PRIMARY,
+                      }
+                    : undefined,
                 }}
               >
                 {item.icon}
-                <Typography fontSize={11} fontWeight={active ? 800 : 600}>
+                <Typography fontSize={11} fontWeight={active ? 800 : 600} letterSpacing="-0.01em">
                   {item.label}
                 </Typography>
               </Box>
