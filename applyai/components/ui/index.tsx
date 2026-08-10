@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   Platform,
   useWindowDimensions,
 } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, BorderRadius, FontSize, Spacing, Shadows } from '@/constants/theme';
 
@@ -103,22 +104,89 @@ export function Button({
 interface InputProps extends TextInputProps {
   label?: string;
   error?: string;
-  icon?: string;
+  /** Ionicons name (e.g. mail-outline) or legacy emoji string */
+  icon?: keyof typeof Ionicons.glyphMap | (string & {});
+  /** When true with secureTextEntry, shows an eye toggle */
+  showPasswordToggle?: boolean;
 }
 
-export function Input({ label, error, style, icon, ...props }: InputProps) {
+function isIoniconName(icon: string): icon is keyof typeof Ionicons.glyphMap {
+  return /^[a-z0-9-]+$/.test(icon);
+}
+
+export function Input({
+  label,
+  error,
+  style,
+  icon,
+  secureTextEntry,
+  showPasswordToggle,
+  onFocus,
+  onBlur,
+  ...props
+}: InputProps) {
+  const [focused, setFocused] = useState(false);
+  const [visible, setVisible] = useState(false);
+  const isPassword = !!secureTextEntry;
+  const toggle = showPasswordToggle ?? isPassword;
+
   return (
     <View style={styles.inputContainer}>
-      {label && <Text style={styles.label}>{label}</Text>}
-      <View style={styles.inputWrapper}>
-        {icon && <Text style={styles.inputIcon}>{icon}</Text>}
+      {label ? <Text style={styles.label}>{label}</Text> : null}
+      <View
+        style={[
+          styles.inputWrapper,
+          focused && styles.inputWrapperFocused,
+          error ? styles.inputWrapperError : null,
+        ]}
+      >
+        {icon ? (
+          isIoniconName(icon) ? (
+            <Ionicons
+              name={icon}
+              size={18}
+              color={focused ? Colors.primary : Colors.textMuted}
+              style={styles.inputIconGlyph}
+            />
+          ) : (
+            <Text style={styles.inputIconEmoji}>{icon}</Text>
+          )
+        ) : null}
         <TextInput
-          style={[styles.input, icon && styles.inputWithIcon, error && styles.inputError, style]}
+          style={[
+            styles.input,
+            icon ? styles.inputWithIcon : null,
+            toggle && isPassword ? styles.inputWithToggle : null,
+            style,
+          ]}
           placeholderTextColor={Colors.textMuted}
+          secureTextEntry={isPassword && !visible}
+          onFocus={(e) => {
+            setFocused(true);
+            onFocus?.(e);
+          }}
+          onBlur={(e) => {
+            setFocused(false);
+            onBlur?.(e);
+          }}
           {...props}
         />
+        {toggle && isPassword ? (
+          <Pressable
+            onPress={() => setVisible((v) => !v)}
+            hitSlop={10}
+            style={styles.inputToggle}
+            accessibilityLabel={visible ? 'Hide password' : 'Show password'}
+          >
+            <Ionicons
+              name={visible ? 'eye-off-outline' : 'eye-outline'}
+              size={20}
+              color={Colors.textMuted}
+            />
+          </Pressable>
+        ) : null}
       </View>
-      {error && <Text style={styles.errorText}>{error}</Text>}
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
     </View>
   );
 }
@@ -278,9 +346,9 @@ export function useResponsive() {
 }
 
 const sizeStyles = {
-  sm: { paddingVertical: Spacing.sm + 2, paddingHorizontal: Spacing.md },
-  md: { paddingVertical: Spacing.md, paddingHorizontal: Spacing.lg },
-  lg: { paddingVertical: Spacing.md + 6, paddingHorizontal: Spacing.xl },
+  sm: { paddingVertical: Spacing.sm + 2, paddingHorizontal: Spacing.md, minHeight: 40 },
+  md: { paddingVertical: Spacing.md, paddingHorizontal: Spacing.lg, minHeight: 48 },
+  lg: { paddingVertical: Spacing.md + 6, paddingHorizontal: Spacing.xl, minHeight: 54 },
 };
 
 const sizeTextStyles = {
@@ -293,12 +361,14 @@ const styles = StyleSheet.create({
   buttonBase: {
     borderRadius: BorderRadius.lg,
     overflow: 'hidden',
+    minHeight: 48,
     ...Shadows.sm,
   },
   gradient: {
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: BorderRadius.lg,
+    minHeight: 48,
   },
   buttonText: {
     color: Colors.white,
@@ -313,26 +383,48 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: Spacing.xs,
   },
-  inputWrapper: { position: 'relative' },
-  inputIcon: {
-    position: 'absolute',
-    left: Spacing.md,
-    top: '50%',
-    transform: [{ translateY: -10 }],
-    fontSize: 16,
-    zIndex: 1,
-  },
-  input: {
+  inputWrapper: {
+    position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: Colors.surfaceLight,
     borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    color: Colors.text,
-    fontSize: FontSize.md,
     borderWidth: 1.5,
     borderColor: Colors.border,
+    minHeight: 52,
+  },
+  inputWrapperFocused: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.white,
+    ...Shadows.sm,
+  },
+  inputWrapperError: { borderColor: Colors.danger },
+  inputIconGlyph: {
+    position: 'absolute',
+    left: Spacing.md,
+    zIndex: 1,
+  },
+  inputIconEmoji: {
+    position: 'absolute',
+    left: Spacing.md,
+    zIndex: 1,
+    fontSize: 16,
+  },
+  input: {
+    flex: 1,
+    paddingVertical: Spacing.md + 2,
+    paddingHorizontal: Spacing.md,
+    color: Colors.text,
+    fontSize: FontSize.md,
   },
   inputWithIcon: { paddingLeft: Spacing.xl + Spacing.sm },
-  inputError: { borderColor: Colors.danger },
+  inputWithToggle: { paddingRight: Spacing.xl + Spacing.sm },
+  inputToggle: {
+    position: 'absolute',
+    right: Spacing.md,
+    padding: 4,
+    zIndex: 1,
+  },
   errorText: { color: Colors.danger, fontSize: FontSize.xs, marginTop: Spacing.xs },
   card: {
     backgroundColor: Colors.card,
@@ -393,7 +485,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing.md,
   },
-  sectionTitle: { color: Colors.text, fontSize: FontSize.lg, fontWeight: '800' },
+  sectionTitle: { color: Colors.text, fontSize: FontSize.lg, fontWeight: '800', letterSpacing: -0.3 },
   sectionSubtitle: { color: Colors.textMuted, fontSize: FontSize.sm, marginTop: 2 },
   sectionAction: { color: Colors.primary, fontSize: FontSize.sm, fontWeight: '700' },
 });

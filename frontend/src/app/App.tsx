@@ -1,6 +1,6 @@
 import { CssBaseline, ThemeProvider } from '@mui/material';
 import { useEffect, useState } from 'react';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { LoginPage } from '../features/auth/LoginPage';
 import { OverviewPage } from '../features/dashboard/OverviewPage';
 import { ApplicationsPage } from '../features/applications/ApplicationsPage';
@@ -9,17 +9,27 @@ import { AnalyticsPage } from '../features/ai/AnalyticsPage';
 import { JobDetailPage } from '../features/jobs/JobDetailPage';
 import { JobsPage } from '../features/jobs/JobsPage';
 import { SavedJobsPage } from '../features/jobs/SavedJobsPage';
+import { NotificationsPage } from '../features/notifications/NotificationsPage';
 import { PostDetailPage } from '../features/posts/PostDetailPage';
 import { PostsPage } from '../features/posts/PostsPage';
 import { ProfilePage } from '../features/profile/ProfilePage';
 import { ResumeStudioPage } from '../features/profile/ResumeStudioPage';
 import { AppShell } from '../shared/components/AppShell';
 import { SplashScreen } from '../shared/components/SplashScreen';
+import { trackScreen } from '../shared/firebase/analytics';
 import { useThemeMode } from '../shared/hooks/useThemeMode';
 import { buildTheme } from '../shared/theme/theme';
 import { ProtectedRoute } from './ProtectedRoute';
 
 const SPLASH_MS = 1800;
+
+function AnalyticsScreenTracker() {
+  const location = useLocation();
+  useEffect(() => {
+    void trackScreen(location.pathname + location.search);
+  }, [location.pathname, location.search]);
+  return null;
+}
 
 export default function App() {
   const mode = useThemeMode((s) => s.mode);
@@ -39,6 +49,7 @@ export default function App() {
       <SplashScreen show={showSplash} />
       {!showSplash && (
         <BrowserRouter>
+          <AnalyticsScreenTracker />
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route element={<ProtectedRoute />}>
@@ -50,6 +61,7 @@ export default function App() {
                 <Route path="posts/:id" element={<PostDetailPage />} />
                 <Route path="saved" element={<SavedJobsPage />} />
                 <Route path="applications" element={<ApplicationsPage />} />
+                <Route path="notifications" element={<NotificationsPage />} />
                 <Route path="ai-tools" element={<AiToolsPage />} />
                 <Route path="analytics" element={<AnalyticsPage />} />
                 <Route path="resume" element={<ResumeStudioPage />} />

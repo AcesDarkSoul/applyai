@@ -1,3 +1,5 @@
+import type { SmartApplyPlatformPrefs } from './audit';
+import type { NotificationPrefs } from './notification';
 import type {
   EducationEntry,
   ExperienceEntry,
@@ -21,6 +23,12 @@ export interface AuthUser {
 export interface OutreachCredentials {
   /** Master switch — when true, skip dry-run and send in background. */
   autoSendEnabled?: boolean;
+  /** Opt into daily background auto-apply (default true when resume exists). */
+  dailyAutoApplyEnabled?: boolean;
+  /** Max roles to auto-apply per daily run. */
+  dailyAutoApplyLimit?: number;
+  /** Minimum match score for daily auto-apply. */
+  dailyMinScore?: number;
   /** SMTP — send email as the user */
   smtpHost?: string;
   smtpPort?: number;
@@ -66,6 +74,18 @@ export interface UserProfile {
   achievements?: string[];
   /** Background email / WhatsApp send settings (user's accounts). */
   outreach?: OutreachCredentials;
+  /** Product notification preferences (Module 10). */
+  notificationPrefs?: NotificationPrefs;
+  /**
+   * Per-platform Smart Apply toggles (AD-002).
+   * When a platform is disabled, smart/outreach/auto-apply skips that source.
+   */
+  smartApplyPlatforms?: SmartApplyPlatformPrefs;
+  /**
+   * Last time the user confirmed assistive-only Smart Apply consent.
+   * Required UX gate before batch automation.
+   */
+  smartApplyConsentAt?: string;
   createdAt: string;
   updatedAt: string;
 }

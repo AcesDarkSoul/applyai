@@ -132,6 +132,18 @@ export async function saveJob(req: Request, res: Response, next: NextFunction): 
   }
 }
 
+export async function unsaveJob(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const uid = req.user!.uid;
+    const set = memoryStore.savedJobIds.get(uid) ?? new Set<string>();
+    set.delete(req.params.id);
+    memoryStore.savedJobIds.set(uid, set);
+    res.json({ success: true, data: { saved: [...set] } });
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function listSavedJobs(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const uid = req.user!.uid;

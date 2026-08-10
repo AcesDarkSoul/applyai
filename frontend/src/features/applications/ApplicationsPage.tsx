@@ -47,6 +47,8 @@ export function ApplicationsPage() {
   const [error, setError] = useState<string | null>(null);
   const [openLetter, setOpenLetter] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -78,6 +80,23 @@ export function ApplicationsPage() {
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Update failed');
+    }
+  }
+
+  async function onSync() {
+    setSyncing(true);
+    setError(null);
+    setSyncMsg(null);
+    try {
+      const result = await applicationRepository.syncStatuses();
+      setSyncMsg(
+        `Checked ${result.checked} · updated ${result.updated.length} · unchanged ${result.unchanged}. ${result.note || ''}`,
+      );
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Auto-sync failed');
+    } finally {
+      setSyncing(false);
     }
   }
 
@@ -123,9 +142,10 @@ export function ApplicationsPage() {
             Applications
           </Typography>
           <Typography color="text.secondary" fontSize={14.5} maxWidth={560}>
-            Track every apply — status updates and AI cover letters stay with each role.
+            Track every apply — status updates and AI cover letters stay with each role. Auto-sync
+            advances Applied → Viewed → Interview using timeline heuristics (no portal scraping).
           </Typography>
-          <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" mt={2}>
+          <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" mt={2} alignItems="center">
             {[
               { label: 'Total', value: stats.total },
               { label: 'Applied', value: stats.applied },
@@ -138,6 +158,14 @@ export function ApplicationsPage() {
                 sx={{ fontWeight: 800, bgcolor: 'rgba(91,92,226,0.1)', color: PRIMARY }}
               />
             ))}
+            <Button
+              variant="contained"
+              disabled={syncing || !apps.length}
+              onClick={() => void onSync()}
+              sx={{ borderRadius: 2.5, fontWeight: 800 }}
+            >
+              {syncing ? 'Syncing…' : 'Auto-sync statuses'}
+            </Button>
           </Stack>
         </Box>
       </motion.div>
@@ -145,6 +173,11 @@ export function ApplicationsPage() {
       {error && (
         <Alert severity="error" sx={{ borderRadius: 3 }}>
           {error}
+        </Alert>
+      )}
+      {syncMsg && (
+        <Alert severity="info" sx={{ borderRadius: 3 }}>
+          {syncMsg}
         </Alert>
       )}
       {!apps.length && (
@@ -218,6 +251,14 @@ export function ApplicationsPage() {
                           }
                           sx={{ fontWeight: 700, bgcolor: 'rgba(91,92,226,0.1)', color: PRIMARY }}
                         />
+                      )}
+                      {app.syncSource && app.syncSource !== 'manual' && (
+                        <Chip size="small" variant="outlined" label={`sync: ${app.syncSource}`} />
+                      )}
+                      {app.lastSyncedAt && (
+                        <Typography fontSize={11} color="text.secondary">
+                          Synced {new Date(app.lastSyncedAt).toLocaleString()}
+                        </Typography>
                       )}
                     </Stack>
 

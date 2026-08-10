@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
 import { getUserProfile } from '@/lib/firebase/auth';
+import { setAnalyticsUserId } from '@/lib/firebase/analytics';
+import { recordError, setCrashlyticsUser } from '@/lib/firebase/crashlytics';
 import type { UserProfile } from '@/types';
 
 interface AuthState {
@@ -48,18 +50,29 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         if (user && user.isAnonymous) {
           await signOut(auth).catch(() => undefined);
           set({ user: null, profile: null, loading: false, initialized: true });
+          void setAnalyticsUserId(null);
+          void setCrashlyticsUser(null);
           return;
         }
 
         if (user) {
           const profile = await getUserProfile(user.uid);
           set({ user, profile, loading: false, initialized: true });
+          void setAnalyticsUserId(user.uid);
+          void setCrashlyticsUser({
+            uid: user.uid,
+            email: user.email,
+            name: profile?.name ?? user.displayName,
+          });
         } else {
           set({ user: null, profile: null, loading: false, initialized: true });
+          void setAnalyticsUserId(null);
+          void setCrashlyticsUser(null);
         }
       } catch (e) {
         // Never leave the app stuck on the loading spinner
         console.warn('Auth init failed:', e);
+        recordError(e, 'auth_initialize');
         set({ user: user?.isAnonymous ? null : user, profile: null, loading: false, initialized: true });
       }
     });

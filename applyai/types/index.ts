@@ -93,3 +93,17 @@ export interface DashboardStats {
   rejections: number;
   profileCompleteness: number;
 }
+
+/** Job saved to shortlist (Firestore users/{uid}/savedJobs). */
+export interface SavedJobRecord {
+  id: string;
+  jobId: string;
+  title: string;
+  company: string;
+  location: string;
+  salary?: string;
+  url: string;
+  source: string;
+  matchScore?: JobMatchScore;
+  savedAt: string;
+}

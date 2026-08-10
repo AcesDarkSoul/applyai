@@ -1,15 +1,20 @@
 import { api } from './client';
 import type {
   ApiResponse,
+  AppNotification,
   AppStats,
   Application,
+  AuditLogEntry,
   EducationEntry,
   ExperienceEntry,
   HiringPost,
   Job,
+  NotificationPrefs,
   ProjectEntry,
   ResumeBuilderInput,
   ResumeDocument,
+  SkillGapResult,
+  SmartApplyPlatformPrefs,
   UserProfile,
 } from '../types';
 
@@ -132,6 +137,9 @@ export const jobRepository = {
   async save(id: string): Promise<void> {
     await api.post(`/jobs/${id}/save`);
   },
+  async unsave(id: string): Promise<void> {
+    await api.delete(`/jobs/${id}/save`);
+  },
   async refresh(query?: string, location?: string) {
     const { data } = await api.post<ApiResponse<{ query?: string; catalog?: unknown }>>(
       '/jobs/refresh',
@@ -162,7 +170,7 @@ export const applicationRepository = {
     const { data } = await api.get<ApiResponse<AppStats>>('/applications/stats');
     return data.data;
   },
-  async smartApply(jobId: string) {
+  async smartApply(jobId: string, opts?: { acknowledgeDuplicate?: boolean }) {
     const { data } = await api.post<
       ApiResponse<{
         application: Application;
@@ -170,11 +178,35 @@ export const applicationRepository = {
         complianceNote: string;
         coverLetter?: string;
         coverLetterId?: string;
+        duplicateAcknowledged?: boolean;
       }>
-    >('/applications/smart-apply', { jobId, confirmed: true }, { timeout: 90_000 });
+    >(
+      '/applications/smart-apply',
+      {
+        jobId,
+        confirmed: true,
+        confirmedAssistiveOnly: true,
+        acknowledgeDuplicate: opts?.acknowledgeDuplicate || undefined,
+      },
+      { timeout: 90_000 },
+    );
     return data.data;
   },
-  async outreachApply(jobId: string) {
+  async checkDuplicate(jobId: string): Promise<{
+    duplicate: boolean;
+    kind: 'job' | 'company' | null;
+    message: string | null;
+  }> {
+    const { data } = await api.get<
+      ApiResponse<{
+        duplicate: boolean;
+        kind: 'job' | 'company' | null;
+        message: string | null;
+      }>
+    >('/applications/check-duplicate', { params: { jobId } });
+    return data.data;
+  },
+  async outreachApply(jobId: string, opts?: { acknowledgeDuplicate?: boolean }) {
     const { data } = await api.post<
       ApiResponse<{
         application: Application;
@@ -195,8 +227,18 @@ export const applicationRepository = {
           coverLetter?: string;
         };
         openedExternal?: boolean;
+        complianceNote?: string;
       }>
-    >('/applications/outreach-apply', { jobId, confirmed: true }, { timeout: 90_000 });
+    >(
+      '/applications/outreach-apply',
+      {
+        jobId,
+        confirmed: true,
+        confirmedAssistiveOnly: true,
+        acknowledgeDuplicate: opts?.acknowledgeDuplicate || undefined,
+      },
+      { timeout: 90_000 },
+    );
     return data.data;
   },
   async autoApply(opts?: { minScore?: number; limit?: number; boardOnly?: boolean }) {
@@ -231,6 +273,7 @@ export const applicationRepository = {
       '/applications/auto-apply',
       {
         confirmed: true,
+        confirmedAssistiveOnly: true,
         minScore: opts?.minScore ?? 55,
         limit: opts?.limit ?? 8,
         boardOnly: opts?.boardOnly ?? true,
@@ -246,6 +289,17 @@ export const applicationRepository = {
     });
     return data.data;
   },
+  async syncStatuses(applicationId?: string) {
+    const { data } = await api.post<
+      ApiResponse<{
+        checked: number;
+        updated: Application[];
+        unchanged: number;
+        note?: string;
+      }>
+    >('/applications/sync-statuses', { applicationId }, { timeout: 60_000 });
+    return data.data;
+  },
 };
 
 export const aiRepository = {
@@ -254,5 +308,117 @@ export const aiRepository = {
       ApiResponse<{ content: string; coverLetterId?: string; aiAssisted?: boolean }>
     >('/ai/cover-letter', { jobId }, { timeout: 90_000 });
     return data.data.content;
+  },
+  async tailorResume(jobId: string) {
+    const { data } = await api.post<
+      ApiResponse<{
+        resume: ResumeDocument;
+        tips?: string[];
+        notes: string[];
+        aiAssisted: boolean;
+        jobId: string;
+      }>
+    >('/ai/tailor-resume', { jobId }, { timeout: 120_000 });
+    return data.data;
+  },
+  async skillGap(jobId: string): Promise<SkillGapResult> {
+    const { data } = await api.get<ApiResponse<SkillGapResult>>(`/ai/skill-gap/${jobId}`, {
+      timeout: 90_000,
+    });
+    return data.data;
+  },
+};
+
+export const notificationRepository = {
+  async list(unreadOnly = false) {
+    const { data } = await api.get<
+      ApiResponse<AppNotification[]> & { meta?: { unreadCount?: number } }
+    >('/notifications', { params: unreadOnly ? { unread: true } : undefined });
+    return { items: data.data, unreadCount: data.meta?.unreadCount ?? 0 };
+  },
+  async markRead(id: string) {
+    const { data } = await api.patch<ApiResponse<AppNotification>>(`/notifications/${id}/read`);
+    return data.data;
+  },
+  async markAllRead() {
+    const { data } = await api.post<ApiResponse<{ count: number }>>('/notifications/read-all');
+    return data.data;
+  },
+  async updatePrefs(prefs: NotificationPrefs) {
+    const { data } = await api.patch<ApiResponse<NotificationPrefs>>('/notifications/prefs', prefs);
+    return data.data;
+  },
+};
+
+export const complianceRepository = {
+  async settings() {
+    const { data } = await api.get<
+      ApiResponse<{
+        smartApplyConsentAt: string | null;
+        smartApplyPlatforms: SmartApplyPlatformPrefs;
+        notificationPrefs: NotificationPrefs | null;
+        policy: string;
+      }>
+    >('/compliance/settings');
+    return data.data;
+  },
+  async confirmConsent() {
+    const { data } = await api.post<
+      ApiResponse<{ smartApplyConsentAt?: string; policy: string }>
+    >('/compliance/consent', { confirmedAssistiveOnly: true });
+    return data.data;
+  },
+  async updatePlatforms(platforms: SmartApplyPlatformPrefs) {
+    const { data } = await api.patch<ApiResponse<SmartApplyPlatformPrefs>>(
+      '/compliance/platforms',
+      platforms,
+    );
+    return data.data;
+  },
+  async auditLog(limit = 40) {
+    const { data } = await api.get<ApiResponse<AuditLogEntry[]>>('/compliance/audit', {
+      params: { limit },
+    });
+    return data.data;
+  },
+};
+
+export type DailyAutomationStatus = {
+  enabled: boolean;
+  cron: string;
+  timezone: string;
+  lastStartedAt?: string;
+  lastFinishedAt?: string;
+  lastError?: string | null;
+  lastFetch?: {
+    query?: string;
+    ingested?: number;
+    sources?: string[];
+    error?: string;
+  };
+  lastUsers?: Array<{
+    uid: string;
+    email: string;
+    applied: number;
+    skipped: number;
+    sentEmail: number;
+    sentWhatsapp: number;
+    error?: string;
+  }>;
+  running: boolean;
+};
+
+export const automationRepository = {
+  async dailyStatus(): Promise<DailyAutomationStatus> {
+    const { data } = await api.get<ApiResponse<DailyAutomationStatus>>('/automation/daily/status');
+    return data.data;
+  },
+  async runDailyNow(): Promise<DailyAutomationStatus> {
+    const { data } = await api.post<ApiResponse<DailyAutomationStatus>>(
+      '/automation/daily/run-auth',
+      {},
+      { timeout: 300_000 },
+    );
+    return data.data;
   },
 };

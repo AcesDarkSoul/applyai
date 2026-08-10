@@ -8,6 +8,10 @@ functions/.env
 *.keystore
 !android/app/debug.keystore
 android/keystore.properties
+# Local all-in-one secrets backup (keystore passwords, Firebase, build info)
+APPLYAI_IMPORTANT_SECRETS.txt
+APPLYAI_IMPORTANT_SECRETS.md
+**/APPLYAI_IMPORTANT_SECRETS.*
 *.p8
 *.p12
 *.key

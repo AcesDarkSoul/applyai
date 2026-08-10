@@ -1,30 +1,55 @@
 import { useState } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Link, useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Button, Input } from '@/components/ui';
-import { Screen } from '@/components/layout/Screen';
-import { FadeInView } from '@/components/AnimatedView';
+import {
+  AuthShell,
+  AuthDivider,
+  AuthErrorBanner,
+  GoogleSignInButton,
+} from '@/components/auth/AuthShell';
 import { signIn, formatAuthError } from '@/lib/firebase/auth';
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
-import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
+import { Colors, Spacing, FontSize } from '@/constants/theme';
+
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
 
 export default function LoginScreen() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
 
   const { signInWithGoogle, googleAuthReady } = useGoogleAuth(
-    () => router.replace('/(tabs)'),
-    (msg) => { setError(msg); setLoading(false); }
+    () => {
+      setGoogleLoading(false);
+      router.replace('/(tabs)');
+    },
+    (msg) => {
+      setError(msg);
+      setGoogleLoading(false);
+    }
   );
 
+  const validate = () => {
+    const next: { email?: string; password?: string } = {};
+    if (!email.trim()) next.email = 'Email is required';
+    else if (!isValidEmail(email)) next.email = 'Enter a valid email';
+    if (!password) next.password = 'Password is required';
+    else if (password.length < 6) next.password = 'Password must be at least 6 characters';
+    setFieldErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
   const handleLogin = async () => {
-    if (!email || !password) { setError('Please fill in all fields'); return; }
-    setLoading(true);
     setError('');
+    if (!validate()) return;
+    setLoading(true);
     try {
       await signIn(email.trim(), password);
       router.replace('/(tabs)');
@@ -36,69 +61,80 @@ export default function LoginScreen() {
     }
   };
 
+  const handleGoogle = async () => {
+    setError('');
+    setGoogleLoading(true);
+    try {
+      await signInWithGoogle();
+    } catch {
+      setGoogleLoading(false);
+    }
+  };
+
+  const busy = loading || googleLoading;
+
   return (
-    <Screen keyboard safe contentStyle={styles.scroll}>
-      <FadeInView direction="down">
-        <LinearGradient colors={Colors.gradientHero} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroBanner}>
-          <Text style={styles.heroEmoji}>🚀</Text>
-          <Text style={styles.heroTitle}>ApplyAI</Text>
-          <Text style={styles.heroSubtitle}>Smart job applications on LinkedIn, Indeed & Naukri</Text>
-        </LinearGradient>
-      </FadeInView>
+    <AuthShell
+      title="Welcome back"
+      subtitle="Sign in with email or Google to continue your job search."
+      footerPrompt="New here?"
+      footerLinkLabel="Create a free account"
+      footerHref="/(auth)/signup"
+    >
+      <AuthErrorBanner message={error} />
 
-      <FadeInView direction="up" delay={100}>
-        <Text style={styles.welcomeTitle}>Sign in required</Text>
-        <Text style={styles.welcomeSub}>Use email & password or Google to continue</Text>
-      </FadeInView>
+      <Input
+        label="Email"
+        icon="mail-outline"
+        placeholder="you@example.com"
+        value={email}
+        onChangeText={(v) => {
+          setEmail(v);
+          if (fieldErrors.email) setFieldErrors((f) => ({ ...f, email: undefined }));
+        }}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoComplete="email"
+        textContentType="emailAddress"
+        error={fieldErrors.email}
+        editable={!busy}
+      />
+      <Input
+        label="Password"
+        icon="lock-closed-outline"
+        placeholder="Enter your password"
+        value={password}
+        onChangeText={(v) => {
+          setPassword(v);
+          if (fieldErrors.password) setFieldErrors((f) => ({ ...f, password: undefined }));
+        }}
+        secureTextEntry
+        autoComplete="password"
+        textContentType="password"
+        error={fieldErrors.password}
+        editable={!busy}
+      />
 
-      <FadeInView direction="up" delay={200}>
-        <View style={styles.form}>
-          {error ? <View style={styles.errorBanner}><Text style={styles.errorText}>{error}</Text></View> : null}
-          <Input label="Email" icon="📧" placeholder="you@example.com" value={email} onChangeText={setEmail}
-            keyboardType="email-address" autoCapitalize="none" autoComplete="email" />
-          <Input label="Password" icon="🔒" placeholder="Enter your password" value={password}
-            onChangeText={setPassword} secureTextEntry autoComplete="password" />
-          <Link href="/(auth)/forgot-password" asChild>
-            <Pressable style={styles.forgotLink}><Text style={styles.forgotText}>Forgot password?</Text></Pressable>
-          </Link>
-          <Button title="Sign In" onPress={handleLogin} loading={loading} size="lg" />
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} /><Text style={styles.dividerText}>or</Text><View style={styles.dividerLine} />
-          </View>
-          <Button title="Continue with Google" variant="outline" onPress={async () => { setLoading(true); await signInWithGoogle(); setLoading(false); }}
-            loading={loading} disabled={!googleAuthReady} />
-        </View>
-      </FadeInView>
+      <Link href="/(auth)/forgot-password" asChild>
+        <Pressable style={styles.forgotLink} disabled={busy}>
+          <Text style={styles.forgotText}>Forgot password?</Text>
+        </Pressable>
+      </Link>
 
-      <FadeInView direction="up" delay={300}>
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Don't have an account? </Text>
-          <Link href="/(auth)/signup" asChild>
-            <Pressable><Text style={styles.link}>Sign Up Free</Text></Pressable>
-          </Link>
-        </View>
-      </FadeInView>
-    </Screen>
+      <Button title="Sign In" onPress={handleLogin} loading={loading} disabled={busy} size="lg" />
+
+      <AuthDivider />
+
+      <GoogleSignInButton
+        onPress={handleGoogle}
+        loading={googleLoading}
+        disabled={!googleAuthReady || busy}
+      />
+    </AuthShell>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: { flexGrow: 1, justifyContent: 'center', paddingVertical: Spacing.xl },
-  heroBanner: { borderRadius: BorderRadius.xxl, padding: Spacing.xl, alignItems: 'center', marginBottom: Spacing.xl },
-  heroEmoji: { fontSize: 52, marginBottom: Spacing.sm },
-  heroTitle: { color: Colors.white, fontSize: FontSize.hero, fontWeight: '900' },
-  heroSubtitle: { color: 'rgba(255,255,255,0.92)', fontSize: FontSize.md, textAlign: 'center', marginTop: Spacing.xs, lineHeight: 22 },
-  welcomeTitle: { color: Colors.text, fontSize: FontSize.xxl, fontWeight: '800', marginBottom: Spacing.xs },
-  welcomeSub: { color: Colors.textSecondary, fontSize: FontSize.md, marginBottom: Spacing.lg },
-  form: { marginBottom: Spacing.lg },
-  errorBanner: { backgroundColor: '#FEE2E2', padding: Spacing.md, borderRadius: BorderRadius.lg, marginBottom: Spacing.md },
-  errorText: { color: Colors.danger, fontSize: FontSize.sm },
-  forgotLink: { alignSelf: 'flex-end', marginBottom: Spacing.md },
+  forgotLink: { alignSelf: 'flex-end', marginBottom: Spacing.md, marginTop: -Spacing.xs },
   forgotText: { color: Colors.primary, fontSize: FontSize.sm, fontWeight: '600' },
-  divider: { flexDirection: 'row', alignItems: 'center', marginVertical: Spacing.lg },
-  dividerLine: { flex: 1, height: 1, backgroundColor: Colors.border },
-  dividerText: { color: Colors.textMuted, paddingHorizontal: Spacing.md, fontSize: FontSize.sm },
-  footer: { flexDirection: 'row', justifyContent: 'center', paddingBottom: Spacing.xl },
-  footerText: { color: Colors.textSecondary, fontSize: FontSize.md },
-  link: { color: Colors.primary, fontSize: FontSize.md, fontWeight: '700' },
 });

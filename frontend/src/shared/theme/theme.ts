@@ -63,7 +63,12 @@ export function buildTheme(mode: 'light' | 'dark') {
             borderRadius: 12,
             paddingInline: 18,
             boxShadow: 'none',
+            minHeight: 42,
             transition: 'transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease',
+          },
+          sizeLarge: {
+            minHeight: 48,
+            paddingInline: 22,
           },
           containedPrimary: {
             background: `linear-gradient(135deg, ${primary} 0%, #6d6ff0 100%)`,
@@ -76,6 +81,26 @@ export function buildTheme(mode: 'light' | 'dark') {
           outlined: {
             borderWidth: 1.5,
             '&:hover': { borderWidth: 1.5 },
+          },
+        },
+      },
+      MuiCard: {
+        styleOverrides: {
+          root: {
+            borderRadius: 16,
+            border: isDark
+              ? '1px solid rgba(238,240,255,0.08)'
+              : '1px solid rgba(30,31,54,0.06)',
+            boxShadow: isDark
+              ? '0 4px 20px rgba(0,0,0,0.25)'
+              : '0 4px 20px rgba(30,31,54,0.06)',
+          },
+        },
+      },
+      MuiIconButton: {
+        styleOverrides: {
+          root: {
+            borderRadius: 12,
           },
         },
       },
