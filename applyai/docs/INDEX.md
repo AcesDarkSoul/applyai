@@ -10,6 +10,7 @@ Welcome to the **ApplyAI** project documentation. This folder contains all techn
 |----------|-------------|
 | [README.md](../README.md) | Project overview, setup, deployment |
 | [FEATURES.md](./FEATURES.md) | All app features explained |
+| [SUGGESTIONS.md](./SUGGESTIONS.md) | Product roadmap suggestions & priorities |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | System architecture & data flow |
 | [DATABASE.md](./DATABASE.md) | Firestore schema, APIs, costs |
 | [UI_GUIDE.md](./UI_GUIDE.md) | Design system, colors, components |
@@ -55,8 +56,9 @@ Email:      SendGrid
 
 ### For Product / Business
 1. [FEATURES.md](./FEATURES.md) — Feature list and user flows
-2. [PLATFORMS.md](./PLATFORMS.md) — Job portal integration details
-3. [DATABASE.md](./DATABASE.md) — Cost estimation section
+2. [SUGGESTIONS.md](./SUGGESTIONS.md) — Prioritized product suggestions
+3. [PLATFORMS.md](./PLATFORMS.md) — Job portal integration details
+4. [DATABASE.md](./DATABASE.md) — Cost estimation section
 
 ---
 

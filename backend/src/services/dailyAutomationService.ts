@@ -6,6 +6,8 @@ import { fileStore } from '../repositories/file/fileStore';
 import { userRepository } from '../repositories';
 import { applicationService } from './applicationService';
 import { jobService } from './jobService';
+import { notificationService } from './notificationService';
+import { syncApplicationStatuses } from './statusSyncService';
 
 export type DailyAutomationStatus = {
   enabled: boolean;
@@ -188,6 +190,40 @@ export async function runDailyAutomation(trigger: 'cron' | 'startup' | 'manual' 
           error: err instanceof Error ? err.message : 'auto-apply failed',
         });
         logger.warn('Daily auto-apply user failed', {
+          uid: profile.uid,
+          err: err instanceof Error ? err.message : err,
+        });
+      }
+    }
+
+    // Module 10 — high-match alerts + weekly digest (Sundays) + Module 9 status sync
+    for (const profile of users) {
+      try {
+        const recommended = await jobService.recommended(profile, {
+          minScore: profile.notificationPrefs?.highMatchMinScore ?? 70,
+          limit: 12,
+        });
+        await notificationService.notifyHighMatchJobs(profile, recommended);
+
+        await syncApplicationStatuses(profile.uid);
+
+        const isSunday = new Date().getDay() === 0;
+        if (isSunday || trigger === 'manual') {
+          const stats = await applicationService.getStats(profile.uid);
+          await notificationService.sendWeeklySummary(profile, {
+            applied: stats.applied,
+            interviews: stats.interview,
+            offers: stats.offer,
+            highMatches: recommended.length,
+            topJobs: recommended.slice(0, 5).map((j) => ({
+              title: j.title,
+              company: j.company,
+              score: j.matchScore ?? 0,
+            })),
+          });
+        }
+      } catch (err) {
+        logger.warn('Daily notify/sync failed for user', {
           uid: profile.uid,
           err: err instanceof Error ? err.message : err,
         });

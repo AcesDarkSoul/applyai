@@ -122,6 +122,18 @@ export async function createApplication(
   userId: string,
   job: { id: string; title: string; company: string; matchScore: number }
 ): Promise<string> {
+  const existing = await getApplications(userId);
+  const sameJob = existing.find((a) => a.jobId === job.id);
+  if (sameJob) {
+    await updateDoc(doc(db, 'applications', sameJob.id), {
+      status: 'applied' as ApplicationStatus,
+      matchScore: job.matchScore,
+      updatedAt: serverTimestamp(),
+      appliedAt: serverTimestamp(),
+    });
+    return sameJob.id;
+  }
+
   const docRef = await addDoc(collection(db, 'applications'), {
     userId,
     jobId: job.id,
@@ -149,22 +161,9 @@ export async function deleteApplication(applicationId: string): Promise<void> {
   await deleteDoc(doc(db, 'applications', applicationId));
 }
 
-export function calculateProfileCompleteness(
-  profile: UserProfile | null,
-  localHasResume = false
-): number {
-  if (!profile) return 0;
-  const hasResume = localHasResume || profile.hasResume || !!profile.resumeUrl;
-  const fields = [
-    profile.name,
-    profile.email,
-    profile.skills?.length > 0,
-    profile.experience > 0,
-    profile.education?.length > 0,
-    hasResume,
-    profile.preferredLocation,
-    profile.summary,
-  ];
-  const completed = fields.filter(Boolean).length;
-  return Math.round((completed / fields.length) * 100);
-}
+export {
+  calculateProfileCompleteness,
+  getProfileGaps,
+  hasResumeFlag,
+  isProfileCompleteEnough,
+} from '@/lib/profileCompleteness';

@@ -8,6 +8,7 @@ import {
   type User,
 } from 'firebase/auth';
 import { auth, googleProvider, isFirebaseConfigured } from './config';
+import { trackLogin, trackSignUp } from './analytics';
 
 export function formatFirebaseAuthError(error: unknown): string {
   const code =
@@ -56,18 +57,21 @@ export async function firebaseSignUp(email: string, password: string, name: stri
   } catch {
     // non-blocking
   }
+  void trackSignUp('password');
   return cred.user;
 }
 
 export async function firebaseSignIn(email: string, password: string): Promise<User> {
   const a = requireAuth();
   const cred = await signInWithEmailAndPassword(a, email, password);
+  void trackLogin('password');
   return cred.user;
 }
 
 export async function firebaseSignInWithGoogle(): Promise<User> {
   const a = requireAuth();
   const cred = await signInWithPopup(a, googleProvider);
+  void trackLogin('google');
   return cred.user;
 }
 

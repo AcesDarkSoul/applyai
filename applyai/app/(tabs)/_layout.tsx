@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors, Shadows, Spacing } from '@/constants/theme';
 import { AppTopBar } from '@/components/layout/AppTopBar';
 

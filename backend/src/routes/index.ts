@@ -10,6 +10,8 @@ import * as applicationController from '../controllers/applicationController';
 import * as postController from '../controllers/postController';
 import * as aiController from '../controllers/aiController';
 import * as automationController from '../controllers/automationController';
+import * as notificationController from '../controllers/notificationController';
+import * as complianceController from '../controllers/complianceController';
 
 const aiLimiter = rateLimit({
   windowMs: env.RATE_LIMIT_WINDOW_MS,
@@ -52,21 +54,38 @@ apiRouter.get('/jobs/catalog', jobController.catalogStatus);
 apiRouter.post('/jobs/refresh', jobController.refreshJobs);
 apiRouter.get('/jobs/:id', jobController.getJob);
 apiRouter.post('/jobs/:id/save', jobController.saveJob);
+apiRouter.delete('/jobs/:id/save', jobController.unsaveJob);
 
 apiRouter.get('/posts', postController.listPosts);
 apiRouter.get('/posts/:id', postController.getPost);
 
 apiRouter.get('/applications', applicationController.listApplications);
 apiRouter.get('/applications/stats', applicationController.getStats);
+apiRouter.get('/applications/check-duplicate', applicationController.checkDuplicate);
 apiRouter.post('/applications/smart-apply', applicationController.smartApply);
 apiRouter.post('/applications/outreach-apply', applicationController.outreachApplyHandler);
 apiRouter.post('/applications/auto-apply', applicationController.autoApplyHandler);
 apiRouter.patch('/applications/:id/status', applicationController.updateApplicationStatus);
+apiRouter.post('/applications/sync-statuses', applicationController.syncStatuses);
+
+apiRouter.get('/notifications', notificationController.listNotifications);
+apiRouter.post('/notifications/read-all', notificationController.markAllNotificationsRead);
+apiRouter.patch('/notifications/:id/read', notificationController.markNotificationRead);
+apiRouter.patch('/notifications/prefs', notificationController.updateNotificationPrefs);
+apiRouter.post('/notifications/push-token', notificationController.registerPushToken);
+
+apiRouter.get('/compliance/settings', complianceController.getComplianceSettings);
+apiRouter.post('/compliance/consent', complianceController.confirmSmartApplyConsent);
+apiRouter.patch('/compliance/platforms', complianceController.updateSmartApplyPlatforms);
+apiRouter.get('/compliance/audit', complianceController.listAuditLog);
 
 apiRouter.get('/automation/daily/status', automationController.getDailyStatus);
 apiRouter.post('/automation/daily/run-auth', automationController.runDailyNow);
 
 apiRouter.post('/ai/cover-letter', aiLimiter, aiController.generateCoverLetter);
+apiRouter.post('/ai/tailor-resume', aiLimiter, aiController.tailorResume);
+apiRouter.get('/ai/skill-gap/:jobId', aiLimiter, aiController.skillGap);
+apiRouter.post('/ai/skill-gap', aiLimiter, aiController.skillGap);
 
 apiRouter.get('/admin/ping', requireRole('admin'), (_req, res) => {
   res.json({ success: true, data: { ok: true, role: 'admin' } });

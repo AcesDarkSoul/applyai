@@ -3,6 +3,7 @@ import { onAuthStateChanged, type User } from 'firebase/auth';
 import { profileRepository } from '../../shared/api/repositories';
 import type { UserProfile } from '../../shared/types';
 import { auth, initAnalytics, isFirebaseConfigured } from '../../shared/firebase/config';
+import { setAnalyticsUserId } from '../../shared/firebase/analytics';
 import {
   firebaseSignIn,
   firebaseSignUp,
@@ -243,5 +244,6 @@ export function startFirebaseAuthListener() {
 
   return onAuthStateChanged(auth, (user) => {
     useAuthStore.setState({ firebaseUser: user });
+    void setAnalyticsUserId(user?.uid ?? null);
   });
 }

@@ -1,14 +1,19 @@
-﻿import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, useWindowDimensions } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import { Card, StatCard, Badge, SectionHeader, useResponsive } from '@/components/ui';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { Card, StatCard, SectionHeader, useResponsive } from '@/components/ui';
 import { Screen, ResponsiveGrid } from '@/components/layout/Screen';
 import { FadeInView, AnimatedProgress } from '@/components/AnimatedView';
+import { OnboardingChecklist } from '@/components/onboarding/OnboardingChecklist';
+import { ProfileNudges } from '@/components/profile/ProfileNudges';
+import { MatchScoreBreakdown } from '@/components/jobs/MatchScoreBreakdown';
 import { useAuthStore } from '@/stores/authStore';
 import { useResumeStore, userHasResume } from '@/stores/resumeStore';
-import { getApplications, calculateProfileCompleteness } from '@/lib/firebase/profile';
+import { getApplications } from '@/lib/firebase/profile';
+import { calculateProfileCompleteness, getProfileGaps } from '@/lib/profileCompleteness';
+import { getOnboardingSteps } from '@/lib/onboarding';
 import { getRecommendedJobs } from '@/lib/services/jobs';
 import { detectPlatform, getPlatformConfig } from '@/lib/services/platforms';
 import { Colors, Spacing, FontSize, BorderRadius, PlatformConfig, Shadows } from '@/constants/theme';
@@ -24,10 +29,22 @@ export default function DashboardScreen() {
   const [topJobs, setTopJobs] = useState<Job[]>([]);
   const isNarrow = width < 380;
 
-  useEffect(() => {
+  const load = useCallback(() => {
     if (user) getApplications(user.uid).then(setApplications);
-    getRecommendedJobs(profile?.skills || []).then((jobs) => setTopJobs(jobs.slice(0, columns === 1 ? 3 : 6)));
+    getRecommendedJobs(profile?.skills || []).then((jobs) =>
+      setTopJobs(jobs.slice(0, columns === 1 ? 3 : 6))
+    );
   }, [user, profile, columns]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
 
   const stats = {
     applicationsSent: applications.filter((a) => a.status !== 'pending').length,
@@ -37,8 +54,17 @@ export default function DashboardScreen() {
   };
 
   const profileCompleteness = calculateProfileCompleteness(profile, hasResume);
+  const gaps = getProfileGaps(profile, hasResume, 3);
   const hasResumeSaved = userHasResume(hasResume, profile?.hasResume);
   const firstName = profile?.name?.split(' ')[0] || 'there';
+  const hasMatches = topJobs.some((j) => (j.matchScore?.overall ?? 0) > 0);
+  const onboardingSteps = getOnboardingSteps({
+    isSignedIn: Boolean(user),
+    profile,
+    localHasResume: hasResume,
+    hasMatches,
+    applications,
+  });
 
   return (
     <Screen safe edges={['left', 'right']}>
@@ -86,8 +112,16 @@ export default function DashboardScreen() {
         </LinearGradient>
       </FadeInView>
 
-      {profileCompleteness < 100 && (
-        <FadeInView direction="up" delay={80}>
+      <FadeInView direction="up" delay={60}>
+        <OnboardingChecklist steps={onboardingSteps} />
+      </FadeInView>
+
+      <FadeInView direction="up" delay={80}>
+        <ProfileNudges gaps={gaps} completeness={profileCompleteness} />
+      </FadeInView>
+
+      {profileCompleteness < 100 && gaps.length === 0 && (
+        <FadeInView direction="up" delay={90}>
           <Card style={styles.profileCard}>
             <View style={styles.profileRow}>
               <View style={{ flex: 1 }}>
@@ -105,10 +139,10 @@ export default function DashboardScreen() {
         <SectionHeader title="Your stats" />
         <ScrollView horizontal={!isTablet} showsHorizontalScrollIndicator={false} style={styles.statsScroll}>
           <View style={[styles.statsRow, isTablet && styles.statsRowTablet]}>
-            <StatCard title="Applied" value={stats.applicationsSent} icon="📤" color={Colors.primary} />
+            <StatCard title="Applied" value={stats.applicationsSent} icon="📨" color={Colors.primary} />
             <StatCard title="Pending" value={stats.pending} icon="⏳" color={Colors.secondaryDark} />
-            <StatCard title="Interviews" value={stats.interviews} icon="🎯" color={Colors.info} />
-            <StatCard title="Offers" value={stats.offers} icon="🎉" color={Colors.success} />
+            <StatCard title="Interviews" value={stats.interviews} icon="💬" color={Colors.info} />
+            <StatCard title="Offers" value={stats.offers} icon="🎯" color={Colors.success} />
           </View>
         </ScrollView>
       </FadeInView>
@@ -163,12 +197,8 @@ export default function DashboardScreen() {
                       {job.company}
                     </Text>
                   </View>
-                  <Badge
-                    text={`${job.matchScore?.overall}%`}
-                    backgroundColor={Colors.primary + '18'}
-                    color={Colors.primary}
-                  />
                 </View>
+                <MatchScoreBreakdown score={job.matchScore} variant="compact" />
                 <View style={styles.jobMeta}>
                   <Ionicons name="location-outline" size={14} color={Colors.textMuted} />
                   <Text style={styles.jobMetaText}>{job.location}</Text>

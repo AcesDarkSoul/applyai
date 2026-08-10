@@ -1,3 +1,5 @@
+import type { SmartApplyPlatformPrefs } from './audit';
+import type { NotificationPrefs } from './notification';
 import type {
   EducationEntry,
   ExperienceEntry,
@@ -72,6 +74,18 @@ export interface UserProfile {
   achievements?: string[];
   /** Background email / WhatsApp send settings (user's accounts). */
   outreach?: OutreachCredentials;
+  /** Product notification preferences (Module 10). */
+  notificationPrefs?: NotificationPrefs;
+  /**
+   * Per-platform Smart Apply toggles (AD-002).
+   * When a platform is disabled, smart/outreach/auto-apply skips that source.
+   */
+  smartApplyPlatforms?: SmartApplyPlatformPrefs;
+  /**
+   * Last time the user confirmed assistive-only Smart Apply consent.
+   * Required UX gate before batch automation.
+   */
+  smartApplyConsentAt?: string;
   createdAt: string;
   updatedAt: string;
 }

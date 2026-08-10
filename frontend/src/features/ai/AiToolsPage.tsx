@@ -19,7 +19,8 @@ import SaveRoundedIcon from '@mui/icons-material/SaveRounded';
 import { motion } from 'framer-motion';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
-import { profileRepository } from '../../shared/api/repositories';
+import { profileRepository, complianceRepository } from '../../shared/api/repositories';
+import type { AuditLogEntry, SmartApplyPlatformPrefs } from '../../shared/types';
 import { useAuthStore } from '../auth/authStore';
 
 const PRIMARY = '#5b5ce2';
@@ -83,6 +84,16 @@ export function AiToolsPage() {
   const [statusText, setStatusText] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [platforms, setPlatforms] = useState<SmartApplyPlatformPrefs>({
+    linkedin: true,
+    indeed: true,
+    naukri: true,
+    googlejobs: true,
+    other: true,
+  });
+  const [consentAt, setConsentAt] = useState<string | null>(null);
+  const [audit, setAudit] = useState<AuditLogEntry[]>([]);
+  const [savingCompliance, setSavingCompliance] = useState(false);
 
   useEffect(() => {
     const o = profile?.outreach;
@@ -120,6 +131,19 @@ export function AiToolsPage() {
         );
       } catch {
         setStatusText(null);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const settings = await complianceRepository.settings();
+        setPlatforms(settings.smartApplyPlatforms);
+        setConsentAt(settings.smartApplyConsentAt);
+        setAudit(await complianceRepository.auditLog(25));
+      } catch {
+        // optional until backend is up
       }
     })();
   }, []);
@@ -211,6 +235,98 @@ export function AiToolsPage() {
           </Typography>
         </Box>
       </motion.div>
+
+      <Box className="aa-card p-5 md:p-6">
+        <Typography fontWeight={900} fontSize={18} mb={0.5}>
+          Smart Apply compliance (AD-002)
+        </Typography>
+        <Typography color="text.secondary" fontSize={13.5} mb={1.5} maxWidth={720}>
+          Assistive only — ApplyAI prepares materials and tracks roles; it does not submit
+          third-party application forms for you. Toggle platforms and review the audit log.
+        </Typography>
+        <Alert severity={consentAt ? 'success' : 'warning'} sx={{ mb: 2, borderRadius: 2.5 }}>
+          {consentAt
+            ? `Assistive-only consent recorded ${new Date(consentAt).toLocaleString()}`
+            : 'Confirm assistive-only consent before batch Smart Apply / auto-apply.'}
+        </Alert>
+        <Button
+          variant="outlined"
+          disabled={savingCompliance}
+          sx={{ mb: 2, fontWeight: 800, borderRadius: 2 }}
+          onClick={async () => {
+            setSavingCompliance(true);
+            try {
+              const res = await complianceRepository.confirmConsent();
+              setConsentAt(res.smartApplyConsentAt || new Date().toISOString());
+              setAudit(await complianceRepository.auditLog(25));
+              setMsg('Assistive-only consent saved to audit log');
+            } catch (err) {
+              setError(err instanceof Error ? err.message : 'Consent failed');
+            } finally {
+              setSavingCompliance(false);
+            }
+          }}
+        >
+          Confirm assistive-only Smart Apply
+        </Button>
+        <Typography fontWeight={800} fontSize={14} mb={1}>
+          Per-platform enable
+        </Typography>
+        <Stack spacing={0.25} mb={2}>
+          {(
+            [
+              ['linkedin', 'LinkedIn'],
+              ['indeed', 'Indeed'],
+              ['naukri', 'Naukri'],
+              ['googlejobs', 'Google Jobs'],
+              ['other', 'Other boards'],
+            ] as const
+          ).map(([key, label]) => (
+            <FormControlLabel
+              key={key}
+              control={
+                <Switch
+                  checked={platforms[key] !== false}
+                  onChange={async (_, checked) => {
+                    const next = { ...platforms, [key]: checked };
+                    setPlatforms(next);
+                    setSavingCompliance(true);
+                    try {
+                      await complianceRepository.updatePlatforms(next);
+                      setAudit(await complianceRepository.auditLog(25));
+                    } catch (err) {
+                      setError(err instanceof Error ? err.message : 'Platform update failed');
+                    } finally {
+                      setSavingCompliance(false);
+                    }
+                  }}
+                />
+              }
+              label={label}
+            />
+          ))}
+        </Stack>
+        <Typography fontWeight={800} fontSize={14} mb={1}>
+          Audit log
+        </Typography>
+        {!audit.length && (
+          <Typography color="text.secondary" fontSize={13}>
+            No Smart Apply actions logged yet.
+          </Typography>
+        )}
+        <Stack spacing={1} sx={{ maxHeight: 260, overflow: 'auto' }}>
+          {audit.map((e) => (
+            <Box key={e.id} sx={{ p: 1.25, borderRadius: 2, bgcolor: 'rgba(91,92,226,0.06)' }}>
+              <Typography fontWeight={700} fontSize={13}>
+                {e.action} · {new Date(e.createdAt).toLocaleString()}
+              </Typography>
+              <Typography fontSize={12.5} color="text.secondary">
+                {e.summary}
+              </Typography>
+            </Box>
+          ))}
+        </Stack>
+      </Box>
 
       <Box className="aa-card p-5 md:p-6">
         <Typography fontWeight={900} fontSize={18} mb={0.5}>

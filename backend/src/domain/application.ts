@@ -28,6 +28,10 @@ export interface Application {
   coverLetterId?: string;
   coverLetter?: string;
   interviewAt?: string;
+  /** Last automatic status sync attempt (Module 9 / auto-sync). */
+  lastSyncedAt?: string;
+  /** How the current status was last advanced. */
+  syncSource?: 'manual' | 'auto' | 'email_heuristic';
   createdAt: string;
   updatedAt: string;
 }

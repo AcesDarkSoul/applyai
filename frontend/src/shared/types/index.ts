@@ -107,12 +107,78 @@ export interface UserProfile {
     twilioAuthToken?: string;
     twilioWhatsappFrom?: string;
   };
+  notificationPrefs?: NotificationPrefs;
+  smartApplyPlatforms?: SmartApplyPlatformPrefs;
+  smartApplyConsentAt?: string;
+}
+
+export interface NotificationPrefs {
+  inAppEnabled?: boolean;
+  emailEnabled?: boolean;
+  pushEnabled?: boolean;
+  highMatchJobs?: boolean;
+  interviewUpdates?: boolean;
+  weeklySummary?: boolean;
+  highMatchMinScore?: number;
+  pushTokens?: string[];
+}
+
+export interface SmartApplyPlatformPrefs {
+  linkedin?: boolean;
+  indeed?: boolean;
+  naukri?: boolean;
+  googlejobs?: boolean;
+  other?: boolean;
+}
+
+export interface AppNotification {
+  id: string;
+  userId: string;
+  type: 'high_match_job' | 'interview_update' | 'weekly_summary' | 'application_sync' | 'system';
+  title: string;
+  body: string;
+  href?: string;
+  jobId?: string;
+  applicationId?: string;
+  read: boolean;
+  channels: Array<'in_app' | 'email' | 'push'>;
+  emailSent?: boolean;
+  createdAt: string;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  userId: string;
+  action: string;
+  summary: string;
+  jobId?: string;
+  applicationId?: string;
+  platform?: string;
+  confirmedAssistiveOnly?: boolean;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface SkillGapResult {
+  jobId: string;
+  matchScore: number;
+  matchedSkills: string[];
+  missingSkills: string[];
+  jdSkills: string[];
+  learningRoadmap: Array<{
+    skill: string;
+    why: string;
+    estimatedHours: number;
+    resources: Array<{ title: string; url: string }>;
+  }>;
+  summary: string;
+  aiAssisted: boolean;
 }
 
 export interface ResumeDocument {
   id: string;
   userId: string;
-  source: 'upload' | 'builder';
+  source: 'upload' | 'builder' | 'tailored';
   fileName: string;
   mimeType?: string;
   uploadedAt: string;
@@ -123,6 +189,10 @@ export interface ResumeDocument {
   template?: 'classic' | 'modern' | 'executive';
   atsScore?: number;
   parsed?: Record<string, unknown>;
+  jobId?: string;
+  jobTitle?: string;
+  company?: string;
+  tailorNotes?: string[];
 }
 
 export interface ResumeBuilderInput {
@@ -158,6 +228,8 @@ export interface Application {
   notes: string;
   coverLetterId?: string;
   coverLetter?: string;
+  lastSyncedAt?: string;
+  syncSource?: 'manual' | 'auto' | 'email_heuristic';
   createdAt: string;
   updatedAt: string;
 }

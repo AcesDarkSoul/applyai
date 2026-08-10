@@ -18,6 +18,7 @@ import SmartToyRoundedIcon from '@mui/icons-material/SmartToyRounded';
 import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined';
 import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
+import NotificationsNoneRoundedIcon from '@mui/icons-material/NotificationsNoneRounded';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useMemo, useState } from 'react';
 import { Link as RouterLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
@@ -53,6 +54,12 @@ const nav = [
     label: 'Applications',
     icon: <AssignmentOutlinedIcon />,
     match: (p: string) => p.startsWith('/applications'),
+  },
+  {
+    to: '/notifications',
+    label: 'Notifications',
+    icon: <NotificationsNoneRoundedIcon />,
+    match: (p: string) => p.startsWith('/notifications'),
   },
   {
     to: '/ai-tools',
@@ -94,6 +101,7 @@ export function AppShell() {
     if (location.pathname.startsWith('/resume')) return 'Build, parse, and polish your CV';
     if (location.pathname.startsWith('/posts')) return 'Full hiring posts with contacts';
     if (location.pathname.startsWith('/applications')) return 'Track every outreach';
+    if (location.pathname.startsWith('/notifications')) return 'High matches · interviews · weekly digests';
     if (location.pathname.startsWith('/ai-tools')) return 'Assistants that keep you in control';
     if (location.pathname.startsWith('/analytics')) return 'See what is converting';
     return `Welcome back, ${profile?.displayName || 'there'}`;

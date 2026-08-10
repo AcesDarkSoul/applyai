@@ -11,7 +11,7 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { useEffect } from 'react';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Screen } from '@/components/layout/Screen';
 import { FadeInView } from '@/components/AnimatedView';
 import { Colors, Spacing, FontSize, BorderRadius, Shadows } from '@/constants/theme';

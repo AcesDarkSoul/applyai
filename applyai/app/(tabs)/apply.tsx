@@ -1,17 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Card, Button, Badge, SectionHeader } from '@/components/ui';
 import { Screen, ResponsiveGrid } from '@/components/layout/Screen';
 import { FadeInView } from '@/components/AnimatedView';
+import { MatchScoreBreakdown } from '@/components/jobs/MatchScoreBreakdown';
 import { useAuthStore } from '@/stores/authStore';
 import { useResumeStore, userHasResume } from '@/stores/resumeStore';
 import { searchJobs } from '@/lib/services/jobs';
 import { detectPlatform, getPlatformConfig, openSmartApply, shareOnLinkedIn } from '@/lib/services/platforms';
-import { createApplication } from '@/lib/firebase/profile';
+import { createApplication, getApplications } from '@/lib/firebase/profile';
+import { confirmDuplicateApply } from '@/lib/confirmDuplicateApply';
+import { findDuplicateApply } from '@/lib/duplicateApply';
 import { Colors, Spacing, FontSize, BorderRadius, PlatformConfig } from '@/constants/theme';
-import type { Job } from '@/types';
+import type { Application, Job } from '@/types';
 
 export default function SmartApplyScreen() {
   const router = useRouter();
@@ -22,6 +25,7 @@ export default function SmartApplyScreen() {
   const [loading, setLoading] = useState(true);
   const [applyingId, setApplyingId] = useState<string | null>(null);
   const [selectedPlatform, setSelectedPlatform] = useState<string>('all');
+  const [applications, setApplications] = useState<Application[]>([]);
 
   useEffect(() => {
     searchJobs({}, profile?.skills || []).then((result) => {
@@ -30,12 +34,21 @@ export default function SmartApplyScreen() {
     });
   }, [profile?.skills]);
 
+  useFocusEffect(
+    useCallback(() => {
+      if (user) getApplications(user.uid).then(setApplications);
+    }, [user])
+  );
+
   const filteredJobs = selectedPlatform === 'all'
     ? jobs
     : jobs.filter((j) => detectPlatform(j.url, j.source) === selectedPlatform);
 
   const handleSmartApply = async (job: Job) => {
     if (!user) return;
+    const ok = await confirmDuplicateApply(applications, job);
+    if (!ok) return;
+
     const platform = detectPlatform(job.url, job.source);
     setApplyingId(job.id);
     try {
@@ -43,6 +56,8 @@ export default function SmartApplyScreen() {
       await createApplication(user.uid, {
         id: job.id, title: job.title, company: job.company, matchScore: job.matchScore?.overall || 0,
       });
+      const apps = await getApplications(user.uid);
+      setApplications(apps);
       Alert.alert('Application Started! 🎉', `Opening ${getPlatformConfig(platform).name} to complete your application.`);
     } catch {
       Alert.alert('Error', 'Failed to start application');
@@ -103,6 +118,7 @@ export default function SmartApplyScreen() {
           {filteredJobs.map((job, i) => {
             const platform = detectPlatform(job.url, job.source);
             const pConfig = getPlatformConfig(platform);
+            const dup = findDuplicateApply(applications, job);
             return (
               <FadeInView key={job.id} direction="up" delay={Math.min(i * 40, 400)}>
                 <Card style={styles.jobCard}>
@@ -113,12 +129,24 @@ export default function SmartApplyScreen() {
                     <View style={{ flex: 1 }}>
                       <Text style={styles.jobTitle}>{job.title}</Text>
                       <Text style={styles.jobCompany}>{job.company} · {job.location}</Text>
-                      <Badge text={`${job.matchScore?.overall || 0}% match`} backgroundColor={Colors.primary + '15'} color={Colors.primary} />
+                      {dup && (
+                        <Badge
+                          text={dup.kind === 'job' ? 'Applied' : 'Same company'}
+                          backgroundColor={Colors.warning + '25'}
+                          color={Colors.warning}
+                        />
+                      )}
                     </View>
                   </View>
+                  <MatchScoreBreakdown score={job.matchScore} variant="compact" />
                   <View style={styles.jobActions}>
-                    <Button title={pConfig.applyLabel} size="sm" loading={applyingId === job.id}
-                      onPress={() => handleSmartApply(job)} style={{ flex: 1 }} />
+                    <Button
+                      title={dup?.kind === 'job' ? 'Apply again' : pConfig.applyLabel}
+                      size="sm"
+                      loading={applyingId === job.id}
+                      onPress={() => handleSmartApply(job)}
+                      style={{ flex: 1 }}
+                    />
                     {platform === 'linkedin' && (
                       <Button title="Share" size="sm" variant="yellow" onPress={() => handleShareLinkedIn(job)} style={{ flex: 0.4 }} />
                     )}
@@ -149,5 +177,6 @@ const styles = StyleSheet.create({
   jobLogoText: { fontSize: 24 },
   jobTitle: { color: Colors.text, fontSize: FontSize.md, fontWeight: '700' },
   jobCompany: { color: Colors.textSecondary, fontSize: FontSize.sm, marginBottom: Spacing.xs },
+  matchRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm, flexWrap: 'wrap' },
   jobActions: { flexDirection: 'row', gap: Spacing.sm, flexWrap: 'wrap' },
 });

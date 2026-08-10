@@ -12,6 +12,8 @@ import {
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { Platform } from 'react-native';
 import { auth, db } from './config';
+import { trackLogin, trackSignUp } from './analytics';
+import { recordError } from './crashlytics';
 import type { UserProfile } from '@/types';
 
 /** Map Firebase Auth errors to clear user-facing messages */
@@ -57,6 +59,7 @@ export async function signUp(email: string, password: string, name: string): Pro
     await updateProfile(credential.user, { displayName: name });
   } catch (e) {
     console.warn('updateProfile failed:', e);
+    recordError(e, 'signup_update_profile');
   }
 
   try {
@@ -76,13 +79,16 @@ export async function signUp(email: string, password: string, name: string): Pro
   } catch (e) {
     // Auth succeeded — profile can be created later. Don't block signup.
     console.warn('Profile create failed (check Firestore rules):', e);
+    recordError(e, 'signup_profile_create');
   }
 
+  void trackSignUp('password');
   return credential.user;
 }
 
 export async function signIn(email: string, password: string): Promise<User> {
   const credential = await signInWithEmailAndPassword(auth, email, password);
+  void trackLogin('password');
   return credential.user;
 }
 
@@ -90,6 +96,7 @@ export async function signInWithGoogleIdToken(idToken: string): Promise<User> {
   const credential = GoogleAuthProvider.credential(idToken);
   const result = await signInWithCredential(auth, credential);
   await ensureUserProfile(result.user);
+  void trackLogin('google');
   return result.user;
 }
 
@@ -100,6 +107,7 @@ export async function signInWithGoogle(): Promise<User> {
   if (Platform.OS === 'web') {
     const credential = await signInWithPopup(auth, provider);
     await ensureUserProfile(credential.user);
+    void trackLogin('google');
     return credential.user;
   }
 

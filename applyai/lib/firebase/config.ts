@@ -61,17 +61,6 @@ const app = createFirebaseApp();
 export const auth = createAuth(app);
 export const db = getFirestore(app);
 // Resume files are stored locally on device — no Firebase Storage needed
-
-// Analytics only works on web
-export async function initAnalytics() {
-  if (Platform.OS === 'web') {
-    const { getAnalytics, isSupported } = await import('firebase/analytics');
-    const supported = await isSupported();
-    if (supported) {
-      return getAnalytics(app);
-    }
-  }
-  return null;
-}
+// Analytics + Crashlytics: see lib/firebase/telemetry.ts
 
 export default app;

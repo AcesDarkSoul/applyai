@@ -2,6 +2,7 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   Chip,
   CircularProgress,
   Dialog,
@@ -9,7 +10,9 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
+  FormControlLabel,
   LinearProgress,
+  Link,
   Stack,
   TextField,
   Typography,
@@ -24,13 +27,15 @@ import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined';
 import WorkOutlineRoundedIcon from '@mui/icons-material/WorkOutlineRounded';
 import ScheduleRoundedIcon from '@mui/icons-material/ScheduleRounded';
 import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded';
+import SchoolRoundedIcon from '@mui/icons-material/SchoolRounded';
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import { motion } from 'framer-motion';
 import { useEffect, useMemo, useState } from 'react';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 import { aiRepository, applicationRepository, jobRepository } from '../../shared/api/repositories';
 import { ContentSections } from '../../shared/components/ContentSections';
 import { extractContacts, parseContentSections } from '../../shared/lib/contentParse';
-import type { Job } from '../../shared/types';
+import type { Job, SkillGapResult } from '../../shared/types';
 
 const PRIMARY = '#5b5ce2';
 
@@ -53,6 +58,13 @@ export function JobDetailPage() {
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
   const [outreachMsg, setOutreachMsg] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [assistiveChecked, setAssistiveChecked] = useState(false);
+  const [skillGap, setSkillGap] = useState<SkillGapResult | null>(null);
+  const [tailoredHtml, setTailoredHtml] = useState<string | null>(null);
+  const [tailorNotes, setTailorNotes] = useState<string[]>([]);
+  const [isSaved, setIsSaved] = useState(false);
+  const [duplicateWarn, setDuplicateWarn] = useState<string | null>(null);
+  const [acknowledgeDuplicate, setAcknowledgeDuplicate] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -71,6 +83,51 @@ export function JobDetailPage() {
     };
   }, [id]);
 
+  useEffect(() => {
+    setAssistiveChecked(false);
+    setAcknowledgeDuplicate(false);
+  }, [confirmOpen, outreachOpen]);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      if (!id) return;
+      try {
+        const saved = await jobRepository.saved();
+        if (alive) setIsSaved(saved.some((j) => j.id === id));
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [id]);
+
+  async function openSmartApplyConfirm() {
+    setDuplicateWarn(null);
+    setAcknowledgeDuplicate(false);
+    try {
+      const check = await applicationRepository.checkDuplicate(id);
+      if (check.duplicate && check.message) setDuplicateWarn(check.message);
+    } catch {
+      /* proceed without pre-check */
+    }
+    setConfirmOpen(true);
+  }
+
+  async function openOutreachConfirm() {
+    setDuplicateWarn(null);
+    setAcknowledgeDuplicate(false);
+    try {
+      const check = await applicationRepository.checkDuplicate(id);
+      if (check.duplicate && check.message) setDuplicateWarn(check.message);
+    } catch {
+      /* proceed without pre-check */
+    }
+    setOutreachOpen(true);
+  }
+
   const sections = useMemo(
     () => (job ? parseContentSections(job.description || '') : []),
     [job],
@@ -82,10 +139,16 @@ export function JobDetailPage() {
 
   async function onSmartApply() {
     if (!job) return;
+    if (duplicateWarn && !acknowledgeDuplicate) {
+      setError('Please acknowledge the duplicate-apply warning to continue.');
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
-      const result = await applicationRepository.smartApply(job.id);
+      const result = await applicationRepository.smartApply(job.id, {
+        acknowledgeDuplicate: Boolean(duplicateWarn) || undefined,
+      });
       setConfirmOpen(false);
       if (result.coverLetter) setLetter(result.coverLetter);
       setSavedMsg(
@@ -100,11 +163,17 @@ export function JobDetailPage() {
 
   async function onOutreachApply() {
     if (!job) return;
+    if (duplicateWarn && !acknowledgeDuplicate) {
+      setError('Please acknowledge the duplicate-apply warning to continue.');
+      return;
+    }
     setBusy(true);
     setError(null);
     setOutreachMsg(null);
     try {
-      const result = await applicationRepository.outreachApply(job.id);
+      const result = await applicationRepository.outreachApply(job.id, {
+        acknowledgeDuplicate: Boolean(duplicateWarn) || undefined,
+      });
       setOutreachOpen(false);
       const o = result.outreach;
       setOutreachMsg(o.note);
@@ -146,6 +215,37 @@ export function JobDetailPage() {
       setTimeout(() => setCopied(false), 1600);
     } catch {
       setError('Could not copy cover letter');
+    }
+  }
+
+  async function onSkillGap() {
+    if (!job) return;
+    setBusy(true);
+    setError(null);
+    try {
+      setSkillGap(await aiRepository.skillGap(job.id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Skill gap analysis failed');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onTailorResume() {
+    if (!job) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await aiRepository.tailorResume(job.id);
+      setTailoredHtml(result.resume.htmlContent || null);
+      setTailorNotes(result.notes || []);
+      setSavedMsg(
+        `ATS resume variant ready${result.aiAssisted ? ' (AI-assisted)' : ''} — score ${result.resume.atsScore ?? '—'}. Master profile unchanged.`,
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Resume tailor failed');
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -281,6 +381,54 @@ export function JobDetailPage() {
                 />
               </Box>
             ))}
+          <Button
+            sx={{ mt: 1, fontWeight: 800, borderRadius: 2 }}
+            variant="outlined"
+            startIcon={<SchoolRoundedIcon />}
+            disabled={busy}
+            onClick={() => void onSkillGap()}
+          >
+            Skill gap + learning roadmap
+          </Button>
+        </Box>
+      )}
+
+      {skillGap && (
+        <Box className="aa-card p-5">
+          <Typography fontWeight={800} fontSize={18} gutterBottom>
+            Skill gap · {skillGap.matchScore}% match
+          </Typography>
+          <Typography color="text.secondary" fontSize={14} mb={1.5}>
+            {skillGap.summary}
+            {skillGap.aiAssisted ? ' · AI coach' : ''}
+          </Typography>
+          <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" mb={2}>
+            {skillGap.matchedSkills.map((s) => (
+              <Chip key={`m-${s}`} size="small" color="success" variant="outlined" label={s} />
+            ))}
+            {skillGap.missingSkills.map((s) => (
+              <Chip key={`x-${s}`} size="small" color="warning" label={`Gap: ${s}`} />
+            ))}
+          </Stack>
+          <Stack spacing={1.5}>
+            {skillGap.learningRoadmap.map((step) => (
+              <Box key={step.skill} sx={{ p: 1.5, borderRadius: 2, bgcolor: 'rgba(91,92,226,0.06)' }}>
+                <Typography fontWeight={800}>
+                  {step.skill} · ~{step.estimatedHours}h
+                </Typography>
+                <Typography fontSize={13} color="text.secondary" mb={0.75}>
+                  {step.why}
+                </Typography>
+                <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                  {step.resources.map((r) => (
+                    <Link key={r.url} href={r.url} target="_blank" rel="noreferrer" fontSize={13}>
+                      {r.title}
+                    </Link>
+                  ))}
+                </Stack>
+              </Box>
+            ))}
+          </Stack>
         </Box>
       )}
 
@@ -323,7 +471,7 @@ export function JobDetailPage() {
           <Button
             variant="contained"
             size="large"
-            onClick={() => setOutreachOpen(true)}
+            onClick={() => void openOutreachConfirm()}
             disabled={busy}
             startIcon={busy ? <CircularProgress size={18} color="inherit" /> : <SendRoundedIcon />}
             sx={{
@@ -337,12 +485,22 @@ export function JobDetailPage() {
           <Button
             variant="outlined"
             size="large"
-            onClick={() => setConfirmOpen(true)}
+            onClick={() => void openSmartApplyConfirm()}
             disabled={busy}
             startIcon={<OpenInNewRoundedIcon />}
             sx={{ borderRadius: 2.5, fontWeight: 800 }}
           >
             Smart Apply
+          </Button>
+          <Button
+            variant="outlined"
+            size="large"
+            onClick={() => void onTailorResume()}
+            disabled={busy}
+            startIcon={<DescriptionOutlinedIcon />}
+            sx={{ borderRadius: 2.5, fontWeight: 800 }}
+          >
+            Tailor resume for this job
           </Button>
           <Button
             variant="outlined"
@@ -359,11 +517,18 @@ export function JobDetailPage() {
             startIcon={<BookmarkBorderIcon />}
             sx={{ borderRadius: 2.5 }}
             onClick={async () => {
-              await jobRepository.save(job.id);
-              setSavedMsg('Saved to shortlist');
+              if (isSaved) {
+                await jobRepository.unsave(job.id);
+                setIsSaved(false);
+                setSavedMsg('Removed from shortlist');
+              } else {
+                await jobRepository.save(job.id);
+                setIsSaved(true);
+                setSavedMsg('Saved to shortlist');
+              }
             }}
           >
-            Save
+            {isSaved ? 'Unsave' : 'Save'}
           </Button>
           {isPostLike && (
             <Button component={RouterLink} to={`/posts/post-${job.id}`} size="large" sx={{ borderRadius: 2.5 }}>
@@ -412,6 +577,38 @@ export function JobDetailPage() {
         </motion.div>
       )}
 
+      {tailoredHtml && (
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+          <Box className="aa-card p-4 md:p-5">
+            <Typography fontWeight={900} fontSize={16} mb={0.5}>
+              Tailored ATS resume variant
+            </Typography>
+            <Typography color="text.secondary" fontSize={13} mb={1.5}>
+              Saved as a separate version for this job — your master resume is unchanged.
+            </Typography>
+            {!!tailorNotes.length && (
+              <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" mb={1.5}>
+                {tailorNotes.map((n) => (
+                  <Chip key={n} size="small" label={n} />
+                ))}
+              </Stack>
+            )}
+            <Box
+              sx={{
+                maxHeight: 420,
+                overflow: 'auto',
+                border: '1px solid',
+                borderColor: 'divider',
+                borderRadius: 2,
+                p: 2,
+                bgcolor: 'background.paper',
+              }}
+              dangerouslySetInnerHTML={{ __html: tailoredHtml }}
+            />
+          </Box>
+        </motion.div>
+      )}
+
       <Dialog
         open={confirmOpen}
         onClose={() => setConfirmOpen(false)}
@@ -419,13 +616,39 @@ export function JobDetailPage() {
         maxWidth="sm"
         PaperProps={{ sx: { borderRadius: 4 } }}
       >
-        <DialogTitle sx={{ fontWeight: 900 }}>Confirm Smart Apply</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 900 }}>Confirm Smart Apply (assistive only)</DialogTitle>
         <DialogContent>
-          <Typography>
-            We&apos;ll generate an AI cover letter from your resume, open the official posting for{' '}
-            <strong>{job.title}</strong> at <strong>{job.company}</strong>, and start tracking it
-            here. Paste the letter on the company site to finish.
+          <Typography paragraph>
+            We&apos;ll prepare an AI cover letter from your resume and track{' '}
+            <strong>{job.title}</strong> at <strong>{job.company}</strong>. You submit on the
+            official site — ApplyAI does <strong>not</strong> fill or submit third-party application
+            forms (AD-002).
           </Typography>
+          {duplicateWarn && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              {duplicateWarn}
+            </Alert>
+          )}
+          {duplicateWarn && (
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={acknowledgeDuplicate}
+                  onChange={(_, v) => setAcknowledgeDuplicate(v)}
+                />
+              }
+              label="I understand — apply anyway"
+            />
+          )}
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={assistiveChecked}
+                onChange={(_, v) => setAssistiveChecked(v)}
+              />
+            }
+            label="I understand this is assistive only — I remain in control of the final submit."
+          />
         </DialogContent>
         <DialogActions sx={{ p: 2.5 }}>
           <Button onClick={() => setConfirmOpen(false)} sx={{ borderRadius: 2 }}>
@@ -434,7 +657,7 @@ export function JobDetailPage() {
           <Button
             variant="contained"
             onClick={() => void onSmartApply()}
-            disabled={busy}
+            disabled={busy || !assistiveChecked || (Boolean(duplicateWarn) && !acknowledgeDuplicate)}
             sx={{ borderRadius: 2.5, fontWeight: 800 }}
           >
             Confirm & track
@@ -449,20 +672,45 @@ export function JobDetailPage() {
         maxWidth="sm"
         PaperProps={{ sx: { borderRadius: 4 } }}
       >
-        <DialogTitle sx={{ fontWeight: 900 }}>Apply with Outreach</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 900 }}>Apply with Outreach (assistive)</DialogTitle>
         <DialogContent>
           <Typography paragraph>
             We draft an AI cover letter, find a public HR email or phone in the post, then send in
             the <strong>background</strong> from your mailbox (SMTP) or WhatsApp Business API —
-            WhatsApp and Gmail apps are <strong>not</strong> opened.
+            WhatsApp and Gmail apps are <strong>not</strong> opened. No third-party form bots.
           </Typography>
           <Typography fontSize={14} color="text.secondary">
             Detected — Email: {contacts.email || 'none'} · Phone: {contacts.phone || 'none'}
           </Typography>
-          <Typography fontSize={13} color="text.secondary" sx={{ mt: 1.25 }}>
+          <Typography fontSize={13} color="text.secondary" sx={{ mt: 1.25 }} paragraph>
             Configure Auto-send under AI Tools first (Gmail App Password + optional WhatsApp Cloud
-            API).
+            API). Per-platform toggles are honored.
           </Typography>
+          {duplicateWarn && (
+            <Alert severity="warning" sx={{ mb: 2, mt: 1 }}>
+              {duplicateWarn}
+            </Alert>
+          )}
+          {duplicateWarn && (
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={acknowledgeDuplicate}
+                  onChange={(_, v) => setAcknowledgeDuplicate(v)}
+                />
+              }
+              label="I understand — apply anyway"
+            />
+          )}
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={assistiveChecked}
+                onChange={(_, v) => setAssistiveChecked(v)}
+              />
+            }
+            label="I confirm assistive-only outreach from my own accounts."
+          />
         </DialogContent>
         <DialogActions sx={{ p: 2.5 }}>
           <Button onClick={() => setOutreachOpen(false)} sx={{ borderRadius: 2 }}>
@@ -471,7 +719,7 @@ export function JobDetailPage() {
           <Button
             variant="contained"
             onClick={() => void onOutreachApply()}
-            disabled={busy}
+            disabled={busy || !assistiveChecked || (Boolean(duplicateWarn) && !acknowledgeDuplicate)}
             sx={{ borderRadius: 2.5, fontWeight: 800 }}
           >
             {busy ? 'Working…' : 'Confirm outreach'}

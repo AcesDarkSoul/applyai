@@ -2,12 +2,14 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   Chip,
   CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControlLabel,
   InputAdornment,
   Stack,
   TextField,
@@ -70,6 +72,7 @@ export function JobsPage() {
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
   const [autoOpen, setAutoOpen] = useState(false);
   const [autoResult, setAutoResult] = useState<string | null>(null);
+  const [assistiveChecked, setAssistiveChecked] = useState(false);
 
   async function load(query = '', matchedOnly = !query) {
     setLoading(true);
@@ -432,21 +435,40 @@ export function JobsPage() {
           </Stack>
         </Box>
         <DialogContent sx={{ pt: 2.5 }}>
-          <Typography color="text.secondary" fontSize={14} lineHeight={1.7}>
+          <Typography color="text.secondary" fontSize={14} lineHeight={1.7} paragraph>
             We’ll apply to up to 8 board jobs with ≥55% match to{' '}
             <strong>{resumeQuery || 'your profile'}</strong>. Each apply generates an AI cover letter —
-            emailed or WhatsApp’d when contacts exist; otherwise we open the official apply link with
-            the letter ready to paste.
+            emailed or WhatsApp’d when contacts exist; otherwise we track the official apply link with
+            the letter ready to paste. Per-platform toggles in AI Tools are honored.
           </Typography>
+          <Typography fontSize={13} color="text.secondary" paragraph>
+            Assistive only (AD-002): ApplyAI does not submit third-party application forms for you.
+          </Typography>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={assistiveChecked}
+                onChange={(_, v) => setAssistiveChecked(v)}
+              />
+            }
+            label="I confirm assistive-only auto-apply — I remain responsible for final submits on employer sites."
+          />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5 }}>
-          <Button onClick={() => setAutoOpen(false)} disabled={applying} sx={{ borderRadius: 2 }}>
+          <Button
+            onClick={() => {
+              setAutoOpen(false);
+              setAssistiveChecked(false);
+            }}
+            disabled={applying}
+            sx={{ borderRadius: 2 }}
+          >
             Cancel
           </Button>
           <Button
             variant="contained"
             onClick={() => void onAutoApply()}
-            disabled={applying}
+            disabled={applying || !assistiveChecked}
             startIcon={applying ? <CircularProgress size={16} color="inherit" /> : <BoltRoundedIcon />}
             sx={{ borderRadius: 2.5, fontWeight: 800, px: 2 }}
           >

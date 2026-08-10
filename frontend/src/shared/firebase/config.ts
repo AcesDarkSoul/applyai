@@ -1,6 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
-import { getAnalytics, isSupported, type Analytics } from 'firebase/analytics';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -31,18 +30,6 @@ export const auth = app ? getAuth(app) : null;
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 
-let analytics: Analytics | null = null;
-
-export async function initAnalytics(): Promise<Analytics | null> {
-  if (!app || analytics) return analytics;
-  try {
-    if (await isSupported()) {
-      analytics = getAnalytics(app);
-    }
-  } catch {
-    // Analytics optional — ignore blockers (adblock, unsupported env)
-  }
-  return analytics;
-}
+export { initAnalytics } from './analytics';
 
 export default app;
