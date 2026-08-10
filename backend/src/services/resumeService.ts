@@ -1,7 +1,9 @@
 import { randomUUID } from 'crypto';
 import type { AuthUser, UserProfile } from '../domain/user';
 import type { CoverLetterDocument, ResumeBuilderInput, ResumeDocument } from '../domain/resume';
+import { AppError } from '../middleware/errorHandler';
 import { coverLetterRepository, resumeRepository, userRepository } from '../repositories';
+import { aiService } from './aiService';
 import { buildAdvancedResumeHtml, buildBestAtsResume } from './resumeBuildService';
 import { parseResumeBuffer, parsedToProfilePatch } from './resumeParseService';
 import { profileService } from './profileService';
@@ -259,6 +261,128 @@ export class ResumeService {
 
   async listCoverLetters(userId: string): Promise<CoverLetterDocument[]> {
     return coverLetterRepository.listByUser(userId);
+  }
+
+  /**
+   * Create a per-job ATS resume variant without overwriting the master resume profile.
+   */
+  async tailorForJob(
+    auth: AuthUser,
+    job: import('../domain/job').Job,
+  ): Promise<{
+    profile: UserProfile;
+    resume: ResumeDocument;
+    tips?: string[];
+    notes: string[];
+    aiAssisted: boolean;
+  }> {
+    const profile = await profileService.getOrCreate(auth);
+
+    const input: ResumeBuilderInput = {
+      displayName: profile.displayName,
+      title: profile.title,
+      email: profile.email,
+      phone: profile.phone,
+      location: profile.location || profile.preferredLocations?.[0],
+      linkedinUrl: profile.linkedinUrl,
+      website: profile.website,
+      summary: profile.summary,
+      skills: profile.skills || [],
+      experienceYears: profile.experienceYears,
+      experience: profile.experienceEntries || [],
+      education:
+        profile.educationEntries ||
+        (profile.education || []).map((line, i) => ({
+          id: `ed-${i}`,
+          school: line,
+          degree: line,
+        })),
+      projects: profile.projects || [],
+      certifications: profile.certifications || [],
+      languages: profile.languages || [],
+      achievements: profile.achievements || [],
+      template: 'modern',
+    };
+
+    if (!input.skills.length && !input.summary && !input.experience.length) {
+      throw new AppError(
+        400,
+        'Upload a resume or fill profile details before generating a tailored resume',
+        'VALIDATION',
+      );
+    }
+
+    const ai = await aiService.tailorResumeForJob(profile, job);
+    let notes = [
+      `ATS variant for ${job.title} @ ${job.company}`,
+      'Skills and bullets reordered toward the job description',
+    ];
+    let aiAssisted = false;
+
+    if (ai) {
+      aiAssisted = true;
+      if (ai.summary) input.summary = ai.summary;
+      if (ai.skillsOrder?.length) {
+        const rest = input.skills.filter(
+          (s) => !ai.skillsOrder.some((x) => x.toLowerCase() === s.toLowerCase()),
+        );
+        input.skills = [...ai.skillsOrder, ...rest];
+      }
+      if (ai.highlightBullets?.length && input.experience[0]) {
+        const existing = input.experience[0].bullets || [];
+        input.experience = [
+          {
+            ...input.experience[0],
+            bullets: [...ai.highlightBullets.slice(0, 3), ...existing].slice(0, 8),
+          },
+          ...input.experience.slice(1),
+        ];
+      }
+      notes = [...notes, ...(ai.notes || [])];
+    }
+
+    const built = buildBestAtsResume(input, {
+      jobTitle: job.title,
+      jobDescription: job.description,
+    });
+
+    const now = new Date().toISOString();
+    const resume: ResumeDocument = {
+      id: randomUUID(),
+      userId: auth.uid,
+      source: 'tailored',
+      fileName: `resume-${job.company.replace(/\W+/g, '-').slice(0, 24)}-${job.title.replace(/\W+/g, '-').slice(0, 32)}.html`,
+      mimeType: 'text/html',
+      uploadedAt: now,
+      updatedAt: now,
+      htmlContent: built.html,
+      template: built.template,
+      atsScore: built.atsScore,
+      jobId: job.id,
+      jobTitle: job.title,
+      company: job.company,
+      tailoredFromResumeId: profile.resumeId,
+      tailorNotes: notes,
+      parsed: {
+        name: input.displayName,
+        title: input.title,
+        skills: built.optimized?.skills || input.skills,
+        summary: built.optimized?.summary || input.summary,
+        jobId: job.id,
+      },
+    };
+
+    const saved = await resumeRepository.upsert(resume);
+    return {
+      profile,
+      resume: {
+        ...saved,
+        contentBase64: saved.contentBase64 ? '[stored]' : undefined,
+      },
+      tips: built.tips,
+      notes,
+      aiAssisted,
+    };
   }
 }
 

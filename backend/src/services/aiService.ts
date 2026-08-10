@@ -113,6 +113,147 @@ ${profile.email}${profile.phone ? `\n${profile.phone}` : ''}${profile.linkedinUr
 
 — AI-assisted draft from your resume. Review before sending.`;
   }
+
+  async generateLearningRoadmap(
+    profile: UserProfile,
+    job: Job,
+    missingSkills: string[],
+    matchedSkills: string[],
+  ): Promise<{
+    summary: string;
+    steps: Array<{
+      skill: string;
+      why: string;
+      estimatedHours: number;
+      resources: Array<{ title: string; url: string }>;
+    }>;
+  } | null> {
+    const client = this.getClient();
+    if (!client || !missingSkills.length) return null;
+
+    try {
+      const completion = await client.chat.completions.create({
+        model: env.OPENAI_MODEL,
+        temperature: 0.4,
+        max_tokens: 900,
+        response_format: { type: 'json_object' },
+        messages: [
+          {
+            role: 'system',
+            content: `You are a career coach. Return JSON:
+{"summary":"string","steps":[{"skill":"string","why":"string","estimatedHours":number,"resources":[{"title":"string","url":"string"}]}]}
+Rules: 3–6 steps max; realistic hours; only real public learning URLs (docs, freeCodeCamp, Coursera, YouTube search, official docs). Never invent credentials the candidate lacks.`,
+          },
+          {
+            role: 'user',
+            content: `Candidate title: ${profile.title || 'N/A'}
+Skills they have: ${(profile.skills || []).slice(0, 20).join(', ') || 'N/A'}
+Matched vs JD: ${matchedSkills.join(', ') || 'none'}
+Missing vs JD: ${missingSkills.join(', ')}
+Job: ${job.title} at ${job.company}
+JD excerpt: ${(job.description || '').slice(0, 2000)}`,
+          },
+        ],
+      });
+      const raw = completion.choices[0]?.message?.content?.trim();
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as {
+        summary?: string;
+        steps?: Array<{
+          skill: string;
+          why: string;
+          estimatedHours: number;
+          resources?: Array<{ title: string; url: string }>;
+        }>;
+      };
+      return {
+        summary: parsed.summary || '',
+        steps: (parsed.steps || []).slice(0, 6).map((s) => ({
+          skill: s.skill,
+          why: s.why,
+          estimatedHours: Number(s.estimatedHours) || 10,
+          resources: (s.resources || []).slice(0, 3),
+        })),
+      };
+    } catch (err) {
+      logger.warn('Learning roadmap AI failed', {
+        err: err instanceof Error ? err.message : err,
+      });
+      return null;
+    }
+  }
+
+  /**
+   * Generate ATS-oriented resume field tweaks for a specific JD.
+   * Facts stay grounded in the profile — no invented employers/metrics.
+   */
+  async tailorResumeForJob(
+    profile: UserProfile,
+    job: Job,
+  ): Promise<{
+    summary: string;
+    skillsOrder: string[];
+    highlightBullets: string[];
+    notes: string[];
+  } | null> {
+    const client = this.getClient();
+    if (!client) return null;
+
+    try {
+      const completion = await client.chat.completions.create({
+        model: env.OPENAI_MODEL,
+        temperature: 0.35,
+        max_tokens: 1100,
+        response_format: { type: 'json_object' },
+        messages: [
+          {
+            role: 'system',
+            content: `You tailor resumes for ATS keyword alignment. Return JSON:
+{"summary":"2-4 sentences","skillsOrder":["skill"],"highlightBullets":["bullet"],"notes":["what changed"]}
+Rules: Use ONLY facts from the candidate. Reorder/rephrase; never invent employers, degrees, or metrics. Mirror JD keywords naturally.`,
+          },
+          {
+            role: 'user',
+            content: `Name: ${profile.displayName}
+Title: ${profile.title || ''}
+Current summary: ${(profile.summary || '').slice(0, 800)}
+Skills: ${(profile.skills || []).slice(0, 30).join(', ')}
+Experience:
+${(profile.experienceEntries || [])
+  .slice(0, 4)
+  .map(
+    (e) =>
+      `- ${e.title} @ ${e.company}: ${(e.bullets || []).slice(0, 3).join(' | ')}`,
+  )
+  .join('\n')}
+
+Target job: ${job.title} @ ${job.company}
+JD:
+${(job.description || '').slice(0, 3500)}`,
+          },
+        ],
+      });
+      const raw = completion.choices[0]?.message?.content?.trim();
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as {
+        summary?: string;
+        skillsOrder?: string[];
+        highlightBullets?: string[];
+        notes?: string[];
+      };
+      return {
+        summary: (parsed.summary || profile.summary || '').trim(),
+        skillsOrder: parsed.skillsOrder || profile.skills || [],
+        highlightBullets: parsed.highlightBullets || [],
+        notes: parsed.notes || ['AI tailored summary and skill order toward the JD'],
+      };
+    } catch (err) {
+      logger.warn('Resume tailor AI failed', {
+        err: err instanceof Error ? err.message : err,
+      });
+      return null;
+    }
+  }
 }
 
 export const aiService = new AiService();

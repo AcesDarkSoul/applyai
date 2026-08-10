@@ -107,9 +107,9 @@ export function TopBar({
         position: 'sticky',
         top: 0,
         zIndex: 30,
-        px: { xs: 1.5, sm: 2, md: 3 },
-        pt: { xs: 1.25, md: 1.5 },
-        pb: { xs: 1.25, md: 1.5 },
+        px: { xs: 1.25, sm: 2, md: 3 },
+        pt: { xs: 'max(10px, env(safe-area-inset-top, 0px))', md: 1.5 },
+        pb: { xs: 1.15, md: 1.5 },
       }}
     >
       <Box
@@ -117,13 +117,13 @@ export function TopBar({
           display: 'flex',
           alignItems: 'center',
           gap: { xs: 1, sm: 1.5, md: 2 },
-          minHeight: { xs: 56, md: 64 },
-          px: { xs: 1.25, sm: 1.75, md: 2.25 },
-          py: { xs: 0.75, md: 1 },
-          borderRadius: { xs: 3, md: 4 },
+          minHeight: { xs: 54, md: 64 },
+          px: { xs: 1.15, sm: 1.75, md: 2.25 },
+          py: { xs: 0.7, md: 1 },
+          borderRadius: { xs: 3.25, md: 4 },
           border: '1px solid',
           borderColor: 'divider',
-          bgcolor: isDark ? 'rgba(21,23,42,0.82)' : 'rgba(255,255,255,0.78)',
+          bgcolor: isDark ? 'rgba(21,23,42,0.86)' : 'rgba(255,255,255,0.82)',
           backdropFilter: 'blur(18px) saturate(1.2)',
           boxShadow: isDark
             ? '0 10px 32px rgba(0,0,0,0.28)'

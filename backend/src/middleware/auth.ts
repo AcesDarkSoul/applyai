@@ -31,6 +31,33 @@ export async function authenticate(req: Request, _res: Response, next: NextFunct
 
     const admin = getFirebaseAdmin();
     if (!admin) {
+      // Local DEMO_MODE without service account: accept Firebase ID tokens by decoding
+      // the JWT payload (no signature verify). Production should set FIREBASE_* Admin creds.
+      if (isDemoMode && token.split('.').length === 3) {
+        try {
+          const payloadJson = Buffer.from(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString(
+            'utf8',
+          );
+          const payload = JSON.parse(payloadJson) as {
+            user_id?: string;
+            sub?: string;
+            email?: string;
+            exp?: number;
+          };
+          const uid = payload.user_id || payload.sub;
+          if (uid && (!payload.exp || payload.exp * 1000 > Date.now())) {
+            req.user = {
+              uid,
+              email: payload.email || '',
+              role: 'user',
+            };
+            next();
+            return;
+          }
+        } catch {
+          // fall through to unavailable
+        }
+      }
       throw new AppError(503, 'Auth provider unavailable', 'AUTH_UNAVAILABLE');
     }
 

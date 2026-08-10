@@ -57,6 +57,9 @@ const updateSchema = z.object({
   outreach: z
     .object({
       autoSendEnabled: z.boolean().optional(),
+      dailyAutoApplyEnabled: z.boolean().optional(),
+      dailyAutoApplyLimit: z.number().min(1).max(20).optional(),
+      dailyMinScore: z.number().min(0).max(100).optional(),
       smtpHost: z.string().max(200).optional(),
       smtpPort: z.number().min(1).max(65535).optional(),
       smtpSecure: z.boolean().optional(),
@@ -67,6 +70,27 @@ const updateSchema = z.object({
       twilioAccountSid: z.string().max(80).optional(),
       twilioAuthToken: z.string().max(120).optional(),
       twilioWhatsappFrom: z.string().max(80).optional(),
+    })
+    .optional(),
+  notificationPrefs: z
+    .object({
+      inAppEnabled: z.boolean().optional(),
+      emailEnabled: z.boolean().optional(),
+      pushEnabled: z.boolean().optional(),
+      highMatchJobs: z.boolean().optional(),
+      interviewUpdates: z.boolean().optional(),
+      weeklySummary: z.boolean().optional(),
+      highMatchMinScore: z.number().min(40).max(100).optional(),
+      pushTokens: z.array(z.string().max(400)).max(10).optional(),
+    })
+    .optional(),
+  smartApplyPlatforms: z
+    .object({
+      linkedin: z.boolean().optional(),
+      indeed: z.boolean().optional(),
+      naukri: z.boolean().optional(),
+      googlejobs: z.boolean().optional(),
+      other: z.boolean().optional(),
     })
     .optional(),
 });
@@ -182,8 +206,20 @@ export async function optimizeResume(
       .extend({
         jobTitle: z.string().max(160).optional(),
         jobDescription: z.string().max(8000).optional(),
+        jobId: z.string().max(120).optional(),
       })
       .parse(req.body || {});
+
+    let jobTitle = body.jobTitle;
+    let jobDescription = body.jobDescription;
+    if (body.jobId && (!jobTitle || !jobDescription)) {
+      const { jobService } = await import('../services/jobService');
+      const job = await jobService.getById(body.jobId, profile);
+      if (job) {
+        jobTitle = jobTitle || job.title;
+        jobDescription = jobDescription || job.description;
+      }
+    }
 
     const input = {
       displayName: body.displayName || profile.displayName,
@@ -227,8 +263,8 @@ export async function optimizeResume(
 
     const result = await resumeService.buildFromForm(req.user!, input, {
       optimizeAts: true,
-      jobTitle: body.jobTitle,
-      jobDescription: body.jobDescription,
+      jobTitle,
+      jobDescription,
     });
     res.status(201).json({ success: true, data: result });
   } catch (err) {

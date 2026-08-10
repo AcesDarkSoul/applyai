@@ -61,6 +61,23 @@ const envSchema = z.object({
     .optional()
     .default('true')
     .transform((v) => v !== 'false' && v !== '0'),
+  /** Daily job fetch + auto-apply scheduler */
+  DAILY_AUTOMATION_ENABLED: z
+    .string()
+    .optional()
+    .default('true')
+    .transform((v) => v !== 'false' && v !== '0'),
+  /** Cron: default 8:00 AM Asia/Kolkata every day */
+  DAILY_AUTOMATION_CRON: z.string().optional().default('0 8 * * *'),
+  DAILY_AUTOMATION_TZ: z.string().optional().default('Asia/Kolkata'),
+  DAILY_AUTOMATION_RUN_ON_START: z
+    .string()
+    .optional()
+    .default('true')
+    .transform((v) => v !== 'false' && v !== '0'),
+  DAILY_AUTOMATION_STARTUP_DELAY_MS: z.coerce.number().optional().default(12_000),
+  DAILY_AUTO_APPLY_LIMIT: z.coerce.number().optional().default(8),
+  DAILY_AUTO_APPLY_MIN_SCORE: z.coerce.number().optional().default(55),
 });
 
 const parsed = envSchema.safeParse(process.env);

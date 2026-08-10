@@ -4,6 +4,7 @@ import type { Job } from '../domain/job';
 import type { AuthUser, UserProfile } from '../domain/user';
 import { AppError } from '../middleware/errorHandler';
 import { applicationRepository } from '../repositories';
+import { isPlatformEnabled } from './auditService';
 import { isHiringPost } from './contentParse';
 import { generateAndSaveCoverLetter, type CoverLetterBundle } from './coverLetterService';
 import { jobService } from './jobService';
@@ -16,9 +17,57 @@ export type AutoApplyItem = {
   coverLetter: CoverLetterBundle;
 };
 
+export type DuplicateApplyHit = {
+  kind: 'job' | 'company';
+  application: Application;
+  message: string;
+};
+
+function normalizeCompany(name: string): string {
+  return name.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+const ACTIVE_STATUSES: ApplicationStatus[] = [
+  'applied',
+  'viewed',
+  'interview',
+  'offer',
+];
+
 export class ApplicationService {
   list(userId: string): Promise<Application[]> {
     return applicationRepository.listByUser(userId);
+  }
+
+  async findDuplicate(
+    userId: string,
+    job: Pick<Job, 'id' | 'company' | 'title'>,
+  ): Promise<DuplicateApplyHit | null> {
+    const apps = await applicationRepository.listByUser(userId);
+    const active = apps.filter((a) => ACTIVE_STATUSES.includes(a.status));
+
+    const sameJob = active.find((a) => a.jobId === job.id);
+    if (sameJob) {
+      return {
+        kind: 'job',
+        application: sameJob,
+        message: `You already applied to this role (${sameJob.jobTitle}). Apply again anyway?`,
+      };
+    }
+
+    const companyKey = normalizeCompany(job.company);
+    if (!companyKey) return null;
+
+    const sameCompany = active.find((a) => normalizeCompany(a.company) === companyKey);
+    if (sameCompany) {
+      return {
+        kind: 'company',
+        application: sameCompany,
+        message: `You already applied to ${sameCompany.company} for “${sameCompany.jobTitle}”. Apply to another role at the same company?`,
+      };
+    }
+
+    return null;
   }
 
   async smartApply(
@@ -109,16 +158,38 @@ export class ApplicationService {
     jobs = jobs.slice(0, limit);
 
     const existing = await applicationRepository.listByUser(auth.uid);
-    const already = new Set(
-      existing.filter((a) => a.status !== 'withdrawn').map((a) => a.jobId),
+    const alreadyJobIds = new Set(
+      existing.filter((a) => a.status !== 'withdrawn' && a.status !== 'rejected').map((a) => a.jobId),
+    );
+    const alreadyCompanies = new Set(
+      existing
+        .filter((a) => ['applied', 'viewed', 'interview', 'offer'].includes(a.status))
+        .map((a) => a.company.trim().toLowerCase().replace(/\s+/g, ' ')),
     );
 
     const applied: AutoApplyItem[] = [];
     const skipped: Array<{ jobId: string; title: string; reason: string }> = [];
 
     for (const job of jobs) {
-      if (already.has(job.id)) {
+      if (alreadyJobIds.has(job.id)) {
         skipped.push({ jobId: job.id, title: job.title, reason: 'Already applied' });
+        continue;
+      }
+      const companyKey = job.company.trim().toLowerCase().replace(/\s+/g, ' ');
+      if (companyKey && alreadyCompanies.has(companyKey)) {
+        skipped.push({
+          jobId: job.id,
+          title: job.title,
+          reason: 'Already applied at this company',
+        });
+        continue;
+      }
+      if (!isPlatformEnabled(profile.smartApplyPlatforms, job.source)) {
+        skipped.push({
+          jobId: job.id,
+          title: job.title,
+          reason: `Platform disabled in Smart Apply settings (${job.source})`,
+        });
         continue;
       }
 
@@ -155,7 +226,8 @@ export class ApplicationService {
         outreach,
         coverLetter: cover,
       });
-      already.add(job.id);
+      alreadyJobIds.add(job.id);
+      if (companyKey) alreadyCompanies.add(companyKey);
     }
 
     return {

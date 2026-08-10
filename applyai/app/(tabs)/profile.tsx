@@ -13,7 +13,9 @@ import {
 import { useAuthStore } from '@/stores/authStore';
 import { useResumeStore, userHasResume } from '@/stores/resumeStore';
 import { logOut } from '@/lib/firebase/auth';
-import { saveUserProfileFromForm, calculateProfileCompleteness, formatFirebaseError } from '@/lib/firebase/profile';
+import { saveUserProfileFromForm, formatFirebaseError } from '@/lib/firebase/profile';
+import { calculateProfileCompleteness, getProfileGaps } from '@/lib/profileCompleteness';
+import { ProfileNudges } from '@/components/profile/ProfileNudges';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 
 export default function ProfileScreen() {
@@ -26,6 +28,7 @@ export default function ProfileScreen() {
   const [form, setForm] = useState<ProfileFormData>(profileToFormData(profile));
 
   const completeness = calculateProfileCompleteness(profile, hasResume);
+  const gaps = getProfileGaps(profile, hasResume, 4);
   const needsManualFill = profile?.parseStatus === 'manual' || (!profile?.skills?.length && hasResumeSaved);
 
   useEffect(() => {
@@ -81,6 +84,22 @@ export default function ProfileScreen() {
             </Text>
             <Button title="Edit Profile" size="sm" onPress={() => setEditing(true)} />
           </Card>
+        </FadeInView>
+      )}
+
+      {!editing && (
+        <FadeInView direction="up" delay={70}>
+          <ProfileNudges
+            gaps={gaps}
+            completeness={completeness}
+            onNudgePress={(gap) => {
+              if (gap.href === '/resume/upload') {
+                router.push('/resume/upload');
+                return;
+              }
+              setEditing(true);
+            }}
+          />
         </FadeInView>
       )}
 

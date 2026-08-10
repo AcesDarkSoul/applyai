@@ -1,5 +1,16 @@
 import type { UserProfile } from '../domain/user';
 
+/** Keep only short place-like strings (avoid resume bullets leaking into SerpApi location). */
+export function sanitizeJobLocation(raw?: string | null): string | undefined {
+  if (!raw) return undefined;
+  const loc = String(raw).replace(/\s+/g, ' ').trim();
+  if (!loc || /^remote$/i.test(loc)) return undefined;
+  if (loc.length > 60) return undefined;
+  if (/[•·|]/.test(loc)) return undefined;
+  if (/\b(contributed|developed|responsible|experience|skills)\b/i.test(loc)) return undefined;
+  return loc;
+}
+
 /**
  * Build a job-board search query from the user's resume/profile.
  * Prefer explicit user search text when provided.
@@ -20,11 +31,7 @@ export function buildJobSearchQuery(
     parts.push(...profile.skills.slice(0, 3));
   }
 
-  const loc =
-    profile.preferredLocations?.find((l) => l && !/^remote$/i.test(l)) ||
-    (profile.location && !/^remote$/i.test(profile.location) ? profile.location : '');
-  if (loc) parts.push(loc);
-
+  // Location is passed separately to scrapers — keep query title/skills only
   return parts.join(' ').trim() || 'software engineer';
 }
 

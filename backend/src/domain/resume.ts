@@ -32,7 +32,7 @@ export interface ProjectEntry {
 export interface ResumeDocument {
   id: string;
   userId: string;
-  source: 'upload' | 'builder';
+  source: 'upload' | 'builder' | 'tailored';
   fileName: string;
   mimeType?: string;
   uploadedAt: string;
@@ -47,6 +47,14 @@ export interface ResumeDocument {
   htmlContent?: string;
   template?: 'classic' | 'modern' | 'executive';
   atsScore?: number;
+  /** When set, this is a per-job ATS variant (Module 6). */
+  jobId?: string;
+  jobTitle?: string;
+  company?: string;
+  /** Parent resume this variant was tailored from. */
+  tailoredFromResumeId?: string;
+  /** Short note of what was optimized for the JD. */
+  tailorNotes?: string[];
 }
 
 export interface CoverLetterDocument {

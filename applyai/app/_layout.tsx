@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
-import { useFonts } from 'expo-font';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack, usePathname, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
@@ -11,12 +10,26 @@ import { useAuthStore } from '@/stores/authStore';
 import { useResumeStore } from '@/stores/resumeStore';
 import { Colors } from '@/constants/theme';
 import { AppTopBar } from '@/components/layout/AppTopBar';
+import { trackScreen } from '@/lib/firebase/analytics';
+import { initTelemetry } from '@/lib/firebase/telemetry';
 
 export { ErrorBoundary } from 'expo-router';
 
 SplashScreen.preventAutoHideAsync();
 
 const AUTH_ROUTES = new Set(['(auth)']);
+
+function ScreenTracker() {
+  const pathname = usePathname();
+
+  useEffect(() => {
+    if (!pathname) return;
+    const screen = pathname === '/' ? 'index' : pathname.replace(/^\//, '').replace(/\//g, '_');
+    void trackScreen(screen, pathname);
+  }, [pathname]);
+
+  return null;
+}
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, initialized } = useAuthStore();
@@ -68,15 +81,12 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 }
 
 export default function RootLayout() {
-  const [loaded, error] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-  });
   const initialize = useAuthStore((s) => s.initialize);
   const refreshResume = useResumeStore((s) => s.refresh);
 
   useEffect(() => {
-    if (error) throw error;
-  }, [error]);
+    void initTelemetry();
+  }, []);
   useEffect(() => {
     const unsub = initialize();
     return unsub;
@@ -85,14 +95,13 @@ export default function RootLayout() {
     refreshResume();
   }, []);
   useEffect(() => {
-    if (loaded) SplashScreen.hideAsync();
-  }, [loaded]);
-
-  if (!loaded) return null;
+    SplashScreen.hideAsync();
+  }, []);
 
   return (
     <SafeAreaProvider>
       <AuthGuard>
+        <ScreenTracker />
         <StatusBar style="dark" />
         <Stack
           screenOptions={{

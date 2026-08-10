@@ -1,16 +1,25 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, Alert, Linking, TextInput, ActivityIndicator } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
-import { Button, Card, MatchScoreBar, Badge } from '@/components/ui';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { Button, Card, Badge } from '@/components/ui';
 import { Screen } from '@/components/layout/Screen';
 import { FadeInView } from '@/components/AnimatedView';
+import { MatchScoreBreakdown } from '@/components/jobs/MatchScoreBreakdown';
+import { SaveJobButton } from '@/components/jobs/SaveJobButton';
 import { useAuthStore } from '@/stores/authStore';
 import { searchJobs } from '@/lib/services/jobs';
-import { createApplication } from '@/lib/firebase/profile';
+import {
+  createApplication,
+  getApplications,
+  formatFirebaseError,
+} from '@/lib/firebase/profile';
+import { confirmDuplicateApply } from '@/lib/confirmDuplicateApply';
+import { findDuplicateApply } from '@/lib/duplicateApply';
+import { isJobSaved, toggleSaveJob } from '@/lib/firebase/savedJobs';
 import { generateCoverLetterAPI, sendOutreachEmailAPI } from '@/lib/firebase/functions';
 import { detectPlatform, getPlatformConfig, openSmartApply, shareOnLinkedIn } from '@/lib/services/platforms';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
-import type { Job } from '@/types';
+import type { Application, Job } from '@/types';
 
 export default function JobDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -24,6 +33,9 @@ export default function JobDetailScreen() {
   const [recruiterEmail, setRecruiterEmail] = useState('');
   const [recruiterName, setRecruiterName] = useState('');
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -38,6 +50,26 @@ export default function JobDetailScreen() {
     }
     load();
   }, [id, profile?.skills]);
+
+  const refreshMeta = useCallback(async () => {
+    if (!user || !id) return;
+    try {
+      const [apps, isSaved] = await Promise.all([
+        getApplications(user.uid),
+        isJobSaved(user.uid, id),
+      ]);
+      setApplications(apps);
+      setSaved(isSaved);
+    } catch {
+      /* ignore */
+    }
+  }, [user, id]);
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshMeta();
+    }, [refreshMeta])
+  );
 
   if (loading) {
     return (
@@ -60,15 +92,40 @@ export default function JobDetailScreen() {
 
   const platform = detectPlatform(job.url, job.source);
   const pConfig = getPlatformConfig(platform);
+  const duplicate = findDuplicateApply(applications, job);
+
+  const handleToggleSave = async () => {
+    if (!user) {
+      Alert.alert('Sign in required', 'Sign in to save jobs to your shortlist.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const next = await toggleSaveJob(user.uid, job, saved);
+      setSaved(next);
+    } catch (e) {
+      Alert.alert('Error', formatFirebaseError(e));
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleApply = async () => {
     if (!user) return;
+    const ok = await confirmDuplicateApply(applications, job);
+    if (!ok) return;
+
     setApplying(true);
     try {
       await openSmartApply({ job, platform, profile: profile || {} });
       await createApplication(user.uid, {
-        id: job.id, title: job.title, company: job.company, matchScore: job.matchScore?.overall || 0,
+        id: job.id,
+        title: job.title,
+        company: job.company,
+        matchScore: job.matchScore?.overall || 0,
       });
+      const apps = await getApplications(user.uid);
+      setApplications(apps);
     } catch {
       Alert.alert('Error', 'Failed to start application');
     } finally {
@@ -80,7 +137,9 @@ export default function JobDetailScreen() {
     setGeneratingCL(true);
     try {
       const result = await generateCoverLetterAPI({
-        jobTitle: job.title, company: job.company, jobDescription: job.description,
+        jobTitle: job.title,
+        company: job.company,
+        jobDescription: job.description,
       });
       setCoverLetter(result.content);
     } catch (e: unknown) {
@@ -92,12 +151,17 @@ export default function JobDetailScreen() {
   };
 
   const handleSendEmail = async () => {
-    if (!recruiterEmail) { Alert.alert('Error', 'Please enter the recruiter email'); return; }
+    if (!recruiterEmail) {
+      Alert.alert('Error', 'Please enter the recruiter email');
+      return;
+    }
     setSendingEmail(true);
     try {
       const result = await sendOutreachEmailAPI({
-        recruiterEmail, recruiterName: recruiterName || undefined,
-        jobTitle: job.title, company: job.company,
+        recruiterEmail,
+        recruiterName: recruiterName || undefined,
+        jobTitle: job.title,
+        company: job.company,
       });
       Alert.alert('Email Sent!', `Subject: ${result.subject}`);
       setShowEmailForm(false);
@@ -115,27 +179,49 @@ export default function JobDetailScreen() {
     <Screen safe={false} edges={['left', 'right']}>
       <FadeInView direction="down">
         <View style={styles.header}>
-          <View style={[styles.companyLogo, { backgroundColor: pConfig.color }]}>
-            <Text style={styles.companyInitial}>{job.company.charAt(0)}</Text>
+          <View style={styles.headerTop}>
+            <View style={[styles.companyLogo, { backgroundColor: pConfig.color }]}>
+              <Text style={styles.companyInitial}>{job.company.charAt(0)}</Text>
+            </View>
+            <View style={styles.saveAbsolute}>
+              <SaveJobButton saved={saved} loading={saving} onPress={handleToggleSave} size={26} />
+            </View>
           </View>
           <Text style={styles.title}>{job.title}</Text>
           <Text style={styles.company}>{job.company}</Text>
           <View style={styles.tags}>
-            {job.remote && <Badge text="Remote" backgroundColor={Colors.secondary + '30'} color={Colors.secondaryDark} />}
-            <Badge text={job.employmentType} backgroundColor={Colors.surfaceLight} color={Colors.textSecondary} />
+            {job.remote && (
+              <Badge text="Remote" backgroundColor={Colors.secondary + '30'} color={Colors.secondaryDark} />
+            )}
+            <Badge
+              text={job.employmentType}
+              backgroundColor={Colors.surfaceLight}
+              color={Colors.textSecondary}
+            />
+            {saved && (
+              <Badge text="Saved" backgroundColor={Colors.primary + '18'} color={Colors.primary} />
+            )}
           </View>
         </View>
       </FadeInView>
 
+      {duplicate && (
+        <FadeInView direction="up" delay={40}>
+          <Card style={styles.dupCard}>
+            <Text style={styles.dupTitle}>
+              {duplicate.kind === 'job' ? 'Already applied to this job' : 'Already applied at this company'}
+            </Text>
+            <Text style={styles.dupText}>
+              Prior application: {duplicate.application.jobTitle} · status{' '}
+              {duplicate.application.status}
+            </Text>
+          </Card>
+        </FadeInView>
+      )}
+
       <FadeInView direction="up" delay={80}>
         <Card style={styles.matchCard}>
-          <Text style={styles.matchTitle}>AI Match Score</Text>
-          <Text style={styles.overallScore}>{job.matchScore?.overall}%</Text>
-          <MatchScoreBar label="Skills" score={job.matchScore?.skills || 0} />
-          <MatchScoreBar label="Experience" score={job.matchScore?.experience || 0} />
-          <MatchScoreBar label="Education" score={job.matchScore?.education || 0} />
-          <MatchScoreBar label="Location" score={job.matchScore?.location || 0} />
-          <MatchScoreBar label="Salary" score={job.matchScore?.salary || 0} />
+          <MatchScoreBreakdown score={job.matchScore} variant="detail" defaultExpanded={false} />
         </Card>
       </FadeInView>
 
@@ -162,11 +248,16 @@ export default function JobDetailScreen() {
             <View style={styles.skills}>
               {job.skills.map((skill) => {
                 const hasSkill = profile?.skills?.some(
-                  (s) => s.toLowerCase().includes(skill.toLowerCase()) || skill.toLowerCase().includes(s.toLowerCase())
+                  (s) =>
+                    s.toLowerCase().includes(skill.toLowerCase()) ||
+                    skill.toLowerCase().includes(s.toLowerCase())
                 );
                 return (
                   <View key={skill} style={[styles.skillTag, hasSkill && styles.skillTagMatch]}>
-                    <Text style={[styles.skillText, hasSkill && styles.skillTextMatch]}>{hasSkill ? '✓ ' : ''}{skill}</Text>
+                    <Text style={[styles.skillText, hasSkill && styles.skillTextMatch]}>
+                      {hasSkill ? '✓ ' : ''}
+                      {skill}
+                    </Text>
                   </View>
                 );
               })}
@@ -183,8 +274,13 @@ export default function JobDetailScreen() {
           ) : (
             <Text style={styles.sectionHint}>Generate a personalized cover letter using AI</Text>
           )}
-          <Button title={generatingCL ? 'Generating...' : coverLetter ? 'Regenerate' : 'Generate with AI'}
-            variant={coverLetter ? 'outline' : 'secondary'} size="sm" onPress={handleGenerateCoverLetter} loading={generatingCL} />
+          <Button
+            title={generatingCL ? 'Generating...' : coverLetter ? 'Regenerate' : 'Generate with AI'}
+            variant={coverLetter ? 'outline' : 'secondary'}
+            size="sm"
+            onPress={handleGenerateCoverLetter}
+            loading={generatingCL}
+          />
         </Card>
       </FadeInView>
 
@@ -193,10 +289,22 @@ export default function JobDetailScreen() {
           <Text style={styles.sectionTitle}>Recruiter Outreach</Text>
           {showEmailForm ? (
             <View>
-              <TextInput style={styles.emailInput} placeholder="Recruiter email" placeholderTextColor={Colors.textMuted}
-                value={recruiterEmail} onChangeText={setRecruiterEmail} keyboardType="email-address" autoCapitalize="none" />
-              <TextInput style={styles.emailInput} placeholder="Recruiter name (optional)" placeholderTextColor={Colors.textMuted}
-                value={recruiterName} onChangeText={setRecruiterName} />
+              <TextInput
+                style={styles.emailInput}
+                placeholder="Recruiter email"
+                placeholderTextColor={Colors.textMuted}
+                value={recruiterEmail}
+                onChangeText={setRecruiterEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+              <TextInput
+                style={styles.emailInput}
+                placeholder="Recruiter name (optional)"
+                placeholderTextColor={Colors.textMuted}
+                value={recruiterName}
+                onChangeText={setRecruiterName}
+              />
               <View style={styles.emailActions}>
                 <Button title="Send AI Email" size="sm" onPress={handleSendEmail} loading={sendingEmail} />
                 <Button title="Cancel" size="sm" variant="ghost" onPress={() => setShowEmailForm(false)} />
@@ -212,9 +320,32 @@ export default function JobDetailScreen() {
       </FadeInView>
 
       <View style={styles.actions}>
-        <Button title={pConfig.applyLabel} onPress={handleApply} loading={applying} icon={pConfig.icon} size="lg" />
+        <Button
+          title={
+            duplicate?.kind === 'job'
+              ? 'Apply again'
+              : duplicate?.kind === 'company'
+                ? 'Apply to this role'
+                : pConfig.applyLabel
+          }
+          onPress={handleApply}
+          loading={applying}
+          icon={pConfig.icon}
+          size="lg"
+        />
+        <Button
+          title={saved ? 'Remove from shortlist' : 'Save for later'}
+          variant="outline"
+          onPress={handleToggleSave}
+          loading={saving}
+        />
         {platform === 'linkedin' && (
-          <Button title="Share on LinkedIn" variant="yellow" onPress={() => shareOnLinkedIn(job, profile || undefined)} icon="💼" />
+          <Button
+            title="Share on LinkedIn"
+            variant="yellow"
+            onPress={() => shareOnLinkedIn(job, profile || undefined)}
+            icon="💼"
+          />
         )}
         <Button title="View Original Posting" variant="outline" onPress={() => Linking.openURL(job.url)} />
       </View>
@@ -237,16 +368,52 @@ const styles = StyleSheet.create({
   emptyIcon: { fontSize: 48, marginBottom: Spacing.md },
   emptyText: { color: Colors.textSecondary, fontSize: FontSize.md },
   header: { alignItems: 'center', marginBottom: Spacing.lg },
-  companyLogo: { width: 72, height: 72, borderRadius: BorderRadius.xl, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.md },
+  headerTop: {
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+    position: 'relative',
+  },
+  saveAbsolute: { position: 'absolute', right: 0, top: 0 },
+  companyLogo: {
+    width: 72,
+    height: 72,
+    borderRadius: BorderRadius.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   companyInitial: { color: Colors.white, fontSize: FontSize.xxl, fontWeight: '800' },
-  title: { color: Colors.text, fontSize: FontSize.xl, fontWeight: '800', textAlign: 'center', lineHeight: 28 },
+  title: {
+    color: Colors.text,
+    fontSize: FontSize.xl,
+    fontWeight: '800',
+    textAlign: 'center',
+    lineHeight: 28,
+  },
   company: { color: Colors.textSecondary, fontSize: FontSize.md, marginTop: Spacing.xs },
-  tags: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.sm, flexWrap: 'wrap', justifyContent: 'center' },
+  tags: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    marginTop: Spacing.sm,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+  },
+  dupCard: {
+    marginBottom: Spacing.md,
+    backgroundColor: Colors.warning + '18',
+    borderColor: Colors.warning,
+    borderWidth: 1,
+  },
+  dupTitle: { color: Colors.text, fontSize: FontSize.md, fontWeight: '800', marginBottom: 4 },
+  dupText: { color: Colors.textSecondary, fontSize: FontSize.sm },
   matchCard: { marginBottom: Spacing.md, alignItems: 'center' },
-  matchTitle: { color: Colors.textSecondary, fontSize: FontSize.sm, marginBottom: Spacing.xs },
-  overallScore: { color: Colors.primary, fontSize: 48, fontWeight: '900', marginBottom: Spacing.md },
   section: { marginBottom: Spacing.md },
-  sectionTitle: { color: Colors.text, fontSize: FontSize.lg, fontWeight: '700', marginBottom: Spacing.sm },
+  sectionTitle: {
+    color: Colors.text,
+    fontSize: FontSize.lg,
+    fontWeight: '700',
+    marginBottom: Spacing.sm,
+  },
   sectionHint: { color: Colors.textMuted, fontSize: FontSize.sm, marginBottom: Spacing.sm },
   description: { color: Colors.textSecondary, fontSize: FontSize.md, lineHeight: 24 },
   detailRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing.sm },
@@ -254,12 +421,34 @@ const styles = StyleSheet.create({
   detailLabel: { color: Colors.textMuted, fontSize: FontSize.sm, width: 80 },
   detailValue: { color: Colors.text, fontSize: FontSize.sm, flex: 1 },
   skills: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
-  skillTag: { backgroundColor: Colors.surfaceLight, paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs, borderRadius: BorderRadius.full },
+  skillTag: {
+    backgroundColor: Colors.surfaceLight,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.full,
+  },
   skillTagMatch: { backgroundColor: Colors.primary + '20' },
   skillText: { color: Colors.textSecondary, fontSize: FontSize.sm },
   skillTextMatch: { color: Colors.success, fontWeight: '700' },
-  coverLetterText: { color: Colors.textSecondary, fontSize: FontSize.sm, lineHeight: 22, marginBottom: Spacing.md, backgroundColor: Colors.surfaceLight, padding: Spacing.md, borderRadius: BorderRadius.md },
-  emailInput: { backgroundColor: Colors.surfaceLight, borderRadius: BorderRadius.md, padding: Spacing.md, color: Colors.text, fontSize: FontSize.md, borderWidth: 1, borderColor: Colors.border, marginBottom: Spacing.sm },
+  coverLetterText: {
+    color: Colors.textSecondary,
+    fontSize: FontSize.sm,
+    lineHeight: 22,
+    marginBottom: Spacing.md,
+    backgroundColor: Colors.surfaceLight,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+  },
+  emailInput: {
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    color: Colors.text,
+    fontSize: FontSize.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: Spacing.sm,
+  },
   emailActions: { flexDirection: 'row', gap: Spacing.sm },
   actions: { gap: Spacing.sm, marginTop: Spacing.md, marginBottom: Spacing.lg },
 });

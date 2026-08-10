@@ -3,7 +3,7 @@ import { logger } from '../config/logger';
 import type { Job } from '../domain/job';
 import type { UserProfile } from '../domain/user';
 import { jobCatalog } from '../repositories/memory/jobCatalog';
-import { buildJobSearchQuery, profileMatchKeywords } from './jobQuery';
+import { buildJobSearchQuery, profileMatchKeywords, sanitizeJobLocation } from './jobQuery';
 import { computeMatch } from './matchingService';
 import { toJobs, type NormalizedJobInput } from './jobNormalize';
 import { jobScrapeService } from './jobScrapeService';
@@ -381,9 +381,10 @@ export class JobService {
   async refreshFromProviders(query?: string, location?: string, profile?: UserProfile | null) {
     const q = query?.trim() || buildJobSearchQuery(profile || null);
     const loc =
-      location?.trim() ||
-      profile?.preferredLocations?.[0] ||
-      (profile?.location && !/^remote$/i.test(profile.location) ? profile.location : undefined);
+      sanitizeJobLocation(location) ||
+      sanitizeJobLocation(profile?.preferredLocations?.[0]) ||
+      sanitizeJobLocation(profile?.location) ||
+      sanitizeJobLocation(env.JOB_SEARCH_LOCATION);
     const result = await jobScrapeService.refresh(q, loc);
     if (result.jobs.length) {
       jobCatalog.replaceAll(result.jobs, 'apify-serpapi');

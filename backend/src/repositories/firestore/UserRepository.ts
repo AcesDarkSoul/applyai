@@ -28,4 +28,11 @@ export class FirestoreUserRepository implements IUserRepository {
     });
     return profile;
   }
+
+  async listAll(): Promise<UserProfile[]> {
+    const db = getFirestore();
+    if (!db) return [];
+    const snap = await db.collection('users').limit(200).get();
+    return snap.docs.map((d) => ({ uid: d.id, ...(d.data() as Omit<UserProfile, 'uid'>) }));
+  }
 }

@@ -123,7 +123,8 @@ export function OverviewPage() {
           className="aa-card aa-hero-mesh p-5 md:p-7"
           sx={{
             background:
-              'linear-gradient(125deg, rgba(91,92,226,0.16), rgba(15,23,42,0.02) 48%, rgba(20,184,166,0.1))',
+              'linear-gradient(125deg, rgba(91,92,226,0.18), rgba(15,23,42,0.02) 48%, rgba(20,184,166,0.12))',
+            borderRadius: { xs: 3.5, md: 4.5 },
           }}
         >
           <Stack
@@ -139,10 +140,19 @@ export function OverviewPage() {
                   Your job search HQ
                 </Typography>
               </Stack>
-              <Typography fontWeight={900} fontSize={{ xs: 24, md: 30 }} letterSpacing="-0.03em">
+              <Typography
+                fontWeight={900}
+                fontSize={{ xs: 22, sm: 26, md: 30 }}
+                letterSpacing="-0.03em"
+                lineHeight={1.15}
+              >
                 Ready for your next move?
               </Typography>
-              <Typography color="text.secondary" fontSize={14.5} sx={{ maxWidth: 520, mt: 0.75 }}>
+              <Typography
+                color="text.secondary"
+                fontSize={{ xs: 13.5, md: 14.5 }}
+                sx={{ maxWidth: 520, mt: 0.75, lineHeight: 1.55 }}
+              >
                 Review matches, track applications, and let AI draft cover letters when you apply.
               </Typography>
             </Box>
@@ -152,11 +162,16 @@ export function OverviewPage() {
                 to="/jobs"
                 variant="contained"
                 endIcon={<ArrowForwardRoundedIcon />}
-                sx={{ px: 2.5 }}
+                sx={{ px: 2.5, minHeight: 44 }}
               >
                 Find matches
               </Button>
-              <Button component={RouterLink} to="/resume" variant="outlined" sx={{ px: 2.25 }}>
+              <Button
+                component={RouterLink}
+                to="/resume"
+                variant="outlined"
+                sx={{ px: 2.25, minHeight: 44 }}
+              >
                 Resume Studio
               </Button>
             </Stack>

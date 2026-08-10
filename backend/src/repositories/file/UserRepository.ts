@@ -11,4 +11,8 @@ export class FileUserRepository implements IUserRepository {
     await fileStore.set('users', profile.uid, profile);
     return profile;
   }
+
+  async listAll(): Promise<UserProfile[]> {
+    return fileStore.list<UserProfile>('users');
+  }
 }
