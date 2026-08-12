@@ -6,7 +6,7 @@ interface ThemeState {
 }
 
 const initial =
-  (localStorage.getItem('applyai_theme') as 'light' | 'dark' | null) || 'light';
+  (localStorage.getItem('applyai_theme') as 'light' | 'dark' | null) || 'dark';
 
 export const useThemeMode = create<ThemeState>((set, get) => ({
   mode: initial,

@@ -18,6 +18,19 @@
 -keep class expo.modules.** { *; }
 -keep class com.applyai.app.** { *; }
 
+# Networking (axios / OkHttp) — required for API + Firebase Auth JS
+-dontwarn okhttp3.**
+-dontwarn okio.**
+-keep class okhttp3.** { *; }
+-keep interface okhttp3.** { *; }
+-keep class okio.** { *; }
+
+# Firebase / Google Play Services
+-keep class com.google.firebase.** { *; }
+-keep class com.google.android.gms.** { *; }
+-dontwarn com.google.firebase.**
+-dontwarn com.google.android.gms.**
+
 # Keep native methods
 -keepclassmembers class * { native <methods>; }
 

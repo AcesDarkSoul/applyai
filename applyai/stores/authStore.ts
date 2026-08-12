@@ -4,6 +4,7 @@ import { auth } from '@/lib/firebase/config';
 import { getUserProfile } from '@/lib/firebase/auth';
 import { setAnalyticsUserId } from '@/lib/firebase/analytics';
 import { recordError, setCrashlyticsUser } from '@/lib/firebase/crashlytics';
+import { setApiToken } from '@/lib/api/client';
 import type { UserProfile } from '@/types';
 
 interface AuthState {
@@ -49,6 +50,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // Only email/password or Google sessions are allowed — reject anonymous
         if (user && user.isAnonymous) {
           await signOut(auth).catch(() => undefined);
+          await setApiToken(null);
           set({ user: null, profile: null, loading: false, initialized: true });
           void setAnalyticsUserId(null);
           void setCrashlyticsUser(null);
@@ -56,6 +58,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         }
 
         if (user) {
+          const idToken = await user.getIdToken();
+          await setApiToken(idToken);
           const profile = await getUserProfile(user.uid);
           set({ user, profile, loading: false, initialized: true });
           void setAnalyticsUserId(user.uid);
@@ -65,6 +69,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             name: profile?.name ?? user.displayName,
           });
         } else {
+          await setApiToken(null);
           set({ user: null, profile: null, loading: false, initialized: true });
           void setAnalyticsUserId(null);
           void setCrashlyticsUser(null);

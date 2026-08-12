@@ -2,7 +2,7 @@
   "name": "applyai-backend",
   "version": "1.0.0",
   "description": "ApplyAI enterprise API — Node.js Express TypeScript",
-  "main": "dist/server.js",
+  "main": "dist/firebaseApi.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
@@ -10,10 +10,11 @@
     "lint": "eslint src --ext .ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "jobs:refresh": "node ./scripts/refresh-and-test-jobs.mjs"
+    "jobs:refresh": "node ./scripts/refresh-and-test-jobs.mjs",
+    "deploy:firebase": "npm run build && firebase deploy --only functions:api,hosting --project petcare-9f4e6"
   },
   "engines": {
-    "node": ">=20"
+    "node": "20"
   },
   "dependencies": {
     "cors": "^2.8.5",
@@ -21,6 +22,7 @@
     "express": "^4.21.2",
     "express-rate-limit": "^7.5.0",
     "firebase-admin": "^13.0.2",
+    "firebase-functions": "^6.6.0",
     "helmet": "^8.0.0",
     "mammoth": "^1.12.0",
     "morgan": "^1.10.0",

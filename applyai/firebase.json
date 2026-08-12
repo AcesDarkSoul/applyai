@@ -20,8 +20,40 @@
       "predeploy": [
         "npm --prefix \"$RESOURCE_DIR\" run build"
       ]
+    },
+    {
+      "source": "../backend",
+      "codebase": "api",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local",
+        "data",
+        "coverage",
+        "scripts",
+        "src",
+        "*.md"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run build"
+      ]
     }
   ],
+  "hosting": {
+    "public": "hosting",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [
+      {
+        "source": "/api/**",
+        "function": {
+          "functionId": "api",
+          "region": "us-central1"
+        }
+      }
+    ]
+  },
   "react-native": {
     "analytics_auto_collection_enabled": true,
     "google_analytics_automatic_screen_reporting_enabled": false,

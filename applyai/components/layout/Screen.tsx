@@ -61,7 +61,9 @@ export function Screen({
       style={styles.flex}
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={Platform.OS === 'web'}
-      keyboardShouldPersistTaps="handled"
+      keyboardShouldPersistTaps={keyboard ? 'always' : 'handled'}
+      keyboardDismissMode="on-drag"
+      nestedScrollEnabled
       {...scrollProps}
     >
       {inner}
@@ -70,10 +72,13 @@ export function Screen({
     <View style={[styles.flex, styles.scrollContent]}>{inner}</View>
   );
 
+  // Android uses windowSoftInputMode=adjustResize — KeyboardAvoidingView "height"
+  // fights the system and can prevent the soft keyboard from opening reliably.
   const wrapped = keyboard ? (
     <KeyboardAvoidingView
       style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : Platform.OS === 'android' ? 'height' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      enabled={Platform.OS === 'ios'}
     >
       {body}
     </KeyboardAvoidingView>

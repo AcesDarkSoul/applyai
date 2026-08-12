@@ -102,7 +102,7 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <AuthGuard>
         <ScreenTracker />
-        <StatusBar style="dark" />
+        <StatusBar style="light" />
         <Stack
           screenOptions={{
             headerShown: false,
@@ -113,12 +113,17 @@ export default function RootLayout() {
           <Stack.Screen name="index" />
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="posts/index" />
+          <Stack.Screen name="posts/[id]" />
+          <Stack.Screen name="notifications" />
+          <Stack.Screen name="analytics" />
+          <Stack.Screen name="ai-tools" />
           <Stack.Screen
             name="job/[id]"
             options={{
               headerShown: true,
               header: () => (
-                <AppTopBar title="Job Details" subtitle="Match, apply, follow up" showBack />
+                <AppTopBar title="Job Details" subtitle="Match, apply, follow up" showBack showMenu={false} />
               ),
               headerShadowVisible: false,
               title: 'Job Details',
@@ -129,7 +134,7 @@ export default function RootLayout() {
             options={{
               headerShown: true,
               header: () => (
-                <AppTopBar title="AI Social Posts" subtitle="Share your wins" showBack />
+                <AppTopBar title="AI Social Posts" subtitle="Share your wins" showBack showMenu={false} />
               ),
               headerShadowVisible: false,
               title: 'AI Social Posts',
@@ -141,7 +146,7 @@ export default function RootLayout() {
             options={{
               headerShown: true,
               header: () => (
-                <AppTopBar title="Save Resume" subtitle="Unlock smarter matches" showBack />
+                <AppTopBar title="Save Resume" subtitle="Unlock smarter matches" showBack showMenu={false} />
               ),
               headerShadowVisible: false,
               title: 'Save Resume',

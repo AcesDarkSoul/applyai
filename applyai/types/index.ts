@@ -12,6 +12,8 @@ export interface UserProfile {
   email: string;
   name: string;
   phone?: string;
+  title?: string;
+  location?: string;
   skills: string[];
   experience: number;
   education: Education[];

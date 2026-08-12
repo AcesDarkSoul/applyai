@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
   sectionTitle: { color: Colors.text, fontSize: FontSize.lg, fontWeight: '800', marginBottom: Spacing.md, marginTop: Spacing.sm },
   chips: { marginBottom: Spacing.md },
   chip: {
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.card,
     borderRadius: BorderRadius.xl,
     padding: Spacing.md,
     marginRight: Spacing.sm,
