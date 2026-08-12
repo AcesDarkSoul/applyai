@@ -1,13 +1,14 @@
 {
   "name": "applyai",
   "main": "expo-router/entry",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",
     "@react-native-async-storage/async-storage": "^3.1.1",
     "@react-native-firebase/analytics": "^26.1.0",
     "@react-native-firebase/app": "^26.1.0",
     "@react-native-firebase/crashlytics": "^26.1.0",
+    "axios": "^1.19.0",
     "date-fns": "^4.4.0",
     "expo": "~57.0.7",
     "expo-auth-session": "^57.0.4",

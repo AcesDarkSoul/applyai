@@ -2,12 +2,18 @@ import dotenv from 'dotenv';
 import { z } from 'zod';
 
 dotenv.config();
+// Local-only overrides (PORT, FIREBASE_*). Not deployed by Firebase CLI.
+dotenv.config({ path: '.env.local', override: true });
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().default(4000),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
-  FIREBASE_PROJECT_ID: z.string().optional().default(''),
+  // Prefer explicit local creds; on Cloud Functions use GCLOUD_PROJECT + ADC.
+  FIREBASE_PROJECT_ID: z
+    .string()
+    .optional()
+    .default(process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT || 'petcare-9f4e6'),
   FIREBASE_CLIENT_EMAIL: z.string().optional().default(''),
   FIREBASE_PRIVATE_KEY: z.string().optional().default(''),
   OPENAI_API_KEY: z.string().optional().default(''),

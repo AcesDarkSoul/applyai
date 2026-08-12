@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef, useMemo } from 'react';
 import { Platform } from 'react-native';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
@@ -9,8 +9,14 @@ WebBrowser.maybeCompleteAuthSession();
 
 /** Web OAuth client (type 3) — required so Firebase accepts the ID token audience */
 const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '';
-/** Android OAuth client (type 1) — required for custom-scheme redirects on device / Play builds */
+/** Android OAuth client (type 1) — required for device / Play builds */
 const GOOGLE_ANDROID_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ?? '';
+
+/** Google Android OAuth requires reverse-client-id redirect, not the app package scheme. */
+function androidReverseClientScheme(androidClientId: string): string | undefined {
+  const match = androidClientId.match(/^([^.]+)\.apps\.googleusercontent\.com$/);
+  return match ? `com.googleusercontent.apps.${match[1]}` : undefined;
+}
 
 export function useGoogleAuth(onSuccess?: () => void, onError?: (error: string) => void) {
   const hasWebClientId = GOOGLE_WEB_CLIENT_ID.length > 0;
@@ -20,17 +26,35 @@ export function useGoogleAuth(onSuccess?: () => void, onError?: (error: string) 
   onSuccessRef.current = onSuccess;
   onErrorRef.current = onError;
 
-  // Never pass the WEB client as `clientId` on native — Google rejects custom schemes
-  // (applyai://) for WEB clients with: "Custom scheme URIs are not allowed for 'WEB' client type."
-  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    webClientId: hasWebClientId ? GOOGLE_WEB_CLIENT_ID : undefined,
-    androidClientId: hasAndroidClientId ? GOOGLE_ANDROID_CLIENT_ID : undefined,
-    ...(Platform.OS === 'web' && hasWebClientId ? { clientId: GOOGLE_WEB_CLIENT_ID } : null),
-  });
+  const androidScheme = useMemo(
+    () => (GOOGLE_ANDROID_CLIENT_ID ? androidReverseClientScheme(GOOGLE_ANDROID_CLIENT_ID) : undefined),
+    []
+  );
+
+  // Never pass the WEB client as `clientId` on native — Google rejects wrong redirects.
+  // Prefer reverse-client-id scheme on Android for valid OAuth redirects.
+  const [request, response, promptAsync] = Google.useIdTokenAuthRequest(
+    {
+      webClientId: hasWebClientId ? GOOGLE_WEB_CLIENT_ID : undefined,
+      androidClientId: hasAndroidClientId ? GOOGLE_ANDROID_CLIENT_ID : undefined,
+      ...(Platform.OS === 'web' && hasWebClientId ? { clientId: GOOGLE_WEB_CLIENT_ID } : null),
+      selectAccount: true,
+    },
+    Platform.OS === 'android' && androidScheme
+      ? {
+          scheme: androidScheme,
+          path: 'oauthredirect',
+          native: `${androidScheme}:/oauthredirect`,
+        }
+      : undefined
+  );
 
   useEffect(() => {
     if (response?.type === 'success') {
-      const idToken = response.params.id_token;
+      const idToken =
+        response.params.id_token ||
+        response.authentication?.idToken ||
+        '';
       if (idToken) {
         signInWithGoogleIdToken(idToken)
           .then(() => onSuccessRef.current?.())
@@ -41,7 +65,12 @@ export function useGoogleAuth(onSuccess?: () => void, onError?: (error: string) 
         onErrorRef.current?.('Google did not return an ID token. Try again.');
       }
     } else if (response?.type === 'error') {
-      onErrorRef.current?.(response.error?.message || 'Google sign-in failed');
+      const detail =
+        response.error?.message ||
+        response.params?.error_description ||
+        response.params?.error ||
+        'Google sign-in failed';
+      onErrorRef.current?.(String(detail));
     } else if (response?.type === 'dismiss' || response?.type === 'cancel') {
       // User closed the sheet — clear loading without an alarming error
       onErrorRef.current?.('');

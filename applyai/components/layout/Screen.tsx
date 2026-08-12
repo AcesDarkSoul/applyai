@@ -61,7 +61,9 @@ export function Screen({
       style={styles.flex}
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={Platform.OS === 'web'}
-      keyboardShouldPersistTaps="handled"
+      keyboardShouldPersistTaps={keyboard ? 'always' : 'handled'}
+      keyboardDismissMode="on-drag"
+      nestedScrollEnabled
       {...scrollProps}
     >
       {inner}

@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.card,
   },
   checkDone: { backgroundColor: Colors.success, borderColor: Colors.success },
   checkNext: { borderColor: Colors.primary },

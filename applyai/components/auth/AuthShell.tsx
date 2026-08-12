@@ -14,6 +14,7 @@ import { useEffect } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Screen } from '@/components/layout/Screen';
 import { FadeInView } from '@/components/AnimatedView';
+import { BrandLogo } from '@/components/brand/BrandLogo';
 import { Colors, Spacing, FontSize, BorderRadius, Shadows } from '@/constants/theme';
 
 function FloatingOrb({
@@ -88,23 +89,21 @@ export function AuthShell({
     <Screen keyboard safe contentStyle={styles.scroll} backgroundColor={Colors.background}>
       <View style={[styles.inner, contentMax ? { maxWidth: contentMax, alignSelf: 'center', width: '100%' } : null]}>
         <View style={styles.atmosphere} pointerEvents="none">
-          <FloatingOrb size={160} color="rgba(34,197,94,0.14)" top="6%" left="-8%" />
-          <FloatingOrb size={120} color="rgba(250,204,21,0.16)" top="18%" left="72%" delay={400} />
-          <FloatingOrb size={90} color="rgba(74,222,128,0.12)" top="68%" left="8%" delay={800} />
+          <FloatingOrb size={160} color="rgba(91,92,226,0.22)" top="6%" left="-8%" />
+          <FloatingOrb size={120} color="rgba(20,184,166,0.16)" top="18%" left="72%" delay={400} />
+          <FloatingOrb size={90} color="rgba(236,72,153,0.14)" top="68%" left="8%" delay={800} />
         </View>
 
         {!hideBrandCard && (
           <FadeInView direction="down">
             <LinearGradient
-              colors={Colors.gradientHero}
+              colors={Colors.gradientBrand}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={[styles.brandCard, isWide && styles.brandCardWide]}
             >
               <View style={styles.brandRow}>
-                <View style={styles.logoMark}>
-                  <Ionicons name="flash" size={22} color={Colors.primary} />
-                </View>
+                <BrandLogo size={48} />
                 <View style={styles.brandText}>
                   <Text style={styles.brandName}>ApplyAI</Text>
                   <Text style={styles.brandTag}>{brandTagline}</Text>
@@ -120,7 +119,9 @@ export function AuthShell({
         </FadeInView>
 
         <FadeInView direction="up" delay={160}>
-          <View style={[styles.formCard, isWide && styles.formCardWide]}>{children}</View>
+          <View style={[styles.formCard, isWide && styles.formCardWide]} collapsable={false}>
+            {children}
+          </View>
         </FadeInView>
 
         <FadeInView direction="up" delay={260}>
@@ -230,14 +231,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.md,
   },
-  logoMark: {
-    width: 48,
-    height: 48,
-    borderRadius: BorderRadius.lg,
-    backgroundColor: Colors.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   brandText: { flex: 1 },
   brandName: {
     color: Colors.white,
@@ -268,11 +261,11 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   formCard: {
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.card,
     borderRadius: BorderRadius.xxl,
     padding: Spacing.lg,
     borderWidth: 1,
-    borderColor: Colors.borderLight,
+    borderColor: Colors.border,
     marginBottom: Spacing.lg,
     ...Shadows.card,
   },
@@ -299,7 +292,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    backgroundColor: '#FEE2E2',
+    backgroundColor: 'rgba(239,68,68,0.14)',
     padding: Spacing.md,
     borderRadius: BorderRadius.lg,
     marginBottom: Spacing.md,
@@ -333,7 +326,7 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
     borderWidth: 1.5,
     borderColor: Colors.border,
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.surfaceLight,
     borderRadius: BorderRadius.lg,
     paddingVertical: Spacing.md + 2,
     paddingHorizontal: Spacing.lg,

@@ -68,7 +68,7 @@ export function Button({
   }
 
   const variantStyles = {
-    secondary: { bg: Colors.secondary, text: Colors.text, border: 'transparent' },
+    secondary: { bg: Colors.secondary, text: Colors.white, border: 'transparent' },
     outline: { bg: 'transparent', text: Colors.primary, border: Colors.primary },
     ghost: { bg: 'transparent', text: Colors.textSecondary, border: 'transparent' },
   }[variant];
@@ -127,13 +127,15 @@ export function Input({
 }: InputProps) {
   const [focused, setFocused] = useState(false);
   const [visible, setVisible] = useState(false);
+  const inputRef = React.useRef<TextInput>(null);
   const isPassword = !!secureTextEntry;
   const toggle = showPasswordToggle ?? isPassword;
 
   return (
     <View style={styles.inputContainer}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
-      <View
+      <Pressable
+        onPress={() => inputRef.current?.focus()}
         style={[
           styles.inputWrapper,
           focused && styles.inputWrapperFocused,
@@ -147,12 +149,16 @@ export function Input({
               size={18}
               color={focused ? Colors.primary : Colors.textMuted}
               style={styles.inputIconGlyph}
+              pointerEvents="none"
             />
           ) : (
-            <Text style={styles.inputIconEmoji}>{icon}</Text>
+            <Text style={styles.inputIconEmoji} pointerEvents="none">
+              {icon}
+            </Text>
           )
         ) : null}
         <TextInput
+          ref={inputRef}
           style={[
             styles.input,
             icon ? styles.inputWithIcon : null,
@@ -161,6 +167,7 @@ export function Input({
           ]}
           placeholderTextColor={Colors.textMuted}
           secureTextEntry={isPassword && !visible}
+          showSoftInputOnFocus
           onFocus={(e) => {
             setFocused(true);
             onFocus?.(e);
@@ -185,7 +192,7 @@ export function Input({
             />
           </Pressable>
         ) : null}
-      </View>
+      </Pressable>
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
     </View>
   );
@@ -395,7 +402,7 @@ const styles = StyleSheet.create({
   },
   inputWrapperFocused: {
     borderColor: Colors.primary,
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.card,
     ...Shadows.sm,
   },
   inputWrapperError: { borderColor: Colors.danger },
@@ -457,7 +464,7 @@ const styles = StyleSheet.create({
   scoreBarFill: { height: '100%', borderRadius: BorderRadius.full },
   scoreValue: { fontSize: FontSize.sm, fontWeight: '700', width: 40, textAlign: 'right' },
   statCard: {
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.card,
     borderRadius: BorderRadius.xl,
     padding: Spacing.md,
     borderTopWidth: 4,

@@ -20,6 +20,25 @@
       "predeploy": [
         "npm --prefix \"$RESOURCE_DIR\" run build"
       ]
+    },
+    {
+      "source": "../backend",
+      "codebase": "api",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local",
+        "data",
+        "coverage",
+        "scripts",
+        "src",
+        "*.md"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run build"
+      ]
     }
   ],
   "hosting": [
@@ -44,6 +63,19 @@
               "value": "strict-origin-when-cross-origin"
             }
           ]
+        }
+      ]
+    },
+    {
+      "public": "hosting",
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "rewrites": [
+        {
+          "source": "/api/**",
+          "function": {
+            "functionId": "api",
+            "region": "us-central1"
+          }
         }
       ]
     }

@@ -4,12 +4,15 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors, Spacing, FontSize, BorderRadius, Shadows } from '@/constants/theme';
+import { BrandLogo } from '@/components/brand/BrandLogo';
 import { useAuthStore } from '@/stores/authStore';
+import { useDrawerStore } from '@/stores/drawerStore';
 
 type AppTopBarProps = {
   title: string;
   subtitle?: string;
   showBack?: boolean;
+  showMenu?: boolean;
   rightAction?: {
     icon: keyof typeof Ionicons.glyphMap;
     onPress: () => void;
@@ -17,11 +20,18 @@ type AppTopBarProps = {
   };
 };
 
-export function AppTopBar({ title, subtitle, showBack = false, rightAction }: AppTopBarProps) {
+export function AppTopBar({
+  title,
+  subtitle,
+  showBack = false,
+  showMenu = true,
+  rightAction,
+}: AppTopBarProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { width } = useWindowDimensions();
   const profile = useAuthStore((s) => s.profile);
+  const openDrawer = useDrawerStore((s) => s.setOpen);
   const isCompact = width < 640;
   const isWide = width >= 1024;
 
@@ -45,12 +55,18 @@ export function AppTopBar({ title, subtitle, showBack = false, rightAction }: Ap
               style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
               accessibilityLabel="Go back"
             >
-              <Ionicons name="chevron-back" size={22} color={Colors.primary} />
+              <Ionicons name="chevron-back" size={22} color={Colors.text} />
+            </Pressable>
+          ) : showMenu ? (
+            <Pressable
+              onPress={() => openDrawer(true)}
+              style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
+              accessibilityLabel="Open menu"
+            >
+              <Ionicons name="menu" size={22} color={Colors.text} />
             </Pressable>
           ) : (
-            <LinearGradient colors={Colors.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.logo}>
-              <Ionicons name="flash" size={18} color={Colors.white} />
-            </LinearGradient>
+            <BrandLogo size={36} />
           )}
 
           <View style={styles.titleBlock}>
@@ -72,9 +88,17 @@ export function AppTopBar({ title, subtitle, showBack = false, rightAction }: Ap
               style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
               accessibilityLabel={rightAction.label || 'Action'}
             >
-              <Ionicons name={rightAction.icon} size={20} color={Colors.primary} />
+              <Ionicons name={rightAction.icon} size={20} color={Colors.primaryLight} />
             </Pressable>
           )}
+
+          <Pressable
+            onPress={() => router.push('/notifications')}
+            style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
+            accessibilityLabel="Notifications"
+          >
+            <Ionicons name="notifications-outline" size={20} color={Colors.text} />
+          </Pressable>
 
           {!isCompact && (
             <Pressable
@@ -82,7 +106,7 @@ export function AppTopBar({ title, subtitle, showBack = false, rightAction }: Ap
               style={({ pressed }) => [styles.searchChip, pressed && styles.pressed]}
               accessibilityLabel="Search jobs"
             >
-              <Ionicons name="search" size={16} color={Colors.primary} />
+              <Ionicons name="search" size={16} color={Colors.primaryLight} />
               <Text style={styles.searchText}>Search jobs</Text>
             </Pressable>
           )}
@@ -93,7 +117,7 @@ export function AppTopBar({ title, subtitle, showBack = false, rightAction }: Ap
               style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
               accessibilityLabel="Search jobs"
             >
-              <Ionicons name="search" size={20} color={Colors.primary} />
+              <Ionicons name="search" size={20} color={Colors.text} />
             </Pressable>
           )}
 
@@ -102,7 +126,12 @@ export function AppTopBar({ title, subtitle, showBack = false, rightAction }: Ap
             style={({ pressed }) => [styles.avatarWrap, pressed && styles.pressed]}
             accessibilityLabel="Open profile"
           >
-            <LinearGradient colors={Colors.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.avatar}>
+            <LinearGradient
+              colors={Colors.gradientBrand}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.avatar}
+            >
               <Text style={styles.avatarText}>{initial}</Text>
             </LinearGradient>
           </Pressable>
@@ -125,7 +154,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.xl,
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.glass,
     borderWidth: 1,
     borderColor: Colors.border,
     gap: Spacing.sm,

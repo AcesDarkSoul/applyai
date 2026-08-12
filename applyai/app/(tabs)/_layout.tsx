@@ -1,15 +1,16 @@
 import { Tabs } from 'expo-router';
 import { Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Colors, Shadows, Spacing } from '@/constants/theme';
+import { Colors, Shadows, Spacing, BorderRadius } from '@/constants/theme';
 import { AppTopBar } from '@/components/layout/AppTopBar';
+import { AppDrawer } from '@/components/layout/AppDrawer';
 
 const TAB_META: Record<string, { title: string; subtitle: string }> = {
-  index: { title: 'Home', subtitle: 'Your job search HQ' },
+  index: { title: 'Dashboard', subtitle: 'Your job search HQ' },
   jobs: { title: 'Find Jobs', subtitle: 'Matched to your resume' },
   apply: { title: 'Smart Apply', subtitle: 'Apply with one tap' },
   applications: { title: 'Applications', subtitle: 'Track every outreach' },
-  profile: { title: 'Profile', subtitle: 'Resume & account' },
+  profile: { title: 'Resume Studio', subtitle: 'Resume & account' },
 };
 
 function TabHeader({ routeName }: { routeName: string }) {
@@ -23,13 +24,15 @@ export default function TabLayout() {
 
   return (
     <View style={styles.wrapper}>
+      <AppDrawer />
       <Tabs
         screenOptions={({ route }) => ({
-          tabBarActiveTintColor: Colors.primary,
+          tabBarActiveTintColor: Colors.primaryLight,
           tabBarInactiveTintColor: Colors.textMuted,
           tabBarStyle: [styles.tabBar, isWebDesktop && styles.tabBarWeb],
           tabBarLabelStyle: styles.tabLabel,
           tabBarItemStyle: styles.tabItem,
+          tabBarActiveBackgroundColor: Colors.primaryTint,
           header: () => <TabHeader routeName={route.name} />,
           headerShadowVisible: false,
           sceneStyle: { backgroundColor: Colors.background },
@@ -40,7 +43,7 @@ export default function TabLayout() {
           options={{
             title: 'Home',
             tabBarIcon: ({ color, focused }) => (
-              <Ionicons name={focused ? 'home' : 'home-outline'} size={24} color={color} />
+              <Ionicons name={focused ? 'home' : 'home-outline'} size={22} color={color} />
             ),
           }}
         />
@@ -49,45 +52,41 @@ export default function TabLayout() {
           options={{
             title: 'Jobs',
             tabBarIcon: ({ color, focused }) => (
-              <Ionicons name={focused ? 'search' : 'search-outline'} size={24} color={color} />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="apply"
-          options={{
-            title: 'Apply',
-            tabBarIcon: ({ color, focused }) => (
-              <View style={[styles.applyIcon, focused && styles.applyIconActive]}>
-                <Ionicons name="flash" size={22} color={focused ? Colors.white : color} />
-              </View>
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="applications"
-          options={{
-            title: 'Applied',
-            tabBarIcon: ({ color, focused }) => (
-              <Ionicons
-                name={focused ? 'checkmark-circle' : 'checkmark-circle-outline'}
-                size={24}
-                color={color}
-              />
+              <Ionicons name={focused ? 'briefcase' : 'briefcase-outline'} size={22} color={color} />
             ),
           }}
         />
         <Tabs.Screen
           name="profile"
           options={{
-            title: 'Profile',
+            title: 'Resume',
             tabBarIcon: ({ color, focused }) => (
               <Ionicons
-                name={focused ? 'person-circle' : 'person-circle-outline'}
-                size={24}
+                name={focused ? 'document-text' : 'document-text-outline'}
+                size={22}
                 color={color}
               />
             ),
+          }}
+        />
+        <Tabs.Screen
+          name="applications"
+          options={{
+            title: 'Apps',
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons
+                name={focused ? 'clipboard' : 'clipboard-outline'}
+                size={22}
+                color={color}
+              />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="apply"
+          options={{
+            href: null,
+            title: 'Apply',
           }}
         />
       </Tabs>
@@ -102,7 +101,7 @@ const styles = StyleSheet.create({
     ...(Platform.OS === 'web' && { maxWidth: 1400, width: '100%', alignSelf: 'center' }),
   },
   tabBar: {
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.bottomNavGlass,
     borderTopColor: Colors.border,
     borderTopWidth: 1,
     height: Platform.OS === 'ios' ? 88 : Platform.OS === 'web' ? 72 : 68,
@@ -114,10 +113,12 @@ const styles = StyleSheet.create({
   tabBarWeb: {
     maxWidth: 560,
     alignSelf: 'center',
-    borderRadius: 24,
+    borderRadius: BorderRadius.xl,
     marginBottom: 12,
     marginHorizontal: 16,
     borderTopWidth: 0,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   tabLabel: {
     fontSize: 11,
@@ -126,17 +127,7 @@ const styles = StyleSheet.create({
   },
   tabItem: {
     paddingVertical: 4,
-  },
-  applyIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
-  },
-  applyIconActive: {
-    backgroundColor: Colors.primary,
-    ...Shadows.sm,
+    borderRadius: BorderRadius.md,
+    marginHorizontal: 2,
   },
 });

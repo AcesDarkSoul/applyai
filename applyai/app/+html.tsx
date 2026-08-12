@@ -8,7 +8,7 @@ export default function Root({ children }: { children: ReactNode }) {
         <meta charSet="utf-8" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover" />
-        <meta name="theme-color" content="#22C55E" />
+        <meta name="theme-color" content="#0b0c18" />
         <meta name="description" content="ApplyAI - Smart job applications on LinkedIn, Indeed & Naukri" />
         <ScrollViewStyleReset />
         <style dangerouslySetInnerHTML={{ __html: globalStyles }} />
@@ -25,8 +25,9 @@ const globalStyles = `
     width: 100%;
     margin: 0;
     padding: 0;
-    background-color: #F8FAFC;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background-color: #0b0c18;
+    color: #eef0ff;
+    font-family: "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -34,9 +35,9 @@ const globalStyles = `
     font-family: inherit;
   }
   ::-webkit-scrollbar { width: 8px; height: 8px; }
-  ::-webkit-scrollbar-track { background: #F1F5F9; }
-  ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
-  ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+  ::-webkit-scrollbar-track { background: #15172a; }
+  ::-webkit-scrollbar-thumb { background: rgba(91,92,226,0.35); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(91,92,226,0.5); }
   @media (min-width: 1024px) {
     body { display: flex; justify-content: center; }
   }

@@ -10,11 +10,33 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { requestIdMiddleware } from './middleware/requestId';
 import { apiRouter } from './routes';
 
+function resolveCorsOrigin(): cors.CorsOptions['origin'] {
+  const allowed = env.CORS_ORIGIN.split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+
+  if (allowed.includes('*')) return true;
+
+  return (origin, callback) => {
+    // Native apps / server-to-server have no Origin header
+    if (!origin || allowed.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+    callback(new Error(`CORS blocked for origin: ${origin}`));
+  };
+}
+
 export function createApp() {
   const app = express();
 
-  app.use(helmet());
-  app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
+  // COOP:same-origin breaks Google sign-in popups on web (window.closed / window.close).
+  app.use(
+    helmet({
+      crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
+    }),
+  );
+  app.use(cors({ origin: resolveCorsOrigin(), credentials: true }));
   app.use(express.json({ limit: '1mb' }));
   app.use(requestIdMiddleware);
   app.use(morgan(env.NODE_ENV === 'production' ? 'combined' : 'dev'));

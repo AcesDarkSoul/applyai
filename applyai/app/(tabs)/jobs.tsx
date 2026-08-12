@@ -1,331 +1,421 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
-  TextInput,
   Pressable,
+  TextInput,
   ActivityIndicator,
   Alert,
+  Modal,
+  Switch,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { Card, Badge, PlatformBadge, useResponsive } from '@/components/ui';
-import { Screen, ResponsiveGrid } from '@/components/layout/Screen';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { Screen } from '@/components/layout/Screen';
 import { FadeInView } from '@/components/AnimatedView';
-import { MatchScoreBreakdown } from '@/components/jobs/MatchScoreBreakdown';
-import { SaveJobButton } from '@/components/jobs/SaveJobButton';
 import { useAuthStore } from '@/stores/authStore';
-import { searchJobs } from '@/lib/services/jobs';
-import { detectPlatform, getPlatformConfig } from '@/lib/services/platforms';
-import {
-  getSavedJobIds,
-  listSavedJobs,
-  toggleSaveJob,
-  type SavedJob,
-} from '@/lib/firebase/savedJobs';
-import { formatFirebaseError } from '@/lib/firebase/profile';
+import { applicationRepository, jobRepository, type ApiJob } from '@/lib/api/repositories';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
-import type { Job } from '@/types';
 
-const PLATFORM_FILTERS = [
-  { key: 'all', label: 'All', icon: '🌐' },
-  { key: 'saved', label: 'Saved', icon: '🔖' },
-  { key: 'linkedin', label: 'LinkedIn', icon: '💼' },
-  { key: 'indeed', label: 'Indeed', icon: '🔍' },
-  { key: 'naukri', label: 'Naukri', icon: '🇮🇳' },
-] as const;
+type SourceFilter = 'all' | 'naukri' | 'indeed' | 'other';
 
-function savedToJob(s: SavedJob): Job {
-  return {
-    id: s.jobId,
-    title: s.title,
-    company: s.company,
-    location: s.location,
-    salary: s.salary,
-    employmentType: s.employmentType || 'full-time',
-    remote: Boolean(s.remote),
-    description: '',
-    requirements: [],
-    skills: [],
-    url: s.url,
-    source: s.source,
-    postedAt: s.savedAt,
-    matchScore: s.matchScore,
-  };
-}
+const FILTERS: Array<{ id: SourceFilter; label: string; color: string }> = [
+  { id: 'all', label: 'All boards', color: Colors.primary },
+  { id: 'naukri', label: 'Naukri', color: Colors.accent },
+  { id: 'indeed', label: 'Indeed', color: Colors.secondary },
+  { id: 'other', label: 'Other', color: Colors.warning },
+];
 
 export default function JobsScreen() {
   const router = useRouter();
-  const { user, profile } = useAuthStore();
-  const { isTablet } = useResponsive();
-  const [query, setQuery] = useState('');
-  const [remoteOnly, setRemoteOnly] = useState(false);
-  const [platformFilter, setPlatformFilter] = useState<string>('all');
-  const [jobs, setJobs] = useState<Job[]>([]);
+  const profile = useAuthStore((s) => s.profile);
+  const resumeQuery = profile?.title || (profile?.skills || []).slice(0, 3).join(' ') || '';
+
+  const [q, setQ] = useState('');
+  const [jobs, setJobs] = useState<ApiJob[]>([]);
+  const [source, setSource] = useState<SourceFilter>('all');
   const [loading, setLoading] = useState(true);
-  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
-  const [savingId, setSavingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [autoOpen, setAutoOpen] = useState(false);
+  const [assistiveChecked, setAssistiveChecked] = useState(false);
+  const [applying, setApplying] = useState(false);
+  const [autoResult, setAutoResult] = useState<string | null>(null);
+  const [topMatch, setTopMatch] = useState(0);
 
-  const refreshSavedIds = useCallback(async () => {
-    if (!user) {
-      setSavedIds(new Set());
-      return;
-    }
-    try {
-      setSavedIds(await getSavedJobIds(user.uid));
-    } catch {
-      /* ignore */
-    }
-  }, [user]);
-
-  const loadJobs = useCallback(async () => {
+  const load = useCallback(async (query = '', matchedOnly = !query) => {
     setLoading(true);
+    setError(null);
     try {
-      if (platformFilter === 'saved') {
-        if (!user) {
-          setJobs([]);
-          return;
-        }
-        const saved = await listSavedJobs(user.uid);
-        let result = saved.map(savedToJob);
-        if (query.trim()) {
-          const q = query.trim().toLowerCase();
-          result = result.filter(
-            (j) =>
-              j.title.toLowerCase().includes(q) ||
-              j.company.toLowerCase().includes(q) ||
-              j.location.toLowerCase().includes(q)
-          );
-        }
-        if (remoteOnly) result = result.filter((j) => j.remote);
-        setJobs(result);
-        setSavedIds(new Set(saved.map((s) => s.jobId)));
-        return;
-      }
-
-      let result = await searchJobs(
-        { query: query || undefined, remote: remoteOnly || undefined },
-        profile?.skills || []
-      );
-      if (platformFilter !== 'all') {
-        result = result.filter((j) => detectPlatform(j.url, j.source) === platformFilter);
-      }
-      setJobs(result);
-    } catch {
-      console.warn('Failed to load jobs');
+      const data =
+        matchedOnly && !query.trim()
+          ? await jobRepository.board('', { minScore: 40 })
+          : await jobRepository.board(query);
+      setJobs(data);
+      const best = data.reduce((m, j) => Math.max(m, j.matchScore ?? 0), 0);
+      setTopMatch(Math.round(best));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load jobs');
+      setJobs([]);
     } finally {
       setLoading(false);
     }
-  }, [query, remoteOnly, platformFilter, profile?.skills, user]);
+  }, []);
 
   useEffect(() => {
-    const timeout = setTimeout(loadJobs, 400);
-    return () => clearTimeout(timeout);
-  }, [loadJobs]);
+    void load('', true);
+  }, [load, profile?.id]);
 
   useFocusEffect(
     useCallback(() => {
-      refreshSavedIds();
-    }, [refreshSavedIds])
+      void load(q, !q.trim());
+    }, [load, q])
   );
 
-  const handleToggleSave = async (job: Job) => {
-    if (!user) {
-      Alert.alert('Sign in required', 'Sign in to save jobs to your shortlist.');
+  const counts = useMemo(() => {
+    const c = { all: jobs.length, naukri: 0, indeed: 0, other: 0 };
+    for (const j of jobs) {
+      const s = (j.source || '').toLowerCase();
+      if (s.includes('naukri')) c.naukri += 1;
+      else if (s.includes('indeed')) c.indeed += 1;
+      else c.other += 1;
+    }
+    return c;
+  }, [jobs]);
+
+  const filtered = useMemo(() => {
+    if (source === 'all') return jobs;
+    return jobs.filter((j) => {
+      const s = (j.source || '').toLowerCase();
+      if (source === 'naukri') return s.includes('naukri');
+      if (source === 'indeed') return s.includes('indeed');
+      return !s.includes('naukri') && !s.includes('indeed');
+    });
+  }, [jobs, source]);
+
+  const onAutoApply = async () => {
+    if (!assistiveChecked) {
+      Alert.alert('Consent required', 'Confirm assistive-only auto-apply to continue.');
       return;
     }
-    const currentlySaved = savedIds.has(job.id);
-    setSavingId(job.id);
+    setApplying(true);
+    setAutoResult(null);
     try {
-      const next = await toggleSaveJob(user.uid, job, currentlySaved);
-      setSavedIds((prev) => {
-        const copy = new Set(prev);
-        if (next) copy.add(job.id);
-        else copy.delete(job.id);
-        return copy;
-      });
-      if (platformFilter === 'saved' && !next) {
-        setJobs((prev) => prev.filter((j) => j.id !== job.id));
+      const res = await applicationRepository.autoApply({ minScore: 55, limit: 8 });
+      setAutoResult(
+        `Applied to ${res.applied.length} roles · skipped ${res.skipped.length}. ${res.complianceNote || ''}`
+      );
+      for (const url of res.applyUrls || []) {
+        // URLs opened from detail / web; list summary is enough on mobile
       }
+      await load(q, !q.trim());
     } catch (e) {
-      Alert.alert('Error', formatFirebaseError(e));
+      Alert.alert('Auto-apply failed', e instanceof Error ? e.message : 'Try again');
     } finally {
-      setSavingId(null);
+      setApplying(false);
+    }
+  };
+
+  const onSave = async (job: ApiJob) => {
+    try {
+      await jobRepository.save(job.id);
+      Alert.alert('Saved', `${job.title} added to shortlist`);
+    } catch (e) {
+      Alert.alert('Save failed', e instanceof Error ? e.message : 'Could not save');
     }
   };
 
   return (
-    <Screen safe={false} edges={['left', 'right']} scroll={false}>
-      <View style={styles.searchSection}>
-        <FadeInView direction="down">
-          <TextInput
-            style={styles.searchInput}
-            placeholder="🔍 Search jobs, companies, skills..."
-            placeholderTextColor={Colors.textMuted}
-            value={query}
-            onChangeText={setQuery}
-          />
-        </FadeInView>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filters}>
-          {PLATFORM_FILTERS.map((f) => (
-            <Pressable
-              key={f.key}
-              style={[styles.filterChip, platformFilter === f.key && styles.filterChipActive]}
-              onPress={() => setPlatformFilter(f.key)}
-            >
-              <Text style={[styles.filterText, platformFilter === f.key && styles.filterTextActive]}>
-                {f.icon} {f.label}
-                {f.key === 'saved' && savedIds.size > 0 ? ` (${savedIds.size})` : ''}
-              </Text>
+    <Screen safe edges={['left', 'right']}>
+      <FadeInView direction="down">
+        <View style={styles.hero}>
+          <View style={styles.liveRow}>
+            <View style={styles.liveDot} />
+            <Text style={styles.liveText}>Live matching to your resume.</Text>
+          </View>
+          <Text style={styles.title}>Find Jobs</Text>
+          <Text style={styles.body}>
+            Ranked for {resumeQuery || 'your profile'} — best matches first, with AI cover letters on
+            apply.
+          </Text>
+          <View style={styles.badgeRow}>
+            <View style={styles.badge}>
+              <Ionicons name="briefcase-outline" size={14} color={Colors.primaryLight} />
+              <Text style={styles.badgeText}>{jobs.length} roles</Text>
+            </View>
+            <View style={[styles.badge, styles.badgeGreen]}>
+              <Text style={styles.badgeGreenText}>Top match {topMatch}%</Text>
+            </View>
+          </View>
+
+          <View style={styles.searchRow}>
+            <Ionicons name="search" size={18} color={Colors.textMuted} />
+            <TextInput
+              value={q}
+              onChangeText={setQ}
+              placeholder={`Search or leave blank for "${resumeQuery.slice(0, 18) || 'matches'}…"`}
+              placeholderTextColor={Colors.textMuted}
+              style={styles.input}
+              onSubmitEditing={() => void load(q, !q.trim())}
+            />
+          </View>
+
+          <View style={styles.actions}>
+            <Pressable style={styles.primaryBtn} onPress={() => void load(q, false)}>
+              <Text style={styles.primaryBtnText}>Search</Text>
             </Pressable>
-          ))}
-          <Pressable
-            style={[styles.filterChip, remoteOnly && styles.filterChipActive]}
-            onPress={() => setRemoteOnly(!remoteOnly)}
-          >
-            <Text style={[styles.filterText, remoteOnly && styles.filterTextActive]}>🌐 Remote</Text>
+            <Pressable style={styles.outlineBtn} onPress={() => void load('', true)}>
+              <Ionicons name="sparkles" size={16} color={Colors.primaryLight} />
+              <Text style={styles.outlineBtnText}>Best Matches</Text>
+            </Pressable>
+          </View>
+
+          <Pressable style={styles.autoBtn} onPress={() => setAutoOpen(true)}>
+            <Ionicons name="flash" size={18} color={Colors.white} />
+            <Text style={styles.autoBtnText}>Auto Apply</Text>
           </Pressable>
-        </ScrollView>
+        </View>
+      </FadeInView>
+
+      <View style={styles.chips}>
+        {FILTERS.map((f) => (
+          <Pressable
+            key={f.id}
+            onPress={() => setSource(f.id)}
+            style={[
+              styles.chip,
+              source === f.id && { backgroundColor: f.color, borderColor: f.color },
+            ]}
+          >
+            <Text style={[styles.chipText, source === f.id && styles.chipTextActive]}>
+              {f.label} ({f.id === 'all' ? counts.all : counts[f.id]})
+            </Text>
+          </Pressable>
+        ))}
       </View>
+      <Text style={styles.summary}>
+        {filtered.length} roles · sorted by resume match
+      </Text>
 
       {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.loadingText}>
-            {platformFilter === 'saved' ? 'Loading shortlist...' : 'Finding jobs for you...'}
-          </Text>
-        </View>
+        <ActivityIndicator color={Colors.primary} style={{ marginTop: 24 }} />
+      ) : error ? (
+        <Text style={styles.error}>{error}</Text>
+      ) : filtered.length === 0 ? (
+        <Text style={styles.empty}>No jobs found. Try Best Matches or another query.</Text>
       ) : (
-        <ScrollView style={styles.flex} contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
-          <Text style={styles.resultCount}>
-            {platformFilter === 'saved'
-              ? `${jobs.length} saved ${jobs.length === 1 ? 'job' : 'jobs'}`
-              : `${jobs.length} jobs found`}
-          </Text>
-          {platformFilter === 'saved' && jobs.length === 0 && (
-            <Text style={styles.emptySaved}>
-              No shortlisted jobs yet. Tap the bookmark on any role to save it for later.
-            </Text>
-          )}
-          <ResponsiveGrid>
-            {jobs.map((job, i) => {
-              const platform = detectPlatform(job.url, job.source);
-              const pConfig = getPlatformConfig(platform);
-              const isSaved = savedIds.has(job.id);
-              return (
-                <FadeInView key={job.id} direction="up" delay={Math.min(i * 40, 400)}>
-                  <Card style={styles.jobCard} onPress={() => router.push(`/job/${job.id}`)}>
-                    <View style={styles.jobHeader}>
-                      <View style={[styles.companyLogo, { backgroundColor: pConfig.color }]}>
-                        <Text style={styles.companyInitial}>{job.company.charAt(0)}</Text>
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.jobTitle} numberOfLines={isTablet ? 2 : 1}>
-                          {job.title}
-                        </Text>
-                        <Text style={styles.jobCompany}>{job.company}</Text>
-                      </View>
-                      <SaveJobButton
-                        saved={isSaved}
-                        loading={savingId === job.id}
-                        onPress={() => handleToggleSave(job)}
-                      />
-                    </View>
-                    <MatchScoreBreakdown score={job.matchScore} variant="compact" />
-                    <View style={styles.tags}>
-                      <PlatformBadge platform={pConfig.name} color={pConfig.color} icon={pConfig.icon} />
-                      {job.remote && (
-                        <Badge
-                          text="Remote"
-                          backgroundColor={Colors.secondary + '30'}
-                          color={Colors.secondaryDark}
-                        />
-                      )}
-                      {job.salary && (
-                        <Badge
-                          text={job.salary}
-                          backgroundColor={Colors.primary + '15'}
-                          color={Colors.primary}
-                        />
-                      )}
-                    </View>
-                    <Text style={styles.location}>📍 {job.location}</Text>
-                    {job.description ? (
-                      <Text style={styles.description} numberOfLines={isTablet ? 4 : 2}>
-                        {job.description}
-                      </Text>
-                    ) : null}
-                  </Card>
-                </FadeInView>
-              );
-            })}
-          </ResponsiveGrid>
-        </ScrollView>
+        filtered.map((job, i) => (
+          <FadeInView key={job.id} delay={Math.min(i * 30, 240)}>
+            <Pressable style={styles.card} onPress={() => router.push(`/job/${job.id}`)}>
+              <View style={styles.cardTop}>
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>{job.company.charAt(0).toUpperCase()}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.jobTitle} numberOfLines={2}>
+                    {job.title}
+                  </Text>
+                  <Text style={styles.company}>
+                    {job.company} · {job.location || 'Remote'}
+                  </Text>
+                </View>
+                <Text style={styles.match}>{Math.round(job.matchScore ?? 0)}%</Text>
+              </View>
+              <View style={styles.cardActions}>
+                <View style={styles.sourceChip}>
+                  <Text style={styles.sourceText}>{job.source}</Text>
+                </View>
+                <Pressable onPress={() => void onSave(job)}>
+                  <Text style={styles.saveLink}>Save</Text>
+                </Pressable>
+              </View>
+            </Pressable>
+          </FadeInView>
+        ))
       )}
+
+      <Modal visible={autoOpen} transparent animationType="fade" onRequestClose={() => setAutoOpen(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Auto Apply</Text>
+            <Text style={styles.modalBody}>
+              Assistive auto-apply ranks board jobs to your resume, drafts cover letters, and opens
+              apply URLs. You confirm each platform action — no silent portal submissions.
+            </Text>
+            <View style={styles.consentRow}>
+              <Switch
+                value={assistiveChecked}
+                onValueChange={setAssistiveChecked}
+                trackColor={{ false: Colors.surfaceLight, true: Colors.primary }}
+              />
+              <Text style={styles.consentText}>I confirm assistive-only auto-apply</Text>
+            </View>
+            {autoResult ? <Text style={styles.autoResult}>{autoResult}</Text> : null}
+            <View style={styles.modalActions}>
+              <Pressable style={styles.outlineBtn} onPress={() => setAutoOpen(false)}>
+                <Text style={styles.outlineBtnText}>Close</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.primaryBtn, applying && { opacity: 0.6 }]}
+                disabled={applying}
+                onPress={() => void onAutoApply()}
+              >
+                {applying ? (
+                  <ActivityIndicator color={Colors.white} />
+                ) : (
+                  <Text style={styles.primaryBtnText}>Run Auto Apply</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  searchSection: { paddingTop: Spacing.sm, paddingBottom: Spacing.xs },
-  searchInput: {
-    backgroundColor: Colors.white,
+  hero: {
+    backgroundColor: Colors.card,
     borderRadius: BorderRadius.xl,
-    padding: Spacing.md,
-    color: Colors.text,
-    fontSize: FontSize.md,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: Colors.border,
-    marginBottom: Spacing.sm,
-  },
-  filters: { marginBottom: Spacing.sm },
-  filterChip: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full,
-    backgroundColor: Colors.white,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    marginRight: Spacing.sm,
-  },
-  filterChipActive: { backgroundColor: Colors.primary + '15', borderColor: Colors.primary },
-  filterText: { color: Colors.textSecondary, fontSize: FontSize.sm, fontWeight: '600' },
-  filterTextActive: { color: Colors.primary },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { color: Colors.textSecondary, fontSize: FontSize.md, marginTop: Spacing.md },
-  list: { paddingBottom: Spacing.xxl },
-  resultCount: {
-    color: Colors.textMuted,
-    fontSize: FontSize.sm,
+    padding: Spacing.lg,
     marginBottom: Spacing.md,
-    fontWeight: '600',
+    gap: 8,
   },
-  emptySaved: {
-    color: Colors.textSecondary,
-    fontSize: FontSize.sm,
-    marginBottom: Spacing.lg,
-    lineHeight: 20,
-  },
-  jobCard: { marginBottom: Spacing.md },
-  jobHeader: {
+  liveRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.success },
+  liveText: { color: Colors.textSecondary, fontSize: FontSize.xs, fontWeight: '600' },
+  title: { color: Colors.text, fontWeight: '800', fontSize: FontSize.xxl },
+  body: { color: Colors.textSecondary, fontSize: FontSize.sm, lineHeight: 20 },
+  badgeRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: Spacing.sm,
-    gap: Spacing.sm,
+    gap: 6,
+    backgroundColor: Colors.primaryTint,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.full,
   },
-  companyLogo: {
-    width: 48,
-    height: 48,
+  badgeText: { color: Colors.primaryLight, fontWeight: '700', fontSize: FontSize.xs },
+  badgeGreen: { backgroundColor: 'rgba(34,197,94,0.12)' },
+  badgeGreenText: { color: Colors.success, fontWeight: '700', fontSize: FontSize.xs },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: Colors.surfaceLight,
     borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: 12,
+    height: 44,
+    marginTop: 4,
+  },
+  input: { flex: 1, color: Colors.text, fontSize: FontSize.sm },
+  actions: { flexDirection: 'row', gap: 8, marginTop: 4 },
+  primaryBtn: {
+    flex: 1,
+    backgroundColor: Colors.primary,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    minHeight: 44,
+  },
+  primaryBtnText: { color: Colors.white, fontWeight: '800' },
+  outlineBtn: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    flexDirection: 'row',
+    gap: 6,
+    minHeight: 44,
+  },
+  outlineBtnText: { color: Colors.text, fontWeight: '700' },
+  autoBtn: {
+    marginTop: 4,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    flexDirection: 'row',
+    gap: 8,
+    backgroundColor: Colors.primaryDark,
+  },
+  autoBtnText: { color: Colors.white, fontWeight: '800' },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
+  chip: {
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: BorderRadius.full,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  chipText: { color: Colors.textSecondary, fontWeight: '700', fontSize: FontSize.xs },
+  chipTextActive: { color: Colors.white },
+  summary: { color: Colors.textMuted, fontSize: FontSize.xs, marginBottom: Spacing.sm },
+  card: {
+    backgroundColor: Colors.card,
+    borderRadius: BorderRadius.xl,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: Spacing.md,
+    marginBottom: Spacing.sm,
+  },
+  cardTop: { flexDirection: 'row', gap: 12, alignItems: 'center' },
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: Colors.primaryTint,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  companyInitial: { color: Colors.white, fontSize: FontSize.lg, fontWeight: '800' },
-  jobTitle: { color: Colors.text, fontSize: FontSize.md, fontWeight: '700' },
-  jobCompany: { color: Colors.textSecondary, fontSize: FontSize.sm },
-  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.xs, marginBottom: Spacing.sm },
-  location: { color: Colors.textMuted, fontSize: FontSize.sm, marginBottom: Spacing.xs },
-  description: { color: Colors.textSecondary, fontSize: FontSize.sm, lineHeight: 20 },
+  avatarText: { color: Colors.primaryLight, fontWeight: '800' },
+  jobTitle: { color: Colors.text, fontWeight: '800' },
+  company: { color: Colors.textMuted, fontSize: FontSize.xs, marginTop: 2 },
+  match: { color: Colors.primaryLight, fontWeight: '800' },
+  cardActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  sourceChip: {
+    backgroundColor: Colors.surfaceLight,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.full,
+  },
+  sourceText: { color: Colors.textMuted, fontSize: 10, fontWeight: '700' },
+  saveLink: { color: Colors.primaryLight, fontWeight: '700' },
+  error: { color: Colors.danger },
+  empty: { color: Colors.textMuted },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    padding: Spacing.lg,
+  },
+  modalCard: {
+    backgroundColor: Colors.card,
+    borderRadius: BorderRadius.xl,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: Spacing.lg,
+    gap: 12,
+  },
+  modalTitle: { color: Colors.text, fontWeight: '800', fontSize: FontSize.xl },
+  modalBody: { color: Colors.textSecondary, fontSize: FontSize.sm, lineHeight: 20 },
+  consentRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  consentText: { color: Colors.text, flex: 1, fontWeight: '600', fontSize: FontSize.sm },
+  autoResult: { color: Colors.success, fontSize: FontSize.sm },
+  modalActions: { flexDirection: 'row', gap: 8 },
 });

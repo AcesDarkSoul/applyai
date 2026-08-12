@@ -1,0 +1,21 @@
+{
+  "functions": [
+    {
+      "source": ".",
+      "codebase": "api",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local",
+        "data",
+        "coverage",
+        "scripts",
+        "src",
+        "*.md"
+      ],
+      "predeploy": ["npm run build"]
+    }
+  ]
+}
