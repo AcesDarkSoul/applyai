@@ -8,6 +8,9 @@ functions/.env
 *.keystore
 !android/app/debug.keystore
 android/keystore.properties
+# Local release binaries (build locally; upload from disk)
+*.aab
+ApplyAI-*.apk
 # Local all-in-one secrets backup (keystore passwords, Firebase, build info)
 APPLYAI_IMPORTANT_SECRETS.txt
 APPLYAI_IMPORTANT_SECRETS.md

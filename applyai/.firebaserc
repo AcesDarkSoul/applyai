@@ -1,5 +1,15 @@
 {
   "projects": {
     "default": "petcare-9f4e6"
-  }
+  },
+  "targets": {
+    "petcare-9f4e6": {
+      "hosting": {
+        "privacy": [
+          "applyai-privacy"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

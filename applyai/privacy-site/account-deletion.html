@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Request deletion of your ApplyAI account and associated data." />
+  <title>ApplyAI — Account Deletion</title>
+  <style>
+    :root {
+      --text: #1a1f2e;
+      --muted: #5b6475;
+      --bg: #f7f8fb;
+      --card: #ffffff;
+      --accent: #0b6e4f;
+      --border: #e6e9f0;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, #d9efe6 0%, transparent 55%),
+        radial-gradient(900px 500px at 100% 0%, #e8eefc 0%, transparent 50%),
+        var(--bg);
+      line-height: 1.65;
+    }
+    .wrap {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 48px 20px 80px;
+    }
+    .brand {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-size: 0.85rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      font-weight: 700;
+      margin: 0 0 12px;
+    }
+    h1 {
+      font-size: clamp(1.8rem, 4vw, 2.4rem);
+      line-height: 1.15;
+      margin: 0 0 12px;
+    }
+    h2 {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-size: 1.15rem;
+      margin: 28px 0 10px;
+    }
+    p, li { font-size: 1.05rem; }
+    a { color: var(--accent); }
+    .card {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 18px 8px;
+      margin: 20px 0;
+    }
+    .card p { margin-top: 0; color: var(--muted); font-size: 0.98rem; }
+    .btn {
+      display: inline-block;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--accent);
+      color: #fff !important;
+      text-decoration: none;
+      padding: 12px 18px;
+      border-radius: 10px;
+      font-weight: 600;
+      margin: 8px 0 16px;
+    }
+    .meta {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    footer {
+      margin-top: 40px;
+      padding-top: 18px;
+      border-top: 1px solid var(--border);
+      font-family: "Segoe UI", system-ui, sans-serif;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <p class="brand">ApplyAI</p>
+    <h1>Account &amp; data deletion</h1>
+    <p class="meta">Use this page to request deletion of your ApplyAI account and associated personal data.</p>
+
+    <h2>How to request deletion</h2>
+    <ol>
+      <li>Email us from the same address used for your ApplyAI account.</li>
+      <li>Use the subject line: <strong>ApplyAI account deletion request</strong>.</li>
+      <li>Include your account email and (if known) the name shown in the app.</li>
+    </ol>
+
+    <div class="card">
+      <p>Send your request to:</p>
+      <p><a class="btn" href="mailto:privacy@applyai.app?subject=ApplyAI%20account%20deletion%20request">Email privacy@applyai.app</a></p>
+      <p>Or write to: <a href="mailto:privacy@applyai.app">privacy@applyai.app</a></p>
+    </div>
+
+    <h2>What we delete</h2>
+    <p>After verifying ownership of the account, we delete or anonymize:</p>
+    <ul>
+      <li>Firebase Authentication account</li>
+      <li>Firestore profile and related app data (skills, applications, saved jobs, generated drafts stored for your account)</li>
+      <li>Associated analytics identifiers tied to your account where feasible</li>
+    </ul>
+
+    <h2>Timeline</h2>
+    <p>
+      We aim to complete verified deletion requests within <strong>30 days</strong>.
+      Some residual backups or security logs may persist for a limited period before being purged according to our retention practices.
+    </p>
+
+    <h2>Device data</h2>
+    <p>
+      Resume files stored only on your device are not held in our cloud storage.
+      You can remove local app data by clearing ApplyAI app storage or uninstalling the app.
+    </p>
+
+    <p><a href="/">Privacy Policy</a></p>
+
+    <footer>
+      © 2026 ApplyAI · Package: com.applyai.app
+    </footer>
+  </main>
+</body>
+</html>

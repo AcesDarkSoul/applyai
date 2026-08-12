@@ -12,8 +12,15 @@ local.properties
 *.hprof
 .cxx/
 
+# Signing — NEVER commit real keystores or passwords
+*.keystore
+*.jks
+!app/debug.keystore
+keystore.properties
+
 # generated inline modules
 app/src/main/java/inline/
 
 # Bundle artifacts
 *.jsbundle
+*.aab
