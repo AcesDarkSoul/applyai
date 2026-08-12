@@ -9,6 +9,7 @@ Welcome to the **ApplyAI** project documentation. This folder contains all techn
 | Document | Description |
 |----------|-------------|
 | [README.md](../README.md) | Project overview, setup, deployment |
+| [PLAY_CONSOLE.md](../PLAY_CONSOLE.md) | Google Play AAB builds, signing, release checklist |
 | [FEATURES.md](./FEATURES.md) | All app features explained |
 | [SUGGESTIONS.md](./SUGGESTIONS.md) | Product roadmap suggestions & priorities |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | System architecture & data flow |
@@ -48,8 +49,9 @@ Email:      SendGrid
 
 ### For Developers
 1. [SETUP.md](./SETUP.md) — Get the project running locally
-2. [ARCHITECTURE.md](./ARCHITECTURE.md) — How the app is structured
-3. [DATABASE.md](./DATABASE.md) — Firestore collections & Cloud Functions
+2. [PLAY_CONSOLE.md](../PLAY_CONSOLE.md) — Build AAB and publish to Google Play
+3. [ARCHITECTURE.md](./ARCHITECTURE.md) — How the app is structured
+4. [DATABASE.md](./DATABASE.md) — Firestore collections & Cloud Functions
 
 ### For Designers
 1. [UI_GUIDE.md](./UI_GUIDE.md) — Colors, typography, components

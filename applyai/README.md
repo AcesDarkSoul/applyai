@@ -61,6 +61,7 @@ All documentation is in the [`docs/`](./docs/) folder:
 | Document | Description |
 |----------|-------------|
 | [INDEX.md](./docs/INDEX.md) | Documentation home & quick links |
+| [PLAY_CONSOLE.md](./PLAY_CONSOLE.md) | Google Play AAB, signing, store release checklist |
 | [FEATURES.md](./docs/FEATURES.md) | All features with user flows |
 | [ARCHITECTURE.md](./docs/ARCHITECTURE.md) | System architecture & data flow |
 | [DATABASE.md](./docs/DATABASE.md) | Firestore schema, APIs, costs |
@@ -203,13 +204,12 @@ npm run ios
 **Android App:**
 1. Project Settings → General → Add app → Android
 2. Package name: `com.applyai.app`
-3. Add SHA-1 fingerprint for Google Sign-In:
+3. Add SHA-1 fingerprint for Google Sign-In (release keystore):
    ```
-   5E:8F:16:06:2E:A3:CD:2C:4A:0D:54:78:76:BA:A6:F3:8C:AB:F6:25
+   B0:BC:B8:A9:06:DF:B6:A9:11:A2:1C:41:9D:26:C4:3B:89:CC:C3:E1
    ```
+   After Play App Signing is enabled, also add the **App signing** SHA-1 from Play Console. Full details: [PLAY_CONSOLE.md](./PLAY_CONSOLE.md).
 4. Download `google-services.json` (already in project root)
-
-### Step 4: Deploy Rules and Indexes
 
 ```bash
 firebase login
@@ -304,16 +304,19 @@ firebase deploy --only functions --project applyai-444b2
 firebase deploy --project applyai-444b2
 ```
 
-### Build Native Apps
+### Build Native Apps (Play Store)
 
-```bash
-# Android APK
-npx expo prebuild --platform android
-cd android && ./gradlew assembleRelease
+See **[PLAY_CONSOLE.md](./PLAY_CONSOLE.md)** for the full Google Play release guide (signing, version bumps, store listing).
 
-# Or use EAS Build (recommended for production)
-npx eas build --platform android
-npx eas build --platform ios
+```powershell
+# Windows: build from short junction to avoid path-length errors
+cmd /c mklink /J D:\aa "D:\jobportal project\applyai"   # once
+cd D:\aa\android
+.\gradlew.bat bundleRelease
+# Output: android/app/build/outputs/bundle/release/app-release.aab
+
+# Local APK test only (not for Play upload)
+.\gradlew.bat assembleRelease
 ```
 
 ---

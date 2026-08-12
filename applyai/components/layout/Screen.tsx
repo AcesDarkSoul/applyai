@@ -70,10 +70,14 @@ export function Screen({
     <View style={[styles.flex, styles.scrollContent]}>{inner}</View>
   );
 
+  // Android already uses windowSoftInputMode=adjustResize. Forcing
+  // KeyboardAvoidingView behavior="height" there often eats focus / blocks typing.
   const wrapped = keyboard ? (
     <KeyboardAvoidingView
       style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : Platform.OS === 'android' ? 'height' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      enabled={Platform.OS === 'ios'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
     >
       {body}
     </KeyboardAvoidingView>
