@@ -1,5 +1,6 @@
-/** Dark purple palette — parity with frontend/src/shared/theme/theme.ts */
-export const Colors = {
+/** ApplyAI brand palettes — dark (default) + light */
+
+const brand = {
   primary: '#5b5ce2',
   primaryDark: '#4546c7',
   primaryLight: '#8183f0',
@@ -11,41 +12,11 @@ export const Colors = {
   warning: '#f59e0b',
   success: '#22c55e',
   info: '#3b82f6',
-
-  background: '#0b0c18',
-  backgroundLight: '#15172a',
-  surface: '#15172a',
-  surfaceLight: '#1c1f36',
-  card: '#15172a',
-  border: 'rgba(238,240,255,0.08)',
-  borderLight: 'rgba(238,240,255,0.05)',
-
-  text: '#eef0ff',
-  textSecondary: '#9aa0c0',
-  textMuted: '#6b6f8c',
-  textOnPrimary: '#ffffff',
-  textOnSecondary: '#0b0c18',
-
   white: '#ffffff',
   black: '#000000',
-
-  glass: 'rgba(21,23,42,0.86)',
-  bottomNavGlass: 'rgba(21,23,42,0.94)',
-  primaryTint: 'rgba(91,92,226,0.12)',
-  primaryTintSoft: 'rgba(91,92,226,0.08)',
-
-  gradient: ['#5b5ce2', '#6d6ff0'] as const,
-  gradientBrand: ['#5b5ce2', '#8183f0'] as const,
-  gradientHero: ['#5b5ce2', '#14b8a6', '#ec4899'] as const,
-  gradientYellow: ['#5b5ce2', '#8183f0'] as const,
-  gradientSuccess: ['#22c55e', '#16a34a'] as const,
-  gradientDrawer: ['#5b5ce2', '#6d6ff0', '#8b5cf6'] as const,
-  gradientSplash: ['#0b0c18', '#15172a', '#2a2d6b'] as const,
-
   linkedin: '#0A66C2',
   indeed: '#2164F3',
   naukri: '#4A90D9',
-
   statusApplied: '#22c55e',
   statusInterview: '#3b82f6',
   statusViewed: '#ef4444',
@@ -53,7 +24,117 @@ export const Colors = {
   statusOffer: '#f59e0b',
   statusRejected: '#ef4444',
   statusWithdrawn: '#6b6f8c',
+} as const;
+
+export type ThemeColors = {
+  primary: string;
+  primaryDark: string;
+  primaryLight: string;
+  secondary: string;
+  secondaryDark: string;
+  secondaryLight: string;
+  accent: string;
+  danger: string;
+  warning: string;
+  success: string;
+  info: string;
+  background: string;
+  backgroundLight: string;
+  surface: string;
+  surfaceLight: string;
+  card: string;
+  border: string;
+  borderLight: string;
+  text: string;
+  textSecondary: string;
+  textMuted: string;
+  textOnPrimary: string;
+  textOnSecondary: string;
+  white: string;
+  black: string;
+  glass: string;
+  bottomNavGlass: string;
+  primaryTint: string;
+  primaryTintSoft: string;
+  gradient: readonly [string, string];
+  gradientBrand: readonly [string, string];
+  gradientHero: readonly [string, string, string];
+  gradientYellow: readonly [string, string];
+  gradientSuccess: readonly [string, string];
+  gradientDrawer: readonly [string, string, string];
+  gradientSplash: readonly [string, string, string];
+  linkedin: string;
+  indeed: string;
+  naukri: string;
+  statusApplied: string;
+  statusInterview: string;
+  statusViewed: string;
+  statusSaved: string;
+  statusOffer: string;
+  statusRejected: string;
+  statusWithdrawn: string;
 };
+
+export const DarkColors: ThemeColors = {
+  ...brand,
+  background: '#0b0c18',
+  backgroundLight: '#15172a',
+  surface: '#15172a',
+  surfaceLight: '#1c1f36',
+  card: '#15172a',
+  border: 'rgba(238,240,255,0.10)',
+  borderLight: 'rgba(238,240,255,0.06)',
+  text: '#eef0ff',
+  textSecondary: '#9aa0c0',
+  textMuted: '#6b6f8c',
+  textOnPrimary: '#ffffff',
+  textOnSecondary: '#0b0c18',
+  glass: 'rgba(21,23,42,0.92)',
+  bottomNavGlass: 'rgba(14,16,32,0.96)',
+  primaryTint: 'rgba(91,92,226,0.16)',
+  primaryTintSoft: 'rgba(91,92,226,0.10)',
+  gradient: ['#5b5ce2', '#6d6ff0'],
+  gradientBrand: ['#5b5ce2', '#8183f0'],
+  gradientHero: ['#5b5ce2', '#14b8a6', '#ec4899'],
+  gradientYellow: ['#5b5ce2', '#8183f0'],
+  gradientSuccess: ['#22c55e', '#16a34a'],
+  gradientDrawer: ['#5b5ce2', '#6d6ff0', '#8b5cf6'],
+  gradientSplash: ['#0b0c18', '#15172a', '#2a2d6b'],
+};
+
+export const LightColors: ThemeColors = {
+  ...brand,
+  background: '#f3f4fb',
+  backgroundLight: '#ffffff',
+  surface: '#ffffff',
+  surfaceLight: '#eef0fa',
+  card: '#ffffff',
+  border: 'rgba(30,34,70,0.10)',
+  borderLight: 'rgba(30,34,70,0.06)',
+  text: '#14162b',
+  textSecondary: '#4d5373',
+  textMuted: '#7a8099',
+  textOnPrimary: '#ffffff',
+  textOnSecondary: '#0b0c18',
+  glass: 'rgba(255,255,255,0.92)',
+  bottomNavGlass: 'rgba(255,255,255,0.96)',
+  primaryTint: 'rgba(91,92,226,0.12)',
+  primaryTintSoft: 'rgba(91,92,226,0.07)',
+  gradient: ['#5b5ce2', '#6d6ff0'],
+  gradientBrand: ['#5b5ce2', '#8183f0'],
+  gradientHero: ['#5b5ce2', '#14b8a6', '#ec4899'],
+  gradientYellow: ['#5b5ce2', '#8183f0'],
+  gradientSuccess: ['#22c55e', '#16a34a'],
+  gradientDrawer: ['#5b5ce2', '#6d6ff0', '#8b5cf6'],
+  gradientSplash: ['#eef0ff', '#dde1ff', '#c9cdfa'],
+};
+
+/** Default export for existing screens — dark palette */
+export const Colors = DarkColors;
+
+export function getThemeColors(mode: 'light' | 'dark'): ThemeColors {
+  return mode === 'light' ? LightColors : DarkColors;
+}
 
 export const Spacing = {
   xs: 4,
@@ -87,28 +168,28 @@ export const Shadows = {
   sm: {
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.12,
     shadowRadius: 3,
     elevation: 2,
   },
   md: {
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
+    shadowOpacity: 0.16,
+    shadowRadius: 10,
     elevation: 4,
   },
   lg: {
     shadowColor: '#5b5ce2',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.32,
+    shadowOpacity: 0.28,
     shadowRadius: 16,
     elevation: 8,
   },
   card: {
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.12,
     shadowRadius: 12,
     elevation: 3,
   },

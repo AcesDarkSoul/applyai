@@ -11,7 +11,6 @@ import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Screen } from '@/components/layout/Screen';
 import { AppTopBar } from '@/components/layout/AppTopBar';
-import { AppDrawer } from '@/components/layout/AppDrawer';
 import { postRepository, type HiringPost } from '@/lib/api/repositories';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 
@@ -47,8 +46,7 @@ export default function HiringPostsScreen() {
 
   return (
     <View style={styles.root}>
-      <AppDrawer />
-      <AppTopBar title="Hiring Posts" subtitle="LinkedIn & Google Jobs posts" />
+<AppTopBar title="Hiring Posts" subtitle="LinkedIn & Google Jobs posts" />
       <Screen safe edges={['left', 'right', 'bottom']}>
         <View style={styles.hero}>
           <View style={styles.liveRow}>

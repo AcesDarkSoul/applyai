@@ -3,10 +3,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Colors, Spacing, FontSize, BorderRadius, Shadows } from '@/constants/theme';
+import { Spacing, FontSize, BorderRadius, Shadows } from '@/constants/theme';
 import { BrandLogo } from '@/components/brand/BrandLogo';
 import { useAuthStore } from '@/stores/authStore';
 import { useDrawerStore } from '@/stores/drawerStore';
+import { useColors } from '@/hooks/useColors';
 
 type AppTopBarProps = {
   title: string;
@@ -30,8 +31,10 @@ export function AppTopBar({
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { width } = useWindowDimensions();
+  const colors = useColors();
   const profile = useAuthStore((s) => s.profile);
-  const openDrawer = useDrawerStore((s) => s.setOpen);
+  const openNav = useDrawerStore((s) => s.setOpen);
+  const openProfile = useDrawerStore((s) => s.setProfileOpen);
   const isCompact = width < 640;
   const isWide = width >= 1024;
 
@@ -47,34 +50,60 @@ export function AppTopBar({
         },
       ]}
     >
-      <View style={[styles.bar, isWide && styles.barWide]}>
+      <View
+        style={[
+          styles.bar,
+          isWide && styles.barWide,
+          {
+            backgroundColor: colors.glass,
+            borderColor: colors.border,
+          },
+        ]}
+      >
         <View style={styles.left}>
           {showBack ? (
             <Pressable
               onPress={() => router.back()}
-              style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
+              style={({ pressed }) => [
+                styles.iconBtn,
+                {
+                  backgroundColor: colors.surfaceLight,
+                  borderColor: colors.border,
+                },
+                pressed && styles.pressed,
+              ]}
               accessibilityLabel="Go back"
             >
-              <Ionicons name="chevron-back" size={22} color={Colors.text} />
+              <Ionicons name="chevron-back" size={22} color={colors.text} />
             </Pressable>
           ) : showMenu ? (
             <Pressable
-              onPress={() => openDrawer(true)}
-              style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
+              onPress={() => openNav(true)}
+              style={({ pressed }) => [
+                styles.iconBtn,
+                {
+                  backgroundColor: colors.surfaceLight,
+                  borderColor: colors.border,
+                },
+                pressed && styles.pressed,
+              ]}
               accessibilityLabel="Open menu"
             >
-              <Ionicons name="menu" size={22} color={Colors.text} />
+              <Ionicons name="menu" size={22} color={colors.text} />
             </Pressable>
           ) : (
             <BrandLogo size={36} />
           )}
 
           <View style={styles.titleBlock}>
-            <Text style={[styles.title, isCompact && styles.titleCompact]} numberOfLines={1}>
+            <Text
+              style={[styles.title, isCompact && styles.titleCompact, { color: colors.text }]}
+              numberOfLines={1}
+            >
               {title}
             </Text>
             {!isCompact && Boolean(subtitle) && (
-              <Text style={styles.subtitle} numberOfLines={1}>
+              <Text style={[styles.subtitle, { color: colors.textMuted }]} numberOfLines={1}>
                 {subtitle}
               </Text>
             )}
@@ -85,52 +114,80 @@ export function AppTopBar({
           {rightAction && (
             <Pressable
               onPress={rightAction.onPress}
-              style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
+              style={({ pressed }) => [
+                styles.iconBtn,
+                {
+                  backgroundColor: colors.surfaceLight,
+                  borderColor: colors.border,
+                },
+                pressed && styles.pressed,
+              ]}
               accessibilityLabel={rightAction.label || 'Action'}
             >
-              <Ionicons name={rightAction.icon} size={20} color={Colors.primaryLight} />
+              <Ionicons name={rightAction.icon} size={20} color={colors.primaryLight} />
             </Pressable>
           )}
 
           <Pressable
             onPress={() => router.push('/notifications')}
-            style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
+            style={({ pressed }) => [
+              styles.iconBtn,
+              {
+                backgroundColor: colors.surfaceLight,
+                borderColor: colors.border,
+              },
+              pressed && styles.pressed,
+            ]}
             accessibilityLabel="Notifications"
           >
-            <Ionicons name="notifications-outline" size={20} color={Colors.text} />
+            <Ionicons name="notifications-outline" size={20} color={colors.text} />
           </Pressable>
 
           {!isCompact && (
             <Pressable
               onPress={() => router.push('/(tabs)/jobs')}
-              style={({ pressed }) => [styles.searchChip, pressed && styles.pressed]}
+              style={({ pressed }) => [
+                styles.searchChip,
+                {
+                  backgroundColor: colors.surfaceLight,
+                  borderColor: colors.border,
+                },
+                pressed && styles.pressed,
+              ]}
               accessibilityLabel="Search jobs"
             >
-              <Ionicons name="search" size={16} color={Colors.primaryLight} />
-              <Text style={styles.searchText}>Search jobs</Text>
+              <Ionicons name="search" size={16} color={colors.primaryLight} />
+              <Text style={[styles.searchText, { color: colors.textSecondary }]}>Search jobs</Text>
             </Pressable>
           )}
 
           {isCompact && (
             <Pressable
               onPress={() => router.push('/(tabs)/jobs')}
-              style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
+              style={({ pressed }) => [
+                styles.iconBtn,
+                {
+                  backgroundColor: colors.surfaceLight,
+                  borderColor: colors.border,
+                },
+                pressed && styles.pressed,
+              ]}
               accessibilityLabel="Search jobs"
             >
-              <Ionicons name="search" size={20} color={Colors.text} />
+              <Ionicons name="search" size={20} color={colors.text} />
             </Pressable>
           )}
 
           <Pressable
-            onPress={() => router.push('/(tabs)/profile')}
+            onPress={() => openProfile(true)}
             style={({ pressed }) => [styles.avatarWrap, pressed && styles.pressed]}
-            accessibilityLabel="Open profile"
+            accessibilityLabel="Open account menu"
           >
             <LinearGradient
-              colors={Colors.gradientBrand}
+              colors={[...colors.gradientBrand]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={styles.avatar}
+              style={[styles.avatar, { borderColor: colors.border }]}
             >
               <Text style={styles.avatarText}>{initial}</Text>
             </LinearGradient>
@@ -154,9 +211,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.xl,
-    backgroundColor: Colors.glass,
     borderWidth: 1,
-    borderColor: Colors.border,
     gap: Spacing.sm,
     ...Shadows.md,
   },
@@ -178,13 +233,6 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
     flexShrink: 0,
   },
-  logo: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   titleBlock: {
     flex: 1,
     minWidth: 0,
@@ -192,7 +240,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: FontSize.lg,
     fontWeight: '800',
-    color: Colors.text,
     letterSpacing: -0.3,
   },
   titleCompact: {
@@ -202,7 +249,6 @@ const styles = StyleSheet.create({
     marginTop: 1,
     fontSize: FontSize.xs,
     fontWeight: '600',
-    color: Colors.textMuted,
   },
   iconBtn: {
     width: 40,
@@ -210,9 +256,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.surfaceLight,
     borderWidth: 1,
-    borderColor: Colors.border,
   },
   searchChip: {
     flexDirection: 'row',
@@ -221,27 +265,25 @@ const styles = StyleSheet.create({
     height: 40,
     paddingHorizontal: 14,
     borderRadius: BorderRadius.full,
-    backgroundColor: Colors.surfaceLight,
     borderWidth: 1,
-    borderColor: Colors.border,
   },
   searchText: {
     fontSize: FontSize.sm,
     fontWeight: '700',
-    color: Colors.textSecondary,
   },
   avatarWrap: {
     borderRadius: 999,
   },
   avatar: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 2,
   },
   avatarText: {
-    color: Colors.white,
+    color: '#ffffff',
     fontWeight: '800',
     fontSize: 14,
   },

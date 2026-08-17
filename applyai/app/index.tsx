@@ -1,16 +1,17 @@
 import { Redirect } from 'expo-router';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { useAuthStore } from '@/stores/authStore';
-import { Colors } from '@/constants/theme';
+import { useColors } from '@/hooks/useColors';
 
-/** Entry route: require Firebase login (email/password or Google) before app access. */
+/** Entry route: require Firebase login before app access. */
 export default function Index() {
   const { user, initialized } = useAuthStore();
+  const colors = useColors();
 
   if (!initialized) {
     return (
-      <View style={styles.loading}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+      <View style={[styles.loading, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -27,6 +28,5 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: Colors.background,
   },
 });

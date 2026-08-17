@@ -10,8 +10,12 @@ import { AppError } from './errorHandler';
  */
 export async function authenticate(req: Request, _res: Response, next: NextFunction): Promise<void> {
   try {
-    const header = req.headers.authorization;
-    if (!header?.startsWith('Bearer ')) {
+    const header =
+      (typeof req.headers.authorization === 'string' ? req.headers.authorization : '') ||
+      (typeof req.headers['x-firebase-authorization'] === 'string'
+        ? req.headers['x-firebase-authorization']
+        : '');
+    if (!header.startsWith('Bearer ')) {
       throw new AppError(401, 'Missing or invalid Authorization header', 'UNAUTHORIZED');
     }
 

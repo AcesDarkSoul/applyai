@@ -10,8 +10,9 @@ import {
   ScrollViewProps,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Colors, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import { useResponsive } from '@/components/ui';
+import { useColors } from '@/hooks/useColors';
 
 interface ScreenProps {
   children: React.ReactNode;
@@ -34,9 +35,11 @@ export function Screen({
   style,
   contentStyle,
   scrollProps,
-  backgroundColor = Colors.background,
+  backgroundColor,
   edges = ['top', 'left', 'right'],
 }: ScreenProps) {
+  const colors = useColors();
+  const bg = backgroundColor ?? colors.background;
   const { maxContentWidth, horizontalPadding, bottomPadding } = useResponsive();
 
   const inner = (
@@ -89,17 +92,23 @@ export function Screen({
 
   if (safe) {
     return (
-      <SafeAreaView style={[styles.flex, { backgroundColor }, style]} edges={edges}>
+      <SafeAreaView style={[styles.flex, { backgroundColor: bg }, style]} edges={edges}>
         {wrapped}
       </SafeAreaView>
     );
   }
 
-  return <View style={[styles.flex, { backgroundColor }, style]}>{wrapped}</View>;
+  return <View style={[styles.flex, { backgroundColor: bg }, style]}>{wrapped}</View>;
 }
 
 /** Responsive grid for cards — 1 col mobile, 2 tablet, 3 desktop */
-export function ResponsiveGrid({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
+export function ResponsiveGrid({
+  children,
+  style,
+}: {
+  children: React.ReactNode;
+  style?: StyleProp<ViewStyle>;
+}) {
   const { columns, gap } = useResponsive();
   const items = React.Children.toArray(children);
 

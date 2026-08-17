@@ -24,10 +24,7 @@ import {
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
-const ALLOWED_TYPES = [
-  'application/pdf',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-];
+const ALLOWED_TYPES = '*/*';
 
 type Step = 'upload' | 'review';
 
@@ -167,7 +164,7 @@ export default function ResumeUploadScreen() {
         <Card style={styles.uploadArea}>
           <Text style={styles.uploadIcon}>📁</Text>
           <Text style={styles.uploadTitle}>{file ? file.name : 'Tap to choose a file'}</Text>
-          <Text style={styles.uploadHint}>PDF or DOCX · Max 10 MB</Text>
+          <Text style={styles.uploadHint}>Any file · Max 10 MB</Text>
           <Button title="Choose File" variant="outline" onPress={pickDocument} style={styles.browseButton} />
         </Card>
       </FadeInView>

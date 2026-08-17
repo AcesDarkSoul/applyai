@@ -2,7 +2,7 @@
   "expo": {
     "name": "ApplyAI",
     "slug": "applyai",
-    "version": "1.0.3",
+    "version": "1.0.7",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "applyai",
@@ -30,7 +30,10 @@
       "intentFilters": [
         {
           "action": "VIEW",
-          "category": ["BROWSABLE", "DEFAULT"],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ],
           "data": [
             {
               "scheme": "com.googleusercontent.apps.985875105334-3127musg7kpivsd0kjhnikb9v1qs2okv",
@@ -77,7 +80,8 @@
             ]
           }
         }
-      ]
+      ],
+      "@react-native-google-signin/google-signin"
     ],
     "experiments": {
       "typedRoutes": true

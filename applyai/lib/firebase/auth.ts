@@ -14,7 +14,17 @@ import { Platform } from 'react-native';
 import { auth, db } from './config';
 import { trackLogin, trackSignUp } from './analytics';
 import { recordError } from './crashlytics';
+import { setApiToken } from '@/lib/api/client';
 import type { UserProfile } from '@/types';
+
+async function persistApiToken(user: User) {
+  try {
+    const token = await user.getIdToken();
+    await setApiToken(token);
+  } catch (e) {
+    console.warn('persistApiToken failed:', e);
+  }
+}
 
 /** Map Firebase Auth errors to clear user-facing messages */
 export function formatAuthError(error: unknown): string {
@@ -83,12 +93,14 @@ export async function signUp(email: string, password: string, name: string): Pro
   }
 
   void trackSignUp('password');
+  await persistApiToken(credential.user);
   return credential.user;
 }
 
 export async function signIn(email: string, password: string): Promise<User> {
   const credential = await signInWithEmailAndPassword(auth, email, password);
   void trackLogin('password');
+  await persistApiToken(credential.user);
   return credential.user;
 }
 
@@ -97,6 +109,7 @@ export async function signInWithGoogleIdToken(idToken: string): Promise<User> {
   const result = await signInWithCredential(auth, credential);
   await ensureUserProfile(result.user);
   void trackLogin('google');
+  await persistApiToken(result.user);
   return result.user;
 }
 
@@ -108,6 +121,7 @@ export async function signInWithGoogle(): Promise<User> {
     const credential = await signInWithPopup(auth, provider);
     await ensureUserProfile(credential.user);
     void trackLogin('google');
+    await persistApiToken(credential.user);
     return credential.user;
   }
 
@@ -144,6 +158,7 @@ export async function resetPassword(email: string): Promise<void> {
 }
 
 export async function logOut(): Promise<void> {
+  await setApiToken(null);
   await signOut(auth);
 }
 

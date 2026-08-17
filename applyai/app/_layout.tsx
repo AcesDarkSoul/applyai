@@ -8,14 +8,17 @@ import 'react-native-reanimated';
 
 import { useAuthStore } from '@/stores/authStore';
 import { useResumeStore } from '@/stores/resumeStore';
-import { Colors } from '@/constants/theme';
+import { useThemeStore } from '@/stores/themeStore';
+import { useColors, useThemeMode } from '@/hooks/useColors';
 import { AppTopBar } from '@/components/layout/AppTopBar';
+import { AppDrawer } from '@/components/layout/AppDrawer';
+import { ProfileDrawer } from '@/components/layout/ProfileDrawer';
 import { trackScreen } from '@/lib/firebase/analytics';
 import { initTelemetry } from '@/lib/firebase/telemetry';
 
 export { ErrorBoundary } from 'expo-router';
 
-SplashScreen.preventAutoHideAsync();
+SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
 const AUTH_ROUTES = new Set(['(auth)']);
 
@@ -35,10 +38,17 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, initialized } = useAuthStore();
   const segments = useSegments();
   const router = useRouter();
+  const colors = useColors();
 
   const root = segments[0];
   const inAuthGroup = AUTH_ROUTES.has(String(root ?? ''));
   const needsAuth = !inAuthGroup;
+
+  useEffect(() => {
+    if (initialized) {
+      void SplashScreen.hideAsync();
+    }
+  }, [initialized]);
 
   useEffect(() => {
     if (!initialized) return;
@@ -53,26 +63,12 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     }
   }, [user, initialized, needsAuth, inAuthGroup, router]);
 
+  // Only block before Firebase answers. Always keep the Stack mounted after that
+  // (returning <Redirect /> without a navigator caused the blank screen).
   if (!initialized) {
     return (
-      <View style={styles.loading}>
-        <ActivityIndicator size="large" color={Colors.primary} />
-      </View>
-    );
-  }
-
-  if (!user && needsAuth) {
-    return (
-      <View style={styles.loading}>
-        <ActivityIndicator size="large" color={Colors.primary} />
-      </View>
-    );
-  }
-
-  if (user && inAuthGroup) {
-    return (
-      <View style={styles.loading}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+      <View style={[styles.loading, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -83,30 +79,48 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 export default function RootLayout() {
   const initialize = useAuthStore((s) => s.initialize);
   const refreshResume = useResumeStore((s) => s.refresh);
+  const hydrateTheme = useThemeStore((s) => s.hydrate);
+  const colors = useColors();
+  const { isDark } = useThemeMode();
 
   useEffect(() => {
-    void initTelemetry();
-  }, []);
+    void hydrateTheme();
+    const t = setTimeout(() => {
+      void initTelemetry();
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [hydrateTheme]);
+
   useEffect(() => {
     const unsub = initialize();
     return unsub;
-  }, []);
+  }, [initialize]);
+
   useEffect(() => {
-    refreshResume();
-  }, []);
+    const t = setTimeout(() => {
+      void refreshResume();
+    }, 300);
+    return () => clearTimeout(t);
+  }, [refreshResume]);
+
   useEffect(() => {
-    SplashScreen.hideAsync();
+    const t = setTimeout(() => {
+      void SplashScreen.hideAsync();
+    }, 1800);
+    return () => clearTimeout(t);
   }, []);
 
   return (
     <SafeAreaProvider>
       <AuthGuard>
         <ScreenTracker />
-        <StatusBar style="light" />
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <AppDrawer />
+        <ProfileDrawer />
         <Stack
           screenOptions={{
             headerShown: false,
-            contentStyle: { backgroundColor: Colors.background },
+            contentStyle: { backgroundColor: colors.background },
             animation: Platform.OS === 'ios' ? 'default' : 'fade',
           }}
         >
@@ -123,7 +137,7 @@ export default function RootLayout() {
             options={{
               headerShown: true,
               header: () => (
-                <AppTopBar title="Job Details" subtitle="Match, apply, follow up" showBack showMenu={false} />
+                <AppTopBar title="Job Details" subtitle="Match, apply, follow up" showBack />
               ),
               headerShadowVisible: false,
               title: 'Job Details',
@@ -164,6 +178,5 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: Colors.background,
   },
 });

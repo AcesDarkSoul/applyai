@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, ActivityIndicator, Pressable, Linking } from 'r
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Screen } from '@/components/layout/Screen';
 import { AppTopBar } from '@/components/layout/AppTopBar';
-import { AppDrawer } from '@/components/layout/AppDrawer';
 import { postRepository, type HiringPost } from '@/lib/api/repositories';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 
@@ -28,8 +27,7 @@ export default function PostDetailScreen() {
 
   return (
     <View style={styles.root}>
-      <AppDrawer />
-      <AppTopBar title="Hiring Post" subtitle="Full post detail" showBack showMenu={false} />
+      <AppTopBar title="Hiring Post" subtitle="Full post detail" showBack />
       <Screen safe edges={['left', 'right', 'bottom']}>
         {loading ? (
           <ActivityIndicator color={Colors.primary} />

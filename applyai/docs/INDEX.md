@@ -10,6 +10,7 @@ Welcome to the **ApplyAI** project documentation. This folder contains all techn
 |----------|-------------|
 | [README.md](../README.md) | Project overview, setup, deployment |
 | [PLAY_CONSOLE.md](../PLAY_CONSOLE.md) | Google Play AAB builds, signing, release checklist |
+| [QA.md](./QA.md) | Short tester checklist + steps to go live on Play |
 | [FEATURES.md](./FEATURES.md) | All app features explained |
 | [SUGGESTIONS.md](./SUGGESTIONS.md) | Product roadmap suggestions & priorities |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | System architecture & data flow |

@@ -6,6 +6,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Screen } from '@/components/layout/Screen';
 import { FadeInView } from '@/components/AnimatedView';
 import { useAuthStore } from '@/stores/authStore';
+import { ensureApiToken } from '@/lib/api/client';
 import {
   applicationRepository,
   jobRepository,
@@ -14,12 +15,16 @@ import {
   type AppStats,
 } from '@/lib/api/repositories';
 import { Colors, Spacing, FontSize, BorderRadius, Shadows } from '@/constants/theme';
+import { useColors, useThemeMode } from '@/hooks/useColors';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 export default function DashboardScreen() {
   const router = useRouter();
+  const colors = useColors();
+  const { isDark } = useThemeMode();
   const profile = useAuthStore((s) => s.profile);
+  const user = useAuthStore((s) => s.user);
   const [stats, setStats] = useState<AppStats | null>(null);
   const [jobs, setJobs] = useState<ApiJob[]>([]);
   const [apps, setApps] = useState<ApiApplication[]>([]);
@@ -28,9 +33,11 @@ export default function DashboardScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    if (!user) return;
     setLoading(true);
     setError(null);
     try {
+      await ensureApiToken();
       const [s, today, list] = await Promise.all([
         applicationRepository.stats(),
         jobRepository.today(),
@@ -50,7 +57,7 @@ export default function DashboardScreen() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     void load();
@@ -83,7 +90,7 @@ export default function DashboardScreen() {
     return (
       <Screen safe edges={['left', 'right']}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       </Screen>
     );
@@ -93,22 +100,37 @@ export default function DashboardScreen() {
     <Screen safe edges={['left', 'right']}>
       <FadeInView direction="down">
         <LinearGradient
-          colors={['rgba(91,92,226,0.22)', 'rgba(15,23,42,0.4)', 'rgba(20,184,166,0.12)']}
+          colors={[
+            'rgba(91,92,226,0.28)',
+            isDark ? 'rgba(15,23,42,0.45)' : 'rgba(255,255,255,0.55)',
+            'rgba(20,184,166,0.16)',
+          ] as [string, string, string]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.hero}
+          style={[
+            styles.hero,
+            {
+              borderColor: colors.border,
+              backgroundColor: colors.card,
+            },
+          ]}
         >
-          <Text style={styles.heroEyebrow}>Ready for your next move, {firstName}?</Text>
-          <Text style={styles.heroTitle}>Dashboard</Text>
-          <Text style={styles.heroBody}>
+          <Text style={[styles.heroEyebrow, { color: colors.textSecondary }]}>
+            Ready for your next move, {firstName}?
+          </Text>
+          <Text style={[styles.heroTitle, { color: colors.text }]}>Dashboard</Text>
+          <Text style={[styles.heroBody, { color: colors.textSecondary }]}>
             Match roles, track applications, and keep cover letters with every apply.
           </Text>
           <View style={styles.heroActions}>
             <Pressable style={styles.primaryBtn} onPress={() => router.push('/(tabs)/jobs')}>
               <Text style={styles.primaryBtnText}>Find matches</Text>
             </Pressable>
-            <Pressable style={styles.ghostBtn} onPress={() => router.push('/(tabs)/profile')}>
-              <Text style={styles.ghostBtnText}>Resume Studio</Text>
+            <Pressable
+              style={[styles.ghostBtn, { borderColor: colors.border }]}
+              onPress={() => router.push('/(tabs)/resume')}
+            >
+              <Text style={[styles.ghostBtnText, { color: colors.text }]}>Resume Studio</Text>
             </Pressable>
           </View>
         </LinearGradient>
@@ -117,7 +139,7 @@ export default function DashboardScreen() {
       {error ? (
         <View style={styles.errorBox}>
           <Text style={styles.errorText}>{error}</Text>
-          <Text style={styles.errorHint}>Start backend on :4000 for live web-parity data.</Text>
+          <Text style={styles.errorHint}>Check your connection and try again.</Text>
         </View>
       ) : null}
 

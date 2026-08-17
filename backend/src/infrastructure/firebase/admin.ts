@@ -62,7 +62,15 @@ export function getFirebaseAdmin(): typeof admin | null {
   }
 }
 
+let firestoreSettingsApplied = false;
+
 export function getFirestore() {
   const app = getFirebaseAdmin();
-  return app ? app.firestore() : null;
+  if (!app) return null;
+  const db = app.firestore();
+  if (!firestoreSettingsApplied) {
+    db.settings({ ignoreUndefinedProperties: true });
+    firestoreSettingsApplied = true;
+  }
+  return db;
 }

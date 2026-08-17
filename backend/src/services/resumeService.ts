@@ -9,7 +9,18 @@ import { parseResumeBuffer, parsedToProfilePatch } from './resumeParseService';
 import { profileService } from './profileService';
 
 /** Keep under Firestore ~1MB doc limit with headroom for other fields. */
-const MAX_BASE64_CHARS = 700_000;
+const MAX_BASE64_CHARS = 250_000;
+
+function isFirestoreWriteError(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  const code =
+    typeof err === 'object' && err !== null && 'code' in err ? String((err as { code: unknown }).code) : '';
+  return (
+    /undefined as a Firestore value|exceeds the maximum allowed size|INVALID_ARGUMENT|invalid-argument/i.test(
+      message,
+    ) || /invalid-argument|resource-exhausted/i.test(code)
+  );
+}
 
 function mimeFromName(fileName: string): string {
   const n = fileName.toLowerCase();
@@ -76,7 +87,7 @@ export class ResumeService {
       template: previous?.template,
     };
 
-    const saved = await resumeRepository.upsert(resume);
+    const saved = await this.persistResume(resume);
     const withResumeId = await profileService.update(auth, {
       resumeId: saved.id,
       resumeFileName: fileName,
@@ -383,6 +394,27 @@ export class ResumeService {
       notes,
       aiAssisted,
     };
+  }
+
+  private async persistResume(resume: ResumeDocument): Promise<ResumeDocument> {
+    try {
+      return await resumeRepository.upsert(resume);
+    } catch (err) {
+      if (!isFirestoreWriteError(err)) throw err;
+      try {
+        return await resumeRepository.upsert({
+          ...resume,
+          contentBase64: undefined,
+          extractedText: (resume.extractedText || '').slice(0, 12_000),
+        });
+      } catch {
+        throw new AppError(
+          400,
+          'Could not save this resume. Try a smaller PDF or a DOCX/TXT file.',
+          'RESUME_SAVE',
+        );
+      }
+    }
   }
 }
 

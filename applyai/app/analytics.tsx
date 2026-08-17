@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Screen } from '@/components/layout/Screen';
 import { AppTopBar } from '@/components/layout/AppTopBar';
-import { AppDrawer } from '@/components/layout/AppDrawer';
 import { applicationRepository, type AppStats } from '@/lib/api/repositories';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 
@@ -35,8 +34,7 @@ export default function AnalyticsScreen() {
 
   return (
     <View style={styles.root}>
-      <AppDrawer />
-      <AppTopBar title="Analytics" subtitle="Funnel health at a glance" />
+<AppTopBar title="Analytics" subtitle="Funnel health at a glance" />
       <Screen safe edges={['left', 'right', 'bottom']}>
         <View style={styles.hero}>
           <Text style={styles.eyebrow}>Funnel health at a glance</Text>
