@@ -334,16 +334,20 @@ export async function extractTextFromBuffer(buffer: Buffer, fileName: string): P
     const result = await mammoth.extractRawText({ buffer });
     text = (result.value || '').trim();
   } else if (kind === 'doc') {
-    throw new Error('Legacy .doc is not supported. Save as PDF, DOCX, or TXT.');
+    const mammoth = await import('mammoth');
+    try {
+      const result = await mammoth.extractRawText({ buffer });
+      text = (result.value || '').trim();
+    } catch {
+      text = buffer.toString('utf8').replace(/\u0000/g, ' ');
+    }
   } else {
-    throw new Error(`Unsupported resume type: ${fileName}. Use PDF, DOCX, TXT, or MD.`);
+    text = buffer.toString('utf8').replace(/\u0000/g, ' ');
   }
 
   text = normalizeResumeText(text);
   if (text.length < 40) {
-    throw new Error(
-      'Resume has little/no extractable text (often a scanned image PDF). Export a text PDF or upload DOCX/TXT.',
-    );
+    return text;
   }
   return text.slice(0, 24_000);
 }
@@ -1021,12 +1025,40 @@ async function parseResumeWithOpenAI(text: string): Promise<ParsedResume> {
 }
 
 export async function parseResumeBuffer(buffer: Buffer, fileName: string): Promise<ParsedResume> {
-  let text: string;
+  let text = '';
   try {
     text = await extractTextFromBuffer(buffer, fileName);
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Failed to read resume file';
-    throw Object.assign(new Error(message), { name: 'ResumeParseError' });
+    logger.warn('Resume text extract failed; saving file anyway', {
+      err: err instanceof Error ? err.message : err,
+      fileName,
+    });
+    text = buffer.toString('utf8').replace(/\u0000/g, ' ').slice(0, 8_000);
+  }
+  const empty: ParsedResume = {
+    name: null,
+    email: null,
+    phone: null,
+    location: '',
+    title: '',
+    skills: [],
+    experience: 0,
+    education: [],
+    summary: '',
+    linkedin: null,
+    website: null,
+    experienceEntries: [],
+    educationEntries: [],
+    projects: [],
+    certifications: [],
+    languages: [],
+    achievements: [],
+    parseMethod: 'heuristic',
+    textChars: text.length,
+    rawText: text.slice(0, 50_000),
+  };
+  if (text.trim().length < 40) {
+    return empty;
   }
   let parsed: ParsedResume;
   if (env.OPENAI_API_KEY) {

@@ -44,10 +44,15 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
   }
 
   // multer / upload filter errors
-  if (err instanceof Error && /Only PDF|File too large|Unexpected field|resume/i.test(err.message)) {
+  if (err instanceof Error && /Only PDF|File too large|Unexpected field|Unexpected end of form/i.test(err.message)) {
     res.status(400).json({
       success: false,
-      error: { code: 'VALIDATION', message: err.message },
+      error: {
+        code: 'VALIDATION',
+        message: /end of form/i.test(err.message)
+          ? 'Resume upload failed. Keep USB connected and try again (up to 10 MB).'
+          : err.message,
+      },
     });
     return;
   }
@@ -62,6 +67,23 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
     res.status(400).json({
       success: false,
       error: { code: 'RESUME_PARSE', message: err.message },
+    });
+    return;
+  }
+
+  // Firestore rejects nested undefined / oversized docs — do not hide as 500
+  if (
+    err instanceof Error &&
+    /undefined as a Firestore value|exceeds the maximum allowed size|INVALID_ARGUMENT|invalid-argument/i.test(
+      err.message,
+    )
+  ) {
+    res.status(400).json({
+      success: false,
+      error: {
+        code: 'RESUME_SAVE',
+        message: 'Could not save this resume. Try a smaller PDF or a DOCX/TXT file.',
+      },
     });
     return;
   }

@@ -100,12 +100,16 @@ export function AnimatedProgress({
   }));
 
   return (
-    <View style={{ height, backgroundColor: '#F1F5F9', borderRadius: height / 2, overflow: 'hidden' }}>
+    <View
+      style={{
+        height,
+        backgroundColor: 'rgba(91,92,226,0.12)',
+        borderRadius: height / 2,
+        overflow: 'hidden',
+      }}
+    >
       <Animated.View
-        style={[
-          { height: '100%', backgroundColor: color, borderRadius: height / 2 },
-          barStyle,
-        ]}
+        style={[{ height: '100%', backgroundColor: color, borderRadius: height / 2 }, barStyle]}
       />
     </View>
   );

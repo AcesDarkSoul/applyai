@@ -1,4 +1,4 @@
-import { api } from './client';
+import { api, ensureApiToken, getApiBaseUrl } from './client';
 import { Platform } from 'react-native';
 
 type ApiResponse<T> = { data: T; meta?: Record<string, unknown> };
@@ -122,24 +122,36 @@ export const profileRepository = {
     const { data } = await api.patch<ApiResponse<ApiUserProfile>>('/me', patch);
     return data.data;
   },
-  async uploadResume(file: { uri: string; name: string; mimeType?: string } | File) {
-    const form = new FormData();
-    if (Platform.OS === 'web' && file instanceof File) {
-      form.append('resume', file);
-    } else {
-      const f = file as { uri: string; name: string; mimeType?: string };
-      form.append('resume', {
-        uri: f.uri,
-        name: f.name,
-        type: f.mimeType || 'application/pdf',
-      } as unknown as Blob);
+  async uploadResume(file: { uri: string; name: string; mimeType?: string } | Blob) {
+    const { fileName, mimeType, contentBase64 } = await readResumeAsBase64(file);
+
+    const token = await ensureApiToken();
+    const res = await fetch(`${getApiBaseUrl()}/me/resume`, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        ...(token
+          ? { Authorization: `Bearer ${token}`, 'X-Firebase-Authorization': `Bearer ${token}` }
+          : {}),
+      },
+      body: JSON.stringify({ fileName, mimeType, contentBase64 }),
+    });
+    const json = (await res.json().catch(() => null)) as
+      | ApiResponse<{ profile: ApiUserProfile; parsed: Record<string, unknown> }>
+      | { error?: { message?: string } }
+      | null;
+    if (!res.ok) {
+      const msg =
+        json && 'error' in json && json.error?.message
+          ? json.error.message
+          : `Upload failed (${res.status})`;
+      throw new Error(msg);
     }
-    const { data } = await api.post<ApiResponse<{ profile: ApiUserProfile; parsed: Record<string, unknown> }>>(
-      '/me/resume',
-      form,
-      { timeout: 90_000 }
-    );
-    return data.data;
+    if (!json || !('data' in json) || !json.data) {
+      throw new Error('Upload failed');
+    }
+    return json.data;
   },
   async optimizeResume(input?: { jobTitle?: string; jobDescription?: string }) {
     const { data } = await api.post<ApiResponse<{ profile: ApiUserProfile; tips?: string[] }>>(
@@ -378,3 +390,86 @@ export const automationRepository = {
     return data.data;
   },
 };
+
+const MAX_RESUME_BYTES = 10 * 1024 * 1024;
+
+function isBlobLike(value: unknown): value is Blob {
+  return (
+    typeof Blob !== 'undefined' &&
+    value != null &&
+    typeof value === 'object' &&
+    typeof (value as Blob).arrayBuffer === 'function' &&
+    typeof (value as Blob).size === 'number'
+  );
+}
+
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || '');
+      const comma = result.indexOf(',');
+      resolve(comma >= 0 ? result.slice(comma + 1) : result);
+    };
+    reader.onerror = () => reject(new Error('Could not read file'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function readResumeAsBase64(
+  file: { uri: string; name: string; mimeType?: string } | Blob
+): Promise<{ fileName: string; mimeType: string; contentBase64: string }> {
+  let fileName = 'resume.pdf';
+  let mimeType = 'application/octet-stream';
+  let contentBase64 = '';
+
+  if (Platform.OS === 'web') {
+    let blob: Blob;
+    if (isBlobLike(file)) {
+      blob = file;
+      if ('name' in file && typeof (file as File).name === 'string') {
+        fileName = (file as File).name || fileName;
+      }
+      mimeType = blob.type || mimeType;
+    } else {
+      const f = file as { uri: string; name: string; mimeType?: string };
+      fileName = f.name || fileName;
+      mimeType = f.mimeType || mimeType;
+      const res = await fetch(f.uri);
+      if (!res.ok) {
+        throw new Error('Could not read resume file from this browser');
+      }
+      blob = await res.blob();
+      if (!mimeType || mimeType === 'application/octet-stream') {
+        mimeType = blob.type || mimeType;
+      }
+    }
+    if (blob.size > MAX_RESUME_BYTES) {
+      throw new Error('Resume must be under 10 MB');
+    }
+    contentBase64 = await blobToBase64(blob);
+  } else {
+    const f = file as { uri: string; name: string; mimeType?: string };
+    fileName = f.name || fileName;
+    mimeType = f.mimeType || mimeType;
+    const FileSystem = await import('expo-file-system/legacy');
+    let uri = f.uri;
+    if (!uri.startsWith('file') && FileSystem.cacheDirectory) {
+      const dest = `${FileSystem.cacheDirectory}resume-upload-${Date.now()}-${fileName.replace(/[^\w.\-]+/g, '_')}`;
+      await FileSystem.copyAsync({ from: f.uri, to: dest });
+      uri = dest;
+    }
+    const info = await FileSystem.getInfoAsync(uri);
+    if (info.exists && 'size' in info && typeof info.size === 'number' && info.size > MAX_RESUME_BYTES) {
+      throw new Error('Resume must be under 10 MB');
+    }
+    contentBase64 = await FileSystem.readAsStringAsync(uri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+  }
+
+  if (!contentBase64) {
+    throw new Error('Could not read resume file from this device');
+  }
+  return { fileName, mimeType, contentBase64 };
+}

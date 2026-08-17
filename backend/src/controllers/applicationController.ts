@@ -165,7 +165,13 @@ export async function outreachApplyHandler(
       );
     }
 
-    if (!profile.summary && !(profile.skills?.length > 2) && !profile.title) {
+    if (
+      !profile.resumeId &&
+      !profile.resumeFileName &&
+      !profile.summary &&
+      !profile.title &&
+      !(profile.skills?.length > 0)
+    ) {
       throw new AppError(
         400,
         'Upload your resume on Profile first so outreach can write your cover letter.',

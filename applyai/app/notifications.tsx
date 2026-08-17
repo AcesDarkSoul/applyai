@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, Pressable, Switch, ActivityIndicator } from 're
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Screen } from '@/components/layout/Screen';
 import { AppTopBar } from '@/components/layout/AppTopBar';
-import { AppDrawer } from '@/components/layout/AppDrawer';
 import {
   notificationRepository,
   type AppNotification,
@@ -52,8 +51,7 @@ export default function NotificationsScreen() {
 
   return (
     <View style={styles.root}>
-      <AppDrawer />
-      <AppTopBar title="Notifications" subtitle="Push + email alerts" />
+<AppTopBar title="Notifications" subtitle="Push + email alerts" />
       <Screen safe edges={['left', 'right', 'bottom']}>
         <View style={styles.hero}>
           <Ionicons name="notifications" size={22} color={Colors.primaryLight} />

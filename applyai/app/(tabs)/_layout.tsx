@@ -1,16 +1,17 @@
 import { Tabs } from 'expo-router';
 import { Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Colors, Shadows, Spacing, BorderRadius } from '@/constants/theme';
+import { Shadows, Spacing, BorderRadius } from '@/constants/theme';
 import { AppTopBar } from '@/components/layout/AppTopBar';
-import { AppDrawer } from '@/components/layout/AppDrawer';
+import { useColors } from '@/hooks/useColors';
 
 const TAB_META: Record<string, { title: string; subtitle: string }> = {
   index: { title: 'Dashboard', subtitle: 'Your job search HQ' },
   jobs: { title: 'Find Jobs', subtitle: 'Matched to your resume' },
+  resume: { title: 'Resume', subtitle: 'Upload, ATS score & optimize' },
+  profile: { title: 'Profile', subtitle: 'Your details & skills' },
   apply: { title: 'Smart Apply', subtitle: 'Apply with one tap' },
   applications: { title: 'Applications', subtitle: 'Track every outreach' },
-  profile: { title: 'Resume Studio', subtitle: 'Resume & account' },
 };
 
 function TabHeader({ routeName }: { routeName: string }) {
@@ -21,21 +22,30 @@ function TabHeader({ routeName }: { routeName: string }) {
 export default function TabLayout() {
   const { width } = useWindowDimensions();
   const isWebDesktop = Platform.OS === 'web' && width >= 1024;
+  const isCompact = width < 400;
+  const colors = useColors();
 
   return (
-    <View style={styles.wrapper}>
-      <AppDrawer />
+    <View style={[styles.wrapper, { backgroundColor: colors.background }]}>
       <Tabs
         screenOptions={({ route }) => ({
-          tabBarActiveTintColor: Colors.primaryLight,
-          tabBarInactiveTintColor: Colors.textMuted,
-          tabBarStyle: [styles.tabBar, isWebDesktop && styles.tabBarWeb],
-          tabBarLabelStyle: styles.tabLabel,
+          tabBarActiveTintColor: colors.primaryLight,
+          tabBarInactiveTintColor: colors.textMuted,
+          tabBarStyle: [
+            styles.tabBar,
+            {
+              backgroundColor: colors.bottomNavGlass,
+              borderTopColor: colors.border,
+            },
+            isWebDesktop && styles.tabBarWeb,
+            isWebDesktop && { borderColor: colors.border },
+          ],
+          tabBarLabelStyle: [styles.tabLabel, isCompact && styles.tabLabelCompact],
           tabBarItemStyle: styles.tabItem,
-          tabBarActiveBackgroundColor: Colors.primaryTint,
+          tabBarActiveBackgroundColor: colors.primaryTint,
           header: () => <TabHeader routeName={route.name} />,
           headerShadowVisible: false,
-          sceneStyle: { backgroundColor: Colors.background },
+          sceneStyle: { backgroundColor: colors.background },
         })}
       >
         <Tabs.Screen
@@ -57,7 +67,7 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="profile"
+          name="resume"
           options={{
             title: 'Resume',
             tabBarIcon: ({ color, focused }) => (
@@ -66,6 +76,15 @@ export default function TabLayout() {
                 size={22}
                 color={color}
               />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="profile"
+          options={{
+            title: 'Profile',
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons name={focused ? 'person' : 'person-outline'} size={22} color={color} />
             ),
           }}
         />
@@ -97,37 +116,36 @@ export default function TabLayout() {
 const styles = StyleSheet.create({
   wrapper: {
     flex: 1,
-    backgroundColor: Colors.background,
     ...(Platform.OS === 'web' && { maxWidth: 1400, width: '100%', alignSelf: 'center' }),
   },
   tabBar: {
-    backgroundColor: Colors.bottomNavGlass,
-    borderTopColor: Colors.border,
     borderTopWidth: 1,
     height: Platform.OS === 'ios' ? 88 : Platform.OS === 'web' ? 72 : 68,
     paddingBottom: Platform.OS === 'ios' ? 28 : Platform.OS === 'web' ? 12 : 10,
     paddingTop: 10,
-    paddingHorizontal: Spacing.sm,
+    paddingHorizontal: 4,
     ...Shadows.md,
   },
   tabBarWeb: {
-    maxWidth: 560,
+    maxWidth: 640,
     alignSelf: 'center',
     borderRadius: BorderRadius.xl,
     marginBottom: 12,
     marginHorizontal: 16,
     borderTopWidth: 0,
     borderWidth: 1,
-    borderColor: Colors.border,
   },
   tabLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
     marginTop: 2,
+  },
+  tabLabelCompact: {
+    fontSize: 9,
   },
   tabItem: {
     paddingVertical: 4,
     borderRadius: BorderRadius.md,
-    marginHorizontal: 2,
+    marginHorizontal: 1,
   },
 });

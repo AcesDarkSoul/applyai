@@ -1,14 +1,7 @@
 import type { CoverLetterDocument, ResumeDocument } from '../../domain/resume';
 import { getFirestore } from '../../infrastructure/firebase/admin';
+import { omitUndefinedDeep } from '../../infrastructure/firebase/sanitize';
 import type { ICoverLetterRepository, IResumeRepository } from '../interfaces';
-
-function stripUndefined<T extends Record<string, unknown>>(obj: T): T {
-  const out = { ...obj };
-  for (const key of Object.keys(out)) {
-    if (out[key] === undefined) delete out[key];
-  }
-  return out;
-}
 
 export class FirestoreResumeRepository implements IResumeRepository {
   async getLatest(userId: string): Promise<ResumeDocument | null> {
@@ -38,7 +31,7 @@ export class FirestoreResumeRepository implements IResumeRepository {
     const db = getFirestore();
     if (!db) throw new Error('Firestore unavailable');
     const { id, ...rest } = doc;
-    await db.collection('resumes').doc(id).set(stripUndefined(rest as Record<string, unknown>), {
+    await db.collection('resumes').doc(id).set(omitUndefinedDeep(rest as Record<string, unknown>), {
       merge: true,
     });
     return doc;
@@ -50,7 +43,7 @@ export class FirestoreCoverLetterRepository implements ICoverLetterRepository {
     const db = getFirestore();
     if (!db) throw new Error('Firestore unavailable');
     const { id, ...rest } = doc;
-    await db.collection('coverLetters').doc(id).set(stripUndefined(rest as Record<string, unknown>));
+    await db.collection('coverLetters').doc(id).set(omitUndefinedDeep(rest as Record<string, unknown>));
     return doc;
   }
 

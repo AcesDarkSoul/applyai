@@ -141,7 +141,13 @@ export class ApplicationService {
     skipped: Array<{ jobId: string; title: string; reason: string }>;
     applyUrls: string[];
   }> {
-    if (!profile.summary && !(profile.skills?.length > 2) && !profile.title) {
+    const hasResume =
+      Boolean(profile.resumeId) ||
+      Boolean(profile.resumeFileName) ||
+      Boolean(profile.summary) ||
+      Boolean(profile.title) ||
+      (profile.skills?.length ?? 0) > 0;
+    if (!hasResume) {
       throw new AppError(
         400,
         'Upload your resume on Profile first so we can match jobs and apply.',

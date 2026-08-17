@@ -11,11 +11,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, usePathname } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
+import { Spacing, FontSize, BorderRadius } from '@/constants/theme';
 import { BrandLogo } from '@/components/brand/BrandLogo';
 import { useDrawerStore } from '@/stores/drawerStore';
-import { useAuthStore } from '@/stores/authStore';
-import { logOut } from '@/lib/firebase/auth';
+import { useColors } from '@/hooks/useColors';
 
 type NavItem = {
   label: string;
@@ -26,7 +25,8 @@ type NavItem = {
 const NAV: NavItem[] = [
   { label: 'Dashboard', href: '/(tabs)/', icon: 'grid-outline' },
   { label: 'Find Jobs', href: '/(tabs)/jobs', icon: 'briefcase-outline' },
-  { label: 'Resume Studio', href: '/(tabs)/profile', icon: 'document-text-outline' },
+  { label: 'Resume', href: '/(tabs)/resume', icon: 'document-text-outline' },
+  { label: 'Profile', href: '/(tabs)/profile', icon: 'person-outline' },
   { label: 'Hiring Posts', href: '/posts', icon: 'newspaper-outline' },
   { label: 'Applications', href: '/(tabs)/applications', icon: 'clipboard-outline' },
   { label: 'Notifications', href: '/notifications', icon: 'notifications-outline' },
@@ -37,10 +37,11 @@ const NAV: NavItem[] = [
 export function AppDrawer() {
   const open = useDrawerStore((s) => s.open);
   const setOpen = useDrawerStore((s) => s.setOpen);
+  const openProfile = useDrawerStore((s) => s.setProfileOpen);
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const pathname = usePathname();
-  const profile = useAuthStore((s) => s.profile);
+  const colors = useColors();
 
   const close = () => setOpen(false);
 
@@ -49,35 +50,43 @@ export function AppDrawer() {
     router.push(href as never);
   };
 
-  const onLogout = async () => {
-    close();
-    await logOut();
-    router.replace('/(auth)/login');
-  };
-
   return (
     <Modal visible={open} animationType="fade" transparent onRequestClose={close}>
       <View style={styles.overlay}>
-        <Pressable style={styles.backdrop} onPress={close} />
         <View
           style={[
             styles.panel,
             {
+              backgroundColor: colors.background,
+              borderRightColor: colors.border,
               paddingTop: Math.max(insets.top, 16),
               paddingBottom: Math.max(insets.bottom, 16),
             },
           ]}
         >
           <LinearGradient
-            colors={['rgba(91,92,226,0.16)', 'transparent']}
+            colors={['rgba(91,92,226,0.18)', 'transparent']}
             style={StyleSheet.absoluteFill}
           />
           <View style={styles.brandRow}>
             <BrandLogo size={40} />
-            <View>
-              <Text style={styles.brand}>ApplyAI</Text>
-              <Text style={styles.brandSub}>Job search workspace</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.brand, { color: colors.text }]}>ApplyAI</Text>
+              <Text style={[styles.brandSub, { color: colors.textMuted }]}>
+                Job search workspace
+              </Text>
             </View>
+            <Pressable
+              onPress={close}
+              hitSlop={12}
+              style={[
+                styles.closeBtn,
+                { backgroundColor: colors.surfaceLight, borderColor: colors.border },
+              ]}
+              accessibilityLabel="Close menu"
+            >
+              <Ionicons name="close" size={22} color={colors.text} />
+            </Pressable>
           </View>
 
           <ScrollView style={styles.nav} showsVerticalScrollIndicator={false}>
@@ -89,20 +98,30 @@ export function AppDrawer() {
                 <Pressable
                   key={item.href}
                   onPress={() => go(item.href)}
-                  style={[styles.navItem, active && styles.navItemActive]}
+                  style={[
+                    styles.navItem,
+                    active && { backgroundColor: colors.primaryTint },
+                  ]}
                 >
                   <Ionicons
                     name={item.icon}
                     size={20}
-                    color={active ? Colors.primaryLight : Colors.textSecondary}
+                    color={active ? colors.primaryLight : colors.textSecondary}
                   />
-                  <Text style={[styles.navLabel, active && styles.navLabelActive]}>{item.label}</Text>
+                  <Text
+                    style={[
+                      styles.navLabel,
+                      { color: active ? colors.text : colors.textSecondary },
+                    ]}
+                  >
+                    {item.label}
+                  </Text>
                 </Pressable>
               );
             })}
           </ScrollView>
 
-          <LinearGradient colors={Colors.gradientDrawer} style={styles.boost}>
+          <LinearGradient colors={[...colors.gradientDrawer]} style={styles.boost}>
             <Text style={styles.boostTitle}>Match boost</Text>
             <Text style={styles.boostBody}>Find roles ranked to your resume</Text>
             <Pressable style={styles.boostBtn} onPress={() => go('/(tabs)/jobs')}>
@@ -110,13 +129,25 @@ export function AppDrawer() {
             </Pressable>
           </LinearGradient>
 
-          <Pressable style={styles.logout} onPress={onLogout}>
-            <Ionicons name="log-out-outline" size={18} color={Colors.textSecondary} />
-            <Text style={styles.logoutText}>
-              Log out{profile?.email ? ` · ${profile.email.split('@')[0]}` : ''}
+          <Pressable
+            style={[
+              styles.accountBtn,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+            onPress={() => {
+              close();
+              openProfile(true);
+            }}
+          >
+            <Ionicons name="person-circle-outline" size={20} color={colors.primaryLight} />
+            <Text style={[styles.accountBtnText, { color: colors.text }]}>
+              Account & theme
             </Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
           </Pressable>
         </View>
+
+        <Pressable style={styles.backdrop} onPress={close} accessibilityLabel="Close menu" />
       </View>
     </Modal>
   );
@@ -134,9 +165,7 @@ const styles = StyleSheet.create({
   panel: {
     width: Platform.OS === 'web' ? 300 : '82%',
     maxWidth: 320,
-    backgroundColor: Colors.background,
     borderRightWidth: 1,
-    borderRightColor: Colors.border,
     paddingHorizontal: Spacing.md,
     gap: Spacing.md,
   },
@@ -144,15 +173,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.xs,
+  },
+  closeBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
   },
   brand: {
-    color: Colors.text,
     fontWeight: '800',
     fontSize: FontSize.lg,
   },
   brandSub: {
-    color: Colors.textMuted,
     fontSize: FontSize.xs,
     fontWeight: '600',
   },
@@ -168,16 +203,9 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     marginBottom: 4,
   },
-  navItemActive: {
-    backgroundColor: Colors.primaryTint,
-  },
   navLabel: {
-    color: Colors.textSecondary,
     fontWeight: '700',
     fontSize: FontSize.sm,
-  },
-  navLabelActive: {
-    color: Colors.text,
   },
   boost: {
     borderRadius: BorderRadius.lg,
@@ -185,7 +213,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   boostTitle: {
-    color: Colors.white,
+    color: '#fff',
     fontWeight: '800',
     fontSize: FontSize.md,
   },
@@ -202,19 +230,22 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.full,
   },
   boostBtnText: {
-    color: Colors.white,
+    color: '#fff',
     fontWeight: '800',
     fontSize: FontSize.xs,
   },
-  logout: {
+  accountBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 10,
+    gap: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
   },
-  logoutText: {
-    color: Colors.textSecondary,
-    fontWeight: '600',
+  accountBtnText: {
+    flex: 1,
+    fontWeight: '800',
     fontSize: FontSize.sm,
   },
 });

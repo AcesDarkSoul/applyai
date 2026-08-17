@@ -102,10 +102,10 @@ Update these **together** on every release:
 
 | Location | Field | Current value |
 |----------|-------|---------------|
-| `android/app/build.gradle` → `defaultConfig` | `versionCode` | **1** (integer; must increase every Play upload) |
-| `android/app/build.gradle` → `defaultConfig` | `versionName` | **1.0.0** (user-visible) |
-| `app.json` → `expo.version` | version | **1.0.0** |
-| `package.json` → `version` | version | **1.0.0** |
+| `android/app/build.gradle` → `defaultConfig` | `versionCode` | **8** (integer; must increase every Play upload) |
+| `android/app/build.gradle` → `defaultConfig` | `versionName` | **1.0.7** (user-visible) |
+| `app.json` → `expo.version` | version | **1.0.7** |
+| `package.json` → `version` | version | **1.0.7** |
 
 **Rule:** Every new AAB uploaded to Play must have a **higher `versionCode`** than any previous upload (including internal / closed / open tracks).
 
@@ -211,7 +211,7 @@ Copy for archive / upload (optional):
 ```powershell
 Copy-Item `
   "d:\jobportal project\applyai\android\app\build\outputs\bundle\release\app-release.aab" `
-  "d:\jobportal project\applyai\ApplyAI-v1.0.0-vc1.aab"
+  "d:\jobportal project\applyai\ApplyAI-v1.0.7-vc8.aab"
 ```
 
 ### Local APK (testing only — not for Play upload)
@@ -379,24 +379,35 @@ If you do not use microphone or overlay, remove them before production to avoid 
 
 First upload → Internal → fix crashes → Closed → Production (staged rollout 10% → 50% → 100%).
 
+**QA + go-live (short):** [docs/QA.md](./docs/QA.md) — what testers do, 12 testers / 14 days, apply for production.
+
 ---
 
 ## Firebase / Google Sign-In after Play App Signing
 
-When Play App Signing is enabled, Google may show a **different app signing key certificate**.
+Play testers seeing **Google Sign-In misconfigured (SHA-1 / package)** = Firebase is missing the **Play App signing** SHA-1. Testers can use **email + password** until this is added. No new AAB is required after the SHA-1 is saved (wait ~10 minutes, then retry Google).
 
-1. Play Console → **Setup → App signing**
-2. Copy **App signing key certificate** SHA-1 / SHA-256
-3. Firebase Console → Project settings → Android app `com.applyai.app` → **Add fingerprint**
-4. Keep **both** upload-key fingerprints (this keystore) **and** Play app-signing fingerprints
-5. Re-download `google-services.json` if Firebase prompts
-6. Ensure the release build has **both** env vars baked in:
-   - `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` (oauth `client_type` 3)
-   - `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID` (oauth `client_type` 1)
-7. Using only the Web client on Android causes:  
-   `Custom scheme URIs are not allowed for 'WEB' client type` / `Error 400: invalid_request`
+Firebase project: **petcare-9f4e6**. Package: `com.applyai.app`.
 
-Without the Play signing SHA-1 in Firebase, Google Sign-In often fails on Play builds.
+| Key | SHA-1 | Status |
+|-----|-------|--------|
+| Upload (`applyai.keystore`) | `B0:BC:B8:A9:06:DF:B6:A9:11:A2:1C:41:9D:26:C4:3B:89:CC:C3:E1` | Add in Firebase (still missing) |
+| Debug | `5E:8F:16:06:2E:A3:CD:2C:4A:0D:54:78:76:BA:A6:F3:8C:AB:F6:25` | In Firebase — do not delete |
+| **Play App signing** | `3B:A0:4B:8C:11:47:33:FF:2B:54:D7:19:00:13:65:82:19:FC:AA:67` | In Firebase — confirm it matches Play Console **App signing** SHA-1 |
+
+Fix (once):
+
+1. Play Console → **App integrity** / **App signing** → copy **App signing key certificate** SHA-1
+2. [Firebase Console](https://console.firebase.google.com/project/petcare-9f4e6/settings/general) → Android app `com.applyai.app` → **Add fingerprint** → paste Play SHA-1 (and debug SHA-1)
+3. Download new `google-services.json` into `applyai/` and `applyai/android/app/`
+4. Wait 5–15 minutes. Testers retry Google Sign-In (no reinstall needed)
+
+Also keep both env vars in release builds:
+
+- `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` (oauth `client_type` 3)
+- `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID` (oauth `client_type` 1)
+
+Using only the Web client on Android causes: `Custom scheme URIs are not allowed for 'WEB' client type` / `Error 400: invalid_request`.
 
 ---
 
@@ -449,6 +460,7 @@ What's new in 1.x.x:
 | Date | versionName | versionCode | Track | AAB notes | Status |
 |------|-------------|-------------|-------|-----------|--------|
 | 2026-08-11 | 1.0.0 | 1 | — | Signed AAB (~44 MB); ABIs armeabi-v7a + arm64-v8a; build via `D:\aa` junction | Ready to upload |
+| 2026-08-15 | 1.0.7 | 8 | Closed testing | Resume JSON upload + auto-apply after resume; ABIs armeabi-v7a + arm64-v8a | Ready to upload |
 
 Add a row every time you upload.
 

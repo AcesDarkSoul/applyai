@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -7,29 +7,32 @@ import {
   Pressable,
   ActivityIndicator,
   TextInput,
-  Platform,
+  useWindowDimensions,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import * as DocumentPicker from 'expo-document-picker';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Screen } from '@/components/layout/Screen';
+import { FadeInView } from '@/components/AnimatedView';
 import { Button } from '@/components/ui';
 import { useAuthStore } from '@/stores/authStore';
-import { useResumeStore } from '@/stores/resumeStore';
-import { logOut } from '@/lib/firebase/auth';
+import { useDrawerStore } from '@/stores/drawerStore';
+import { useThemeMode } from '@/hooks/useColors';
 import { profileRepository, type ApiUserProfile } from '@/lib/api/repositories';
-import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
+import { Spacing, FontSize, BorderRadius, Shadows } from '@/constants/theme';
+import { useColors } from '@/hooks/useColors';
 
-export default function ResumeStudioScreen() {
+export default function ProfileScreen() {
   const router = useRouter();
+  const colors = useColors();
+  const { mode } = useThemeMode();
+  const { width } = useWindowDimensions();
+  const isWide = width >= 768;
+  const openAccountMenu = useDrawerStore((s) => s.setProfileOpen);
   const { profile, refreshProfile, user } = useAuthStore();
-  const { refresh: refreshLocalResume } = useResumeStore();
   const [apiProfile, setApiProfile] = useState<ApiUserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
-  const [optimizing, setOptimizing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [tips, setTips] = useState<string[]>([]);
   const [form, setForm] = useState({
     displayName: '',
     title: '',
@@ -39,7 +42,134 @@ export default function ResumeStudioScreen() {
     skills: '',
   });
 
-  const load = async () => {
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        center: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 260 },
+        hero: {
+          borderRadius: BorderRadius.xxl,
+          borderWidth: 1,
+          borderColor: colors.border,
+          padding: isWide ? Spacing.xl : Spacing.lg,
+          marginBottom: Spacing.md,
+          overflow: 'hidden',
+          ...Shadows.md,
+        },
+        heroTop: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+        avatar: {
+          width: isWide ? 72 : 64,
+          height: isWide ? 72 : 64,
+          borderRadius: 999,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        avatarText: { color: '#fff', fontWeight: '800', fontSize: isWide ? 28 : 24 },
+        heroMeta: { flex: 1, gap: 4 },
+        heroEyebrow: {
+          color: colors.primaryLight,
+          fontWeight: '800',
+          fontSize: FontSize.xs,
+          letterSpacing: 0.6,
+          textTransform: 'uppercase',
+        },
+        heroTitle: {
+          color: colors.text,
+          fontWeight: '800',
+          fontSize: isWide ? FontSize.xxl : FontSize.xl,
+          letterSpacing: -0.3,
+        },
+        heroEmail: { color: colors.textMuted, fontSize: FontSize.sm, fontWeight: '600' },
+        actions: {
+          flexDirection: isWide ? 'row' : 'column',
+          gap: 10,
+          marginTop: Spacing.md,
+        },
+        actionChip: {
+          flex: isWide ? 1 : undefined,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 8,
+          paddingVertical: 12,
+          paddingHorizontal: 14,
+          borderRadius: BorderRadius.lg,
+          backgroundColor: colors.surfaceLight,
+          borderWidth: 1,
+          borderColor: colors.border,
+        },
+        actionText: { color: colors.text, fontWeight: '800', fontSize: FontSize.sm },
+        grid: {
+          flexDirection: isWide ? 'row' : 'column',
+          gap: Spacing.md,
+          marginBottom: Spacing.md,
+        },
+        card: {
+          flex: 1,
+          backgroundColor: colors.card,
+          borderRadius: BorderRadius.xl,
+          borderWidth: 1,
+          borderColor: colors.border,
+          padding: Spacing.md,
+          gap: 12,
+          marginBottom: isWide ? 0 : Spacing.md,
+          ...Shadows.card,
+        },
+        cardTitle: { color: colors.text, fontWeight: '800', fontSize: FontSize.lg },
+        cardBody: { color: colors.textSecondary, fontSize: FontSize.sm, lineHeight: 20 },
+        field: { gap: 6 },
+        label: { color: colors.textSecondary, fontWeight: '700', fontSize: FontSize.xs },
+        input: {
+          backgroundColor: colors.surfaceLight,
+          borderWidth: 1,
+          borderColor: colors.border,
+          borderRadius: BorderRadius.lg,
+          color: colors.text,
+          paddingHorizontal: 14,
+          paddingVertical: 12,
+          fontSize: FontSize.sm,
+          fontWeight: '600',
+        },
+        textarea: { minHeight: 100, textAlignVertical: 'top' as const },
+        twoCol: {
+          flexDirection: isWide ? 'row' : 'column',
+          gap: Spacing.sm,
+        },
+        half: { flex: 1 },
+        hint: { color: colors.textMuted, fontSize: FontSize.xs, fontWeight: '600' },
+        shortcut: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 12,
+          padding: 14,
+          borderRadius: BorderRadius.xl,
+          backgroundColor: colors.surface,
+          borderWidth: 1,
+          borderColor: colors.border,
+          marginBottom: Spacing.sm,
+        },
+        shortcutIcon: {
+          width: 40,
+          height: 40,
+          borderRadius: 12,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: colors.primaryTint,
+        },
+        shortcutText: { flex: 1, gap: 2 },
+        shortcutTitle: { color: colors.text, fontWeight: '800', fontSize: FontSize.sm },
+        shortcutSub: { color: colors.textMuted, fontSize: FontSize.xs, fontWeight: '600' },
+        footerNote: {
+          color: colors.textMuted,
+          fontSize: FontSize.xs,
+          textAlign: 'center',
+          marginTop: Spacing.md,
+          marginBottom: Spacing.xl,
+          fontWeight: '600',
+        },
+      }),
+    [colors, isWide]
+  );
+
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const me = await profileRepository.me();
@@ -64,45 +194,17 @@ export default function ResumeStudioScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [profile]);
 
   useEffect(() => {
     void load();
-  }, [user?.uid]);
+  }, [load, user?.uid]);
 
-  const onUpload = async () => {
-    try {
-      const picked = await DocumentPicker.getDocumentAsync({
-        type: [
-          'application/pdf',
-          'application/msword',
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        ],
-        copyToCacheDirectory: true,
-      });
-      if (picked.canceled || !picked.assets?.[0]) return;
-      const asset = picked.assets[0];
-      setUploading(true);
-      const result = await profileRepository.uploadResume(
-        Platform.OS === 'web' && (asset as { file?: File }).file
-          ? (asset as { file: File }).file
-          : {
-              uri: asset.uri,
-              name: asset.name || 'resume.pdf',
-              mimeType: asset.mimeType || 'application/pdf',
-            }
-      );
-      setApiProfile(result.profile);
-      await refreshProfile();
-      await refreshLocalResume();
-      Alert.alert('Resume uploaded', 'Profile fields updated from parse.');
-      await load();
-    } catch (e) {
-      Alert.alert('Upload failed', e instanceof Error ? e.message : 'Try again');
-    } finally {
-      setUploading(false);
-    }
-  };
+  useFocusEffect(
+    useCallback(() => {
+      void load();
+    }, [load])
+  );
 
   const onSave = async () => {
     setSaving(true);
@@ -120,7 +222,7 @@ export default function ResumeStudioScreen() {
       });
       setApiProfile(updated);
       await refreshProfile();
-      Alert.alert('Saved', 'Resume profile updated.');
+      Alert.alert('Saved', 'Your profile was updated.');
     } catch (e) {
       Alert.alert('Save failed', e instanceof Error ? e.message : 'Try again');
     } finally {
@@ -128,203 +230,178 @@ export default function ResumeStudioScreen() {
     }
   };
 
-  const onOptimize = async () => {
-    setOptimizing(true);
-    try {
-      const res = await profileRepository.optimizeResume({
-        jobTitle: form.title,
-      });
-      setApiProfile(res.profile);
-      setTips(res.tips || []);
-      await refreshProfile();
-      Alert.alert('ATS optimize done', 'Resume optimized for ATS parsing.');
-      await load();
-    } catch (e) {
-      Alert.alert('Optimize failed', e instanceof Error ? e.message : 'Try again');
-    } finally {
-      setOptimizing(false);
-    }
-  };
-
   if (loading) {
     return (
       <Screen safe edges={['left', 'right']} scroll={false}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       </Screen>
     );
   }
 
-  const ats = apiProfile?.atsScore ?? profile?.atsScore;
+  const displayName =
+    form.displayName || profile?.name || user?.displayName || user?.email || 'Your profile';
+  const email = profile?.email || user?.email || '';
+  const initial = displayName.trim().charAt(0).toUpperCase();
 
   return (
     <Screen safe edges={['left', 'right']}>
-      <View style={styles.hero}>
-        <Text style={styles.eyebrow}>Resume Studio</Text>
-        <Text style={styles.title}>Build an ATS-ready profile</Text>
-        <Text style={styles.body}>
-          Upload a resume, edit skills/experience, and optimize — same pipeline as the web app.
-        </Text>
-        {ats != null && (
-          <View style={styles.atsChip}>
-            <Text style={styles.atsText}>ATS score {ats}</Text>
+      <FadeInView direction="down">
+        <LinearGradient
+          colors={['rgba(91,92,226,0.26)', 'rgba(236,72,153,0.10)', 'transparent']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.hero, { backgroundColor: colors.card }]}
+        >
+          <View style={styles.heroTop}>
+            <LinearGradient colors={[...colors.gradientBrand]} style={styles.avatar}>
+              <Text style={styles.avatarText}>{initial}</Text>
+            </LinearGradient>
+            <View style={styles.heroMeta}>
+              <Text style={styles.heroEyebrow}>Profile</Text>
+              <Text style={styles.heroTitle} numberOfLines={1}>
+                {displayName}
+              </Text>
+              {Boolean(email) && (
+                <Text style={styles.heroEmail} numberOfLines={1}>
+                  {email}
+                </Text>
+              )}
+            </View>
           </View>
-        )}
-      </View>
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>1. Upload resume</Text>
-        <Pressable style={styles.uploadBtn} onPress={() => void onUpload()} disabled={uploading}>
-          {uploading ? (
-            <ActivityIndicator color={Colors.white} />
-          ) : (
-            <>
-              <Ionicons name="cloud-upload-outline" size={18} color={Colors.white} />
-              <Text style={styles.uploadText}>Upload PDF / DOCX</Text>
-            </>
-          )}
-        </Pressable>
-        {(apiProfile?.resumeFileName || profile?.hasResume) && (
-          <Text style={styles.hint}>
-            Current: {apiProfile?.resumeFileName || 'Resume on file'}
+          <View style={styles.actions}>
+            <Pressable style={styles.actionChip} onPress={() => router.push('/(tabs)/resume')}>
+              <Ionicons name="document-text-outline" size={18} color={colors.primaryLight} />
+              <Text style={styles.actionText}>Resume studio</Text>
+            </Pressable>
+            <Pressable style={styles.actionChip} onPress={() => openAccountMenu(true)}>
+              <Ionicons
+                name={mode === 'dark' ? 'moon-outline' : 'sunny-outline'}
+                size={18}
+                color={colors.primaryLight}
+              />
+              <Text style={styles.actionText}>Theme & account</Text>
+            </Pressable>
+          </View>
+        </LinearGradient>
+      </FadeInView>
+
+      <FadeInView delay={90}>
+        <View style={[styles.card, { marginBottom: Spacing.md }]}>
+          <Text style={styles.cardTitle}>About you</Text>
+          <Text style={styles.cardBody}>
+            These details power job matching and applications. Resume upload lives on the Resume tab.
           </Text>
-        )}
-      </View>
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>2. Edit profile</Text>
-        {(
-          [
-            ['displayName', 'Full name'],
-            ['title', 'Target title'],
-            ['phone', 'Phone'],
-            ['location', 'Location'],
-          ] as const
-        ).map(([key, label]) => (
-          <View key={key} style={styles.field}>
-            <Text style={styles.label}>{label}</Text>
+          <View style={styles.field}>
+            <Text style={styles.label}>Full name</Text>
             <TextInput
-              value={form[key]}
-              onChangeText={(v) => setForm((f) => ({ ...f, [key]: v }))}
+              value={form.displayName}
+              onChangeText={(v) => setForm((f) => ({ ...f, displayName: v }))}
               style={styles.input}
-              placeholderTextColor={Colors.textMuted}
+              placeholderTextColor={colors.textMuted}
+              placeholder="Your name"
             />
           </View>
-        ))}
-        <View style={styles.field}>
-          <Text style={styles.label}>Summary</Text>
-          <TextInput
-            value={form.summary}
-            onChangeText={(v) => setForm((f) => ({ ...f, summary: v }))}
-            style={[styles.input, styles.textarea]}
-            multiline
-            placeholderTextColor={Colors.textMuted}
+
+          <View style={styles.field}>
+            <Text style={styles.label}>Target title</Text>
+            <TextInput
+              value={form.title}
+              onChangeText={(v) => setForm((f) => ({ ...f, title: v }))}
+              style={styles.input}
+              placeholderTextColor={colors.textMuted}
+              placeholder="e.g. Frontend Engineer"
+            />
+          </View>
+
+          <View style={styles.twoCol}>
+            <View style={[styles.field, styles.half]}>
+              <Text style={styles.label}>Phone</Text>
+              <TextInput
+                value={form.phone}
+                onChangeText={(v) => setForm((f) => ({ ...f, phone: v }))}
+                style={styles.input}
+                placeholderTextColor={colors.textMuted}
+                keyboardType="phone-pad"
+              />
+            </View>
+            <View style={[styles.field, styles.half]}>
+              <Text style={styles.label}>Location</Text>
+              <TextInput
+                value={form.location}
+                onChangeText={(v) => setForm((f) => ({ ...f, location: v }))}
+                style={styles.input}
+                placeholderTextColor={colors.textMuted}
+                placeholder="Remote / city"
+              />
+            </View>
+          </View>
+
+          <View style={styles.field}>
+            <Text style={styles.label}>Summary</Text>
+            <TextInput
+              value={form.summary}
+              onChangeText={(v) => setForm((f) => ({ ...f, summary: v }))}
+              style={[styles.input, styles.textarea]}
+              multiline
+              placeholderTextColor={colors.textMuted}
+              placeholder="Short professional summary"
+            />
+          </View>
+
+          <View style={styles.field}>
+            <Text style={styles.label}>Skills (comma separated)</Text>
+            <TextInput
+              value={form.skills}
+              onChangeText={(v) => setForm((f) => ({ ...f, skills: v }))}
+              style={styles.input}
+              placeholderTextColor={colors.textMuted}
+              placeholder="React, TypeScript, ..."
+            />
+            <Text style={styles.hint}>
+              {(apiProfile?.skills || []).length
+                ? `${(apiProfile?.skills || []).length} skills on file`
+                : 'Add skills to improve match quality'}
+            </Text>
+          </View>
+
+          <Button
+            title={saving ? 'Saving…' : 'Save profile'}
+            onPress={() => void onSave()}
+            disabled={saving}
+            size="lg"
           />
         </View>
-        <View style={styles.field}>
-          <Text style={styles.label}>Skills (comma separated)</Text>
-          <TextInput
-            value={form.skills}
-            onChangeText={(v) => setForm((f) => ({ ...f, skills: v }))}
-            style={styles.input}
-            placeholderTextColor={Colors.textMuted}
-          />
-        </View>
-        <Button title={saving ? 'Saving…' : 'Save profile'} onPress={() => void onSave()} disabled={saving} />
-      </View>
+      </FadeInView>
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>3. Generate / optimize ATS</Text>
-        <Button
-          title={optimizing ? 'Optimizing…' : 'Optimize for ATS'}
-          onPress={() => void onOptimize()}
-          disabled={optimizing}
-        />
-        {tips.map((t) => (
-          <Text key={t} style={styles.tip}>
-            • {t}
-          </Text>
-        ))}
-      </View>
+      <FadeInView delay={160}>
+        <Pressable style={styles.shortcut} onPress={() => router.push('/(tabs)/resume')}>
+          <View style={styles.shortcutIcon}>
+            <Ionicons name="cloud-upload-outline" size={18} color={colors.primaryLight} />
+          </View>
+          <View style={styles.shortcutText}>
+            <Text style={styles.shortcutTitle}>Manage resume file</Text>
+            <Text style={styles.shortcutSub}>Upload, ATS score, optimize</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+        </Pressable>
 
-      <Button
-        title="Sign out"
-        variant="outline"
-        onPress={() =>
-          Alert.alert('Sign Out', 'Are you sure?', [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Sign Out',
-              style: 'destructive',
-              onPress: async () => {
-                await logOut();
-                router.replace('/(auth)/login');
-              },
-            },
-          ])
-        }
-      />
+        <Pressable style={styles.shortcut} onPress={() => openAccountMenu(true)}>
+          <View style={styles.shortcutIcon}>
+            <Ionicons name="settings-outline" size={18} color={colors.primaryLight} />
+          </View>
+          <View style={styles.shortcutText}>
+            <Text style={styles.shortcutTitle}>Account menu</Text>
+            <Text style={styles.shortcutSub}>Theme, shortcuts, and log out</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+        </Pressable>
+      </FadeInView>
+
+      <Text style={styles.footerNote}>Log out is in the avatar menu (top right) — not on this page.</Text>
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 240 },
-  hero: {
-    backgroundColor: Colors.card,
-    borderRadius: BorderRadius.xl,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.lg,
-    marginBottom: Spacing.md,
-    gap: 6,
-  },
-  eyebrow: { color: Colors.primaryLight, fontWeight: '700', fontSize: FontSize.xs },
-  title: { color: Colors.text, fontWeight: '800', fontSize: FontSize.xxl },
-  body: { color: Colors.textSecondary, fontSize: FontSize.sm, lineHeight: 20 },
-  atsChip: {
-    alignSelf: 'flex-start',
-    backgroundColor: Colors.primaryTint,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: BorderRadius.full,
-    marginTop: 4,
-  },
-  atsText: { color: Colors.primaryLight, fontWeight: '800', fontSize: FontSize.xs },
-  card: {
-    backgroundColor: Colors.card,
-    borderRadius: BorderRadius.xl,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.md,
-    marginBottom: Spacing.md,
-    gap: 10,
-  },
-  cardTitle: { color: Colors.text, fontWeight: '800', fontSize: FontSize.lg },
-  uploadBtn: {
-    backgroundColor: Colors.primary,
-    borderRadius: BorderRadius.md,
-    paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 8,
-    minHeight: 46,
-  },
-  uploadText: { color: Colors.white, fontWeight: '800' },
-  hint: { color: Colors.textMuted, fontSize: FontSize.xs },
-  field: { gap: 6 },
-  label: { color: Colors.textSecondary, fontWeight: '600', fontSize: FontSize.xs },
-  input: {
-    backgroundColor: Colors.surfaceLight,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: BorderRadius.md,
-    color: Colors.text,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  textarea: { minHeight: 90, textAlignVertical: 'top' },
-  tip: { color: Colors.textSecondary, fontSize: FontSize.sm },
-});

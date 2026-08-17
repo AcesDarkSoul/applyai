@@ -34,6 +34,10 @@ react {
     //   If you add flavors like lite, prod, etc. you'll have to list your debuggableVariants.
     // debuggableVariants = ["liteDebug", "prodDebug"]
 
+    // Bundle JS into every variant so physical APKs work without Metro.
+    // (Default would skip bundling for "debug" and require a live packager.)
+    debuggableVariants = []
+
     /* Bundling */
     //   A list containing the node command and its flags. Default is just 'node'.
     // nodeExecutableAndArgs = ["node"]
@@ -99,8 +103,8 @@ android {
         applicationId 'com.applyai.app'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 4
-        versionName "1.0.3"
+        versionCode 8
+        versionName "1.0.7"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { env } from '../config/env';
 import { authenticate, requireRole } from '../middleware/auth';
-import { resumeUpload } from '../middleware/upload';
+import { optionalResumeUpload } from '../middleware/upload';
 import * as healthController from '../controllers/healthController';
 import * as profileController from '../controllers/profileController';
 import * as jobController from '../controllers/jobController';
@@ -38,7 +38,7 @@ apiRouter.use(authenticate);
 
 apiRouter.get('/me', profileController.getProfile);
 apiRouter.patch('/me', profileController.updateProfile);
-apiRouter.post('/me/resume', resumeUpload.single('resume'), profileController.uploadResume);
+apiRouter.post('/me/resume', optionalResumeUpload, profileController.uploadResume);
 apiRouter.post('/me/resume/build', profileController.buildResume);
 apiRouter.post('/me/resume/optimize', profileController.optimizeResume);
 apiRouter.get('/me/resume', profileController.getLatestResume);

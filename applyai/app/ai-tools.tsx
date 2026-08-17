@@ -11,7 +11,6 @@ import {
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Screen } from '@/components/layout/Screen';
 import { AppTopBar } from '@/components/layout/AppTopBar';
-import { AppDrawer } from '@/components/layout/AppDrawer';
 import {
   automationRepository,
   complianceRepository,
@@ -115,8 +114,7 @@ export default function AiToolsScreen() {
 
   return (
     <View style={styles.root}>
-      <AppDrawer />
-      <AppTopBar title="AI Tools" subtitle="Assistive apply stack" />
+<AppTopBar title="AI Tools" subtitle="Assistive apply stack" />
       <Screen safe edges={['left', 'right', 'bottom']}>
         <View style={styles.hero}>
           <Text style={styles.title}>AI Tools</Text>

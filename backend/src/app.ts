@@ -29,6 +29,7 @@ function resolveCorsOrigin(): cors.CorsOptions['origin'] {
 
 export function createApp() {
   const app = express();
+  app.set('trust proxy', 1);
 
   // COOP:same-origin breaks Google sign-in popups on web (window.closed / window.close).
   app.use(
@@ -36,8 +37,14 @@ export function createApp() {
       crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
     }),
   );
-  app.use(cors({ origin: resolveCorsOrigin(), credentials: true }));
-  app.use(express.json({ limit: '1mb' }));
+  app.use(
+    cors({
+      origin: resolveCorsOrigin(),
+      credentials: true,
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Firebase-Authorization', 'X-Request-Id', 'X-Ingest-Key'],
+    }),
+  );
+  app.use(express.json({ limit: '16mb' }));
   app.use(requestIdMiddleware);
   app.use(morgan(env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
@@ -47,6 +54,7 @@ export function createApp() {
       max: env.RATE_LIMIT_MAX,
       standardHeaders: true,
       legacyHeaders: false,
+      validate: { xForwardedForHeader: false },
     }),
   );
 

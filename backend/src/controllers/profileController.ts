@@ -1,6 +1,8 @@
 import type { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { AppError } from '../middleware/errorHandler';
+import { MAX_RESUME_BYTES } from '../middleware/upload';
+import { logger } from '../config/logger';
 import { profileService } from '../services/profileService';
 import { resumeService } from '../services/resumeService';
 
@@ -138,18 +140,34 @@ export async function updateProfile(req: Request, res: Response, next: NextFunct
 export async function uploadResume(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const file = req.file;
-    if (!file?.buffer?.length) {
-      throw new AppError(400, 'Resume file required (PDF, DOCX, TXT, or MD)', 'VALIDATION');
-    }
-    if (file.size > 8 * 1024 * 1024) {
-      throw new AppError(400, 'Resume must be under 8MB', 'VALIDATION');
+    const body = req.body as { contentBase64?: string; fileName?: string };
+    logger.info('resume upload incoming', {
+      contentType: req.headers['content-type'],
+      hasMulterFile: Boolean(file?.buffer?.length),
+      bodyKeys: body && typeof body === 'object' ? Object.keys(body) : [],
+      base64Chars: typeof body?.contentBase64 === 'string' ? body.contentBase64.length : 0,
+    });
+    let buffer: Buffer | undefined;
+    let original = 'resume.pdf';
+
+    if (file?.buffer?.length) {
+      buffer = file.buffer;
+      original = file.originalname || original;
+    } else if (typeof body?.contentBase64 === 'string' && body.contentBase64.length > 0) {
+      buffer = Buffer.from(body.contentBase64, 'base64');
+      original = body.fileName || original;
     }
 
-    const result = await resumeService.uploadAndPersist(
-      req.user!,
-      file.buffer,
-      file.originalname || 'resume.pdf',
-    );
+    if (!buffer?.length) {
+      throw new AppError(400, 'Resume file required (any document up to 10 MB)', 'VALIDATION');
+    }
+    if (buffer.length > MAX_RESUME_BYTES) {
+      throw new AppError(400, 'Resume must be under 10 MB', 'VALIDATION');
+    }
+
+    const safeName = original.replace(/[^\w.\- ()[\]]+/g, '_').slice(0, 120) || 'resume.pdf';
+
+    const result = await resumeService.uploadAndPersist(req.user!, buffer, safeName);
 
     res.status(201).json({
       success: true,
