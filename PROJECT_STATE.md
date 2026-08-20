@@ -9,12 +9,12 @@
 
 ## 1. Completed modules
 
-| Module | Status | Location |
-|--------|--------|----------|
-| Phase 1 — Project Planning | Complete | `docs/phase-01-planning/` |
-| SETUP_REQUIREMENTS | Complete | `docs/SETUP_REQUIREMENTS.md` |
-| Early scaffold (provisional) | Partial | `frontend/`, `backend/`, `docker/` |
-| Phase 2 — Architecture | Complete (awaiting approval) | `docs/phase-02-architecture/`, `docs/ARCHITECTURE.md` |
+| Module                       | Status                       | Location                                              |
+| ---------------------------- | ---------------------------- | ----------------------------------------------------- |
+| Phase 1 — Project Planning   | Complete                     | `docs/phase-01-planning/`                             |
+| SETUP_REQUIREMENTS           | Complete                     | `docs/SETUP_REQUIREMENTS.md`                          |
+| Early scaffold (provisional) | Partial                      | `frontend/`, `backend/`, `docker/`                    |
+| Phase 2 — Architecture       | Complete (awaiting approval) | `docs/phase-02-architecture/`, `docs/ARCHITECTURE.md` |
 
 ---
 
@@ -41,30 +41,30 @@
 
 ## 3. Architecture decisions (locked / provisional)
 
-| ID | Decision | Status |
-|----|----------|--------|
-| AD-001 | Enterprise web monorepo at repo root; keep `applyai/` Expo as reference | Locked |
-| AD-002 | Assistive Smart Apply only (no unauthorized third-party bots) | Locked |
-| AD-003 | Backend: Node.js + Express + TypeScript, Clean Architecture layers | Locked (Phase 2) |
-| AD-004 | Data: Firebase Auth + Firestore + Storage | Locked (Phase 2); confirmed in Phase 3 |
-| AD-005 | Automation: n8n (self-hosted via Docker) | Locked (Phase 2) |
-| AD-006 | AI: OpenAI API with versioned prompts | Locked (Phase 2) |
-| AD-007 | Frontend state: Redux Toolkit + React Query (target) | Target — see tech debt |
-| AD-008 | Demo mode for local boot without credentials | Provisional until Firebase wired |
+| ID     | Decision                                                                | Status                                 |
+| ------ | ----------------------------------------------------------------------- | -------------------------------------- |
+| AD-001 | Enterprise web monorepo at repo root; keep `applyai/` Expo as reference | Locked                                 |
+| AD-002 | Assistive Smart Apply only (no unauthorized third-party bots)           | Locked                                 |
+| AD-003 | Backend: Node.js + Express + TypeScript, Clean Architecture layers      | Locked (Phase 2)                       |
+| AD-004 | Data: Firebase Auth + Firestore + Storage                               | Locked (Phase 2); confirmed in Phase 3 |
+| AD-005 | Automation: n8n (self-hosted via Docker)                                | Locked (Phase 2)                       |
+| AD-006 | AI: OpenAI API with versioned prompts                                   | Locked (Phase 2)                       |
+| AD-007 | Frontend state: Redux Toolkit + React Query (target)                    | Target — see tech debt                 |
+| AD-008 | Demo mode for local boot without credentials                            | Provisional until Firebase wired       |
 
 ---
 
 ## 4. Technical debt
 
-| Item | Severity | Resolution phase |
-|------|----------|------------------|
-| Scaffold used Zustand instead of Redux Toolkit | Medium | Phase 4–5 refactor |
-| React Query / RHF / Zod not yet on frontend | Medium | Phase 5 |
-| In-memory repositories instead of Firestore | High | Phase 6–7 |
-| Demo Bearer auth instead of Firebase ID token + claims | High | Phase 6 |
-| Missing ESLint/Prettier/EditorConfig at monorepo root | Medium | Phase 4 |
-| Missing unit/integration/e2e tests for scaffold | High | Phase 4 gate + Phase 13 |
-| Stack comparisons (Phase 3) not yet written | Medium | Phase 3 next |
+| Item                                                   | Severity | Resolution phase        |
+| ------------------------------------------------------ | -------- | ----------------------- |
+| Scaffold used Zustand instead of Redux Toolkit         | Medium   | Phase 4–5 refactor      |
+| React Query / RHF / Zod not yet on frontend            | Medium   | Phase 5                 |
+| In-memory repositories instead of Firestore            | High     | Phase 6–7               |
+| Demo Bearer auth instead of Firebase ID token + claims | High     | Phase 6                 |
+| Missing ESLint/Prettier/EditorConfig at monorepo root  | Medium   | Phase 4                 |
+| Missing unit/integration/e2e tests for scaffold        | High     | Phase 4 gate + Phase 13 |
+| Stack comparisons (Phase 3) not yet written            | Medium   | Phase 3 next            |
 
 ### Recent UX polish (2026-08-02)
 
@@ -93,7 +93,7 @@ Early scaffolding started before Phase 2/3 completed.
 
 ## 7. Sign-off log
 
-| Phase | Decision | Date |
-|-------|----------|------|
-| Phase 1 | Approved (implement request) | 2026-08-02 |
+| Phase   | Decision                                  | Date       |
+| ------- | ----------------------------------------- | ---------- |
+| Phase 1 | Approved (implement request)              | 2026-08-02 |
 | Phase 2 | Delivered — awaiting stakeholder approval | 2026-08-02 |

@@ -18,8 +18,10 @@ import {
   type SmartApplyPlatformPrefs,
 } from '@/lib/api/repositories';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
+import { useSubscriptionStore } from '@/stores/subscriptionStore';
 
 export default function AiToolsScreen() {
+  const quota = useSubscriptionStore((s) => s.dailyAutoApplyQuota);
   const [loading, setLoading] = useState(true);
   const [consentAt, setConsentAt] = useState<string | null>(null);
   const [platforms, setPlatforms] = useState<SmartApplyPlatformPrefs>({
@@ -100,7 +102,7 @@ export default function AiToolsScreen() {
   const onAutoApply = async () => {
     setBusy('auto');
     try {
-      const res = await applicationRepository.autoApply({ minScore: 55, limit: 8 });
+      const res = await applicationRepository.autoApply({ minScore: 55, limit: quota });
       Alert.alert(
         'Auto Apply',
         `Applied ${res.applied.length}, skipped ${res.skipped.length}. ${res.complianceNote || ''}`
@@ -161,7 +163,7 @@ export default function AiToolsScreen() {
             <View style={styles.card}>
               <Text style={styles.cardTitle}>Daily auto-apply</Text>
               <Text style={styles.meta}>
-                {daily?.enabled ? 'Enabled' : 'Disabled'}
+                {daily?.enabled ? 'Enabled' : 'Disabled'} · {quota} applies/day on your plan
                 {daily?.lastFinishedAt
                   ? ` · last run ${new Date(daily.lastFinishedAt).toLocaleString()}`
                   : ''}

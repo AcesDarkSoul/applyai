@@ -1,5 +1,6 @@
 import type { SmartApplyPlatformPrefs } from './audit';
 import type { NotificationPrefs } from './notification';
+import type { PlanId } from './plans';
 import type {
   EducationEntry,
   ExperienceEntry,
@@ -7,6 +8,21 @@ import type {
 } from './resume';
 
 export type UserRole = 'user' | 'admin';
+
+export type SubscriptionStatus = 'none' | 'active' | 'past_due' | 'cancelled' | 'expired';
+
+export interface UserSubscription {
+  planId: PlanId;
+  status: SubscriptionStatus;
+  provider: 'razorpay' | 'demo';
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
+  razorpaySignature?: string;
+  dailyAutoApplyQuota?: number;
+  currentPeriodStart?: string;
+  currentPeriodEnd?: string;
+  activatedAt?: string;
+}
 
 export interface AuthUser {
   uid: string;
@@ -86,6 +102,8 @@ export interface UserProfile {
    * Required UX gate before batch automation.
    */
   smartApplyConsentAt?: string;
+  /** Paid access. Enforced when Razorpay keys are configured. */
+  subscription?: UserSubscription;
   createdAt: string;
   updatedAt: string;
 }

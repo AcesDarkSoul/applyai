@@ -66,6 +66,12 @@ export function ProfileDrawer() {
 
   const actions: ActionItem[] = [
     {
+      label: 'Plans & billing',
+      hint: 'Starter ₹599 · Pro ₹1499 · Elite ₹2999',
+      icon: 'diamond-outline',
+      href: '/plans',
+    },
+    {
       label: 'Profile',
       hint: 'Name, skills, summary',
       icon: 'person-circle-outline',

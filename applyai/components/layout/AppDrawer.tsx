@@ -27,6 +27,7 @@ const NAV: NavItem[] = [
   { label: 'Find Jobs', href: '/(tabs)/jobs', icon: 'briefcase-outline' },
   { label: 'Resume', href: '/(tabs)/resume', icon: 'document-text-outline' },
   { label: 'Profile', href: '/(tabs)/profile', icon: 'person-outline' },
+  { label: 'Plans', href: '/plans', icon: 'diamond-outline' },
   { label: 'Hiring Posts', href: '/posts', icon: 'newspaper-outline' },
   { label: 'Applications', href: '/(tabs)/applications', icon: 'clipboard-outline' },
   { label: 'Notifications', href: '/notifications', icon: 'notifications-outline' },
@@ -122,10 +123,10 @@ export function AppDrawer() {
           </ScrollView>
 
           <LinearGradient colors={[...colors.gradientDrawer]} style={styles.boost}>
-            <Text style={styles.boostTitle}>Match boost</Text>
-            <Text style={styles.boostBody}>Find roles ranked to your resume</Text>
-            <Pressable style={styles.boostBtn} onPress={() => go('/(tabs)/jobs')}>
-              <Text style={styles.boostBtnText}>Find matches</Text>
+            <Text style={styles.boostTitle}>Plans</Text>
+            <Text style={styles.boostBody}>Starter ₹599 · Pro ₹1499 · Elite ₹2999</Text>
+            <Pressable style={styles.boostBtn} onPress={() => go('/plans')}>
+              <Text style={styles.boostBtnText}>View packages</Text>
             </Pressable>
           </LinearGradient>
 

@@ -7,6 +7,7 @@ import { userRepository } from '../repositories';
 import { applicationService } from './applicationService';
 import { jobService } from './jobService';
 import { notificationService } from './notificationService';
+import { getDailyAutoApplyQuota, isBillingEnforced, isSubscriptionActive } from './planService';
 import { syncApplicationStatuses } from './statusSyncService';
 
 export type DailyAutomationStatus = {
@@ -50,6 +51,7 @@ function profileReady(p: UserProfile): boolean {
 function dailyApplyEnabled(p: UserProfile): boolean {
   // Default ON when resume/profile is ready; user can opt out in AI Tools
   if (p.outreach?.dailyAutoApplyEnabled === false) return false;
+  if (isBillingEnforced() && !isSubscriptionActive(p.subscription)) return false;
   return profileReady(p);
 }
 
@@ -148,9 +150,11 @@ export async function runDailyAutomation(trigger: 'cron' | 'startup' | 'manual' 
         email: profile.email,
         role: profile.role || 'user',
       };
+      const quota = getDailyAutoApplyQuota(profile);
+      if (quota <= 0) continue;
       const limit = Math.min(
-        Math.max(profile.outreach?.dailyAutoApplyLimit ?? env.DAILY_AUTO_APPLY_LIMIT, 1),
-        20,
+        Math.max(profile.outreach?.dailyAutoApplyLimit ?? quota, 1),
+        quota,
       );
       const minScore = profile.outreach?.dailyMinScore ?? env.DAILY_AUTO_APPLY_MIN_SCORE;
 

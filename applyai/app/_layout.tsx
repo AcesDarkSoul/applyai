@@ -9,6 +9,7 @@ import 'react-native-reanimated';
 import { useAuthStore } from '@/stores/authStore';
 import { useResumeStore } from '@/stores/resumeStore';
 import { useThemeStore } from '@/stores/themeStore';
+import { useSubscriptionStore } from '@/stores/subscriptionStore';
 import { useColors, useThemeMode } from '@/hooks/useColors';
 import { AppTopBar } from '@/components/layout/AppTopBar';
 import { AppDrawer } from '@/components/layout/AppDrawer';
@@ -80,6 +81,8 @@ export default function RootLayout() {
   const initialize = useAuthStore((s) => s.initialize);
   const refreshResume = useResumeStore((s) => s.refresh);
   const hydrateTheme = useThemeStore((s) => s.hydrate);
+  const hydrateSubscription = useSubscriptionStore((s) => s.hydrate);
+  const user = useAuthStore((s) => s.user);
   const colors = useColors();
   const { isDark } = useThemeMode();
 
@@ -102,6 +105,11 @@ export default function RootLayout() {
     }, 300);
     return () => clearTimeout(t);
   }, [refreshResume]);
+
+  useEffect(() => {
+    if (!user) return;
+    void hydrateSubscription();
+  }, [user, hydrateSubscription]);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -127,6 +135,7 @@ export default function RootLayout() {
           <Stack.Screen name="index" />
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="plans" />
           <Stack.Screen name="posts/index" />
           <Stack.Screen name="posts/[id]" />
           <Stack.Screen name="notifications" />

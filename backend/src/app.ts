@@ -9,6 +9,7 @@ import { swaggerSpec } from './config/swagger';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { requestIdMiddleware } from './middleware/requestId';
 import { apiRouter } from './routes';
+import * as billingController from './controllers/billingController';
 
 function resolveCorsOrigin(): cors.CorsOptions['origin'] {
   const allowed = env.CORS_ORIGIN.split(',')
@@ -43,6 +44,11 @@ export function createApp() {
       credentials: true,
       allowedHeaders: ['Content-Type', 'Authorization', 'X-Firebase-Authorization', 'X-Request-Id', 'X-Ingest-Key'],
     }),
+  );
+  app.post(
+    '/api/v1/billing/razorpay/webhook',
+    express.raw({ type: 'application/json' }),
+    billingController.razorpayWebhook,
   );
   app.use(express.json({ limit: '16mb' }));
   app.use(requestIdMiddleware);

@@ -17,7 +17,6 @@ import { FadeInView } from '@/components/AnimatedView';
 import { Button } from '@/components/ui';
 import { useAuthStore } from '@/stores/authStore';
 import { useDrawerStore } from '@/stores/drawerStore';
-import { useThemeMode } from '@/hooks/useColors';
 import { profileRepository, type ApiUserProfile } from '@/lib/api/repositories';
 import { Spacing, FontSize, BorderRadius, Shadows } from '@/constants/theme';
 import { useColors } from '@/hooks/useColors';
@@ -25,7 +24,6 @@ import { useColors } from '@/hooks/useColors';
 export default function ProfileScreen() {
   const router = useRouter();
   const colors = useColors();
-  const { mode } = useThemeMode();
   const { width } = useWindowDimensions();
   const isWide = width >= 768;
   const openAccountMenu = useDrawerStore((s) => s.setProfileOpen);
@@ -276,13 +274,9 @@ export default function ProfileScreen() {
               <Ionicons name="document-text-outline" size={18} color={colors.primaryLight} />
               <Text style={styles.actionText}>Resume studio</Text>
             </Pressable>
-            <Pressable style={styles.actionChip} onPress={() => openAccountMenu(true)}>
-              <Ionicons
-                name={mode === 'dark' ? 'moon-outline' : 'sunny-outline'}
-                size={18}
-                color={colors.primaryLight}
-              />
-              <Text style={styles.actionText}>Theme & account</Text>
+            <Pressable style={styles.actionChip} onPress={() => router.push('/plans' as never)}>
+              <Ionicons name="diamond-outline" size={18} color={colors.primaryLight} />
+              <Text style={styles.actionText}>Plans</Text>
             </Pressable>
           </View>
         </LinearGradient>
@@ -385,6 +379,17 @@ export default function ProfileScreen() {
           <View style={styles.shortcutText}>
             <Text style={styles.shortcutTitle}>Manage resume file</Text>
             <Text style={styles.shortcutSub}>Upload, ATS score, optimize</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+        </Pressable>
+
+        <Pressable style={styles.shortcut} onPress={() => router.push('/plans' as never)}>
+          <View style={styles.shortcutIcon}>
+            <Ionicons name="diamond-outline" size={18} color={colors.primaryLight} />
+          </View>
+          <View style={styles.shortcutText}>
+            <Text style={styles.shortcutTitle}>Plans & billing</Text>
+            <Text style={styles.shortcutSub}>Starter ₹599 · Pro ₹1499 · Elite ₹2999</Text>
           </View>
           <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
         </Pressable>

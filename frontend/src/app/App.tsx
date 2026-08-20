@@ -14,6 +14,7 @@ import { PostDetailPage } from '../features/posts/PostDetailPage';
 import { PostsPage } from '../features/posts/PostsPage';
 import { ProfilePage } from '../features/profile/ProfilePage';
 import { ResumeStudioPage } from '../features/profile/ResumeStudioPage';
+import { PlansPage } from '../features/billing/PlansPage';
 import { AppShell } from '../shared/components/AppShell';
 import { SplashScreen } from '../shared/components/SplashScreen';
 import { trackScreen } from '../shared/firebase/analytics';
@@ -66,6 +67,7 @@ export default function App() {
                 <Route path="analytics" element={<AnalyticsPage />} />
                 <Route path="resume" element={<ResumeStudioPage />} />
                 <Route path="profile" element={<ProfilePage />} />
+                <Route path="plans" element={<PlansPage />} />
               </Route>
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />

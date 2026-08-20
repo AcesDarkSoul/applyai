@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   atmosphere: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   orb: {
     position: 'absolute',

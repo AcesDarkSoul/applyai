@@ -12,6 +12,8 @@ import * as aiController from '../controllers/aiController';
 import * as automationController from '../controllers/automationController';
 import * as notificationController from '../controllers/notificationController';
 import * as complianceController from '../controllers/complianceController';
+import * as billingController from '../controllers/billingController';
+import { requireFeature } from '../middleware/requirePlan';
 
 const aiLimiter = rateLimit({
   windowMs: env.RATE_LIMIT_WINDOW_MS,
@@ -36,6 +38,12 @@ apiRouter.post('/automation/daily/run', automationController.runDailyNow);
 
 apiRouter.use(authenticate);
 
+apiRouter.get('/billing/plans', billingController.listPlans);
+apiRouter.get('/billing/subscription', billingController.getSubscription);
+apiRouter.post('/billing/razorpay/order', billingController.createOrder);
+apiRouter.post('/billing/razorpay/verify', billingController.verifyPayment);
+apiRouter.post('/billing/demo-activate', billingController.demoActivate);
+
 apiRouter.get('/me', profileController.getProfile);
 apiRouter.patch('/me', profileController.updateProfile);
 apiRouter.post('/me/resume', optionalResumeUpload, profileController.uploadResume);
@@ -45,26 +53,30 @@ apiRouter.get('/me/resume', profileController.getLatestResume);
 apiRouter.get('/me/resumes', profileController.listResumes);
 apiRouter.get('/me/cover-letters', profileController.listCoverLetters);
 
-apiRouter.get('/jobs', jobController.searchJobs);
-apiRouter.get('/jobs/board', postController.listFormalJobs);
-apiRouter.get('/jobs/today', jobController.todaysJobs);
-apiRouter.get('/jobs/recommended', jobController.recommendedJobs);
-apiRouter.get('/jobs/saved', jobController.listSavedJobs);
-apiRouter.get('/jobs/catalog', jobController.catalogStatus);
-apiRouter.post('/jobs/refresh', jobController.refreshJobs);
-apiRouter.get('/jobs/:id', jobController.getJob);
-apiRouter.post('/jobs/:id/save', jobController.saveJob);
-apiRouter.delete('/jobs/:id/save', jobController.unsaveJob);
+apiRouter.get('/jobs', requireFeature('jobs'), jobController.searchJobs);
+apiRouter.get('/jobs/board', requireFeature('jobs'), postController.listFormalJobs);
+apiRouter.get('/jobs/today', requireFeature('jobs'), jobController.todaysJobs);
+apiRouter.get('/jobs/recommended', requireFeature('jobs'), jobController.recommendedJobs);
+apiRouter.get('/jobs/saved', requireFeature('jobs'), jobController.listSavedJobs);
+apiRouter.get('/jobs/catalog', requireFeature('jobs'), jobController.catalogStatus);
+apiRouter.post('/jobs/refresh', requireFeature('jobRefresh'), jobController.refreshJobs);
+apiRouter.get('/jobs/:id', requireFeature('jobs'), jobController.getJob);
+apiRouter.post('/jobs/:id/save', requireFeature('jobs'), jobController.saveJob);
+apiRouter.delete('/jobs/:id/save', requireFeature('jobs'), jobController.unsaveJob);
 
-apiRouter.get('/posts', postController.listPosts);
-apiRouter.get('/posts/:id', postController.getPost);
+apiRouter.get('/posts', requireFeature('posts'), postController.listPosts);
+apiRouter.get('/posts/:id', requireFeature('posts'), postController.getPost);
 
 apiRouter.get('/applications', applicationController.listApplications);
 apiRouter.get('/applications/stats', applicationController.getStats);
 apiRouter.get('/applications/check-duplicate', applicationController.checkDuplicate);
-apiRouter.post('/applications/smart-apply', applicationController.smartApply);
-apiRouter.post('/applications/outreach-apply', applicationController.outreachApplyHandler);
-apiRouter.post('/applications/auto-apply', applicationController.autoApplyHandler);
+apiRouter.post('/applications/smart-apply', requireFeature('smartApply'), applicationController.smartApply);
+apiRouter.post(
+  '/applications/outreach-apply',
+  requireFeature('outreach'),
+  applicationController.outreachApplyHandler,
+);
+apiRouter.post('/applications/auto-apply', requireFeature('autoApply'), applicationController.autoApplyHandler);
 apiRouter.patch('/applications/:id/status', applicationController.updateApplicationStatus);
 apiRouter.post('/applications/sync-statuses', applicationController.syncStatuses);
 
@@ -82,10 +94,10 @@ apiRouter.get('/compliance/audit', complianceController.listAuditLog);
 apiRouter.get('/automation/daily/status', automationController.getDailyStatus);
 apiRouter.post('/automation/daily/run-auth', automationController.runDailyNow);
 
-apiRouter.post('/ai/cover-letter', aiLimiter, aiController.generateCoverLetter);
-apiRouter.post('/ai/tailor-resume', aiLimiter, aiController.tailorResume);
-apiRouter.get('/ai/skill-gap/:jobId', aiLimiter, aiController.skillGap);
-apiRouter.post('/ai/skill-gap', aiLimiter, aiController.skillGap);
+apiRouter.post('/ai/cover-letter', requireFeature('aiCoverLetters'), aiLimiter, aiController.generateCoverLetter);
+apiRouter.post('/ai/tailor-resume', requireFeature('aiTools'), aiLimiter, aiController.tailorResume);
+apiRouter.get('/ai/skill-gap/:jobId', requireFeature('aiTools'), aiLimiter, aiController.skillGap);
+apiRouter.post('/ai/skill-gap', requireFeature('aiTools'), aiLimiter, aiController.skillGap);
 
 apiRouter.get('/admin/ping', requireRole('admin'), (_req, res) => {
   res.json({ success: true, data: { ok: true, role: 'admin' } });

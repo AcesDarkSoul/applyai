@@ -101,9 +101,9 @@ export default function DashboardScreen() {
       <FadeInView direction="down">
         <LinearGradient
           colors={[
-            'rgba(91,92,226,0.28)',
-            isDark ? 'rgba(15,23,42,0.45)' : 'rgba(255,255,255,0.55)',
-            'rgba(20,184,166,0.16)',
+            isDark ? '#6d5efc' : '#6d5efc',
+            isDark ? '#2f6fed' : '#8b5cf6',
+            isDark ? '#ff7a66' : '#ff9a66',
           ] as [string, string, string]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
@@ -111,27 +111,58 @@ export default function DashboardScreen() {
             styles.hero,
             {
               borderColor: colors.border,
-              backgroundColor: colors.card,
             },
           ]}
         >
-          <Text style={[styles.heroEyebrow, { color: colors.textSecondary }]}>
-            Ready for your next move, {firstName}?
-          </Text>
-          <Text style={[styles.heroTitle, { color: colors.text }]}>Dashboard</Text>
-          <Text style={[styles.heroBody, { color: colors.textSecondary }]}>
+          <View style={styles.decorCircleOne} />
+          <View style={styles.decorCircleTwo} />
+          <View style={styles.heroTopRow}>
+            <Text style={[styles.heroEyebrow, { color: isDark ? '#dfe6ff' : '#4d5373' }]}>
+              Ready for your next move, {firstName}?
+            </Text>
+            <View style={[styles.livePill, { backgroundColor: isDark ? 'rgba(16,185,129,0.22)' : 'rgba(16,185,129,0.12)' }]}>
+              <Ionicons name="pulse" size={12} color={Colors.success} />
+              <Text style={styles.liveText}>Live</Text>
+            </View>
+          </View>
+
+          <Text style={[styles.heroTitle, { color: isDark ? '#ffffff' : '#140f2d' }]}>Dashboard</Text>
+          <Text style={[styles.heroBody, { color: isDark ? '#dfe6ff' : '#4d5373' }]}>
             Match roles, track applications, and keep cover letters with every apply.
           </Text>
+
           <View style={styles.heroActions}>
             <Pressable style={styles.primaryBtn} onPress={() => router.push('/(tabs)/jobs')}>
-              <Text style={styles.primaryBtnText}>Find matches</Text>
+              <LinearGradient
+                colors={['#5b5ce2', '#7c7ef0']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.primaryBtnGradient}
+              >
+                <Text style={styles.primaryBtnText}>Find matches</Text>
+              </LinearGradient>
             </Pressable>
             <Pressable
-              style={[styles.ghostBtn, { borderColor: colors.border }]}
-              onPress={() => router.push('/(tabs)/resume')}
+              style={[styles.ghostBtn, { borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(30,34,70,0.10)' }]}
+              onPress={() => router.push('/plans' as never)}
             >
-              <Text style={[styles.ghostBtnText, { color: colors.text }]}>Resume Studio</Text>
+              <Text style={[styles.ghostBtnText, { color: isDark ? '#ffffff' : '#14162b' }]}>Plans</Text>
             </Pressable>
+          </View>
+
+          <View style={styles.quickSummaryRow}>
+            <View style={styles.summaryChip}>
+              <Text style={styles.summaryChipValue}>{jobsFound}</Text>
+              <Text style={styles.summaryChipLabel}>matches</Text>
+            </View>
+            <View style={styles.summaryChip}>
+              <Text style={styles.summaryChipValue}>{stats?.total ?? 0}</Text>
+              <Text style={styles.summaryChipLabel}>applied</Text>
+            </View>
+            <View style={styles.summaryChip}>
+              <Text style={styles.summaryChipValue}>{stats?.interviews ?? 0}</Text>
+              <Text style={styles.summaryChipLabel}>interviews</Text>
+            </View>
           </View>
         </LinearGradient>
       </FadeInView>
@@ -238,7 +269,7 @@ function Stat({
 }) {
   return (
     <View style={styles.stat}>
-      <View style={[styles.statIcon, { backgroundColor: `${color}22` }]}>
+      <View style={[styles.statIcon, { backgroundColor: `${color}1f`, borderColor: `${color}33`, borderWidth: 1 }]}>
         <Ionicons name={icon} size={16} color={color} />
       </View>
       <Text style={styles.statValue}>{value}</Text>
@@ -250,32 +281,86 @@ function Stat({
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 280 },
   hero: {
-    borderRadius: BorderRadius.xl,
+    borderRadius: BorderRadius.xxl,
     padding: Spacing.lg,
     marginBottom: Spacing.md,
     borderWidth: 1,
     borderColor: Colors.border,
-    gap: 8,
+    gap: 10,
+    overflow: 'hidden',
+    ...Shadows.lg,
+    position: 'relative',
   },
+  decorCircleOne: {
+    position: 'absolute',
+    right: -24,
+    top: -18,
+    width: 132,
+    height: 132,
+    borderRadius: 66,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  decorCircleTwo: {
+    position: 'absolute',
+    left: -22,
+    bottom: -22,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  heroTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   heroEyebrow: { color: Colors.textSecondary, fontWeight: '700', fontSize: FontSize.sm },
   heroTitle: { color: Colors.text, fontWeight: '800', fontSize: FontSize.xxl, letterSpacing: -0.5 },
   heroBody: { color: Colors.textSecondary, fontSize: FontSize.sm, lineHeight: 20 },
-  heroActions: { flexDirection: 'row', gap: 10, marginTop: 8 },
-  primaryBtn: {
-    backgroundColor: Colors.primary,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: BorderRadius.md,
+  livePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
   },
-  primaryBtnText: { color: Colors.white, fontWeight: '800' },
+  liveText: { color: Colors.success, fontWeight: '800', fontSize: 10, letterSpacing: 0.8 },
+  heroActions: { flexDirection: 'row', gap: 10, marginTop: 4 },
+  primaryBtn: {
+    flex: 1,
+    borderRadius: BorderRadius.md,
+    overflow: 'hidden',
+  },
+  primaryBtnGradient: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  primaryBtnText: { color: Colors.white, fontWeight: '800', fontSize: FontSize.sm },
   ghostBtn: {
     borderWidth: 1,
     borderColor: Colors.border,
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderRadius: BorderRadius.md,
+    minWidth: 92,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  ghostBtnText: { color: Colors.text, fontWeight: '700' },
+  ghostBtnText: { color: Colors.text, fontWeight: '700', fontSize: FontSize.sm },
+  quickSummaryRow: { flexDirection: 'row', gap: 8, marginTop: 6 },
+  summaryChip: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.12)',
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.16)',
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+  },
+  summaryChipValue: { color: '#ffffff', fontWeight: '800', fontSize: FontSize.md },
+  summaryChipLabel: { color: 'rgba(255,255,255,0.78)', fontSize: 10, fontWeight: '700', textTransform: 'uppercase' },
   errorBox: {
     backgroundColor: 'rgba(239,68,68,0.12)',
     borderColor: 'rgba(239,68,68,0.35)',
@@ -296,23 +381,24 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     flexBasis: '45%',
     backgroundColor: Colors.card,
-    borderRadius: BorderRadius.lg,
+    borderRadius: BorderRadius.xl,
     borderWidth: 1,
     borderColor: Colors.border,
     padding: Spacing.md,
     gap: 4,
     ...Shadows.card,
+    minHeight: 104,
   },
   statIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 4,
   },
   statValue: { color: Colors.text, fontWeight: '800', fontSize: FontSize.xl },
-  statLabel: { color: Colors.textMuted, fontSize: FontSize.xs, fontWeight: '600' },
+  statLabel: { color: Colors.textMuted, fontSize: FontSize.xs, fontWeight: '700' },
   card: {
     backgroundColor: Colors.card,
     borderRadius: BorderRadius.xl,
@@ -363,15 +449,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    marginTop: 8,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: Colors.primaryTintSoft,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   jobAvatar: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: Colors.primaryTint,
+    backgroundColor: Colors.card,
+    borderWidth: 1,
+    borderColor: Colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -379,14 +471,18 @@ const styles = StyleSheet.create({
   jobMeta: { flex: 1, minWidth: 0 },
   jobTitle: { color: Colors.text, fontWeight: '700' },
   jobCompany: { color: Colors.textMuted, fontSize: FontSize.xs, marginTop: 2 },
-  match: { color: Colors.primaryLight, fontWeight: '800' },
+  match: { color: Colors.primaryLight, fontWeight: '800', fontSize: FontSize.sm },
   appRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    marginTop: 8,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: Colors.backgroundLight,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   statusChip: {
     backgroundColor: Colors.primaryTint,
