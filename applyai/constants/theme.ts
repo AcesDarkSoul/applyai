@@ -56,6 +56,17 @@ export type ThemeColors = {
   bottomNavGlass: string;
   primaryTint: string;
   primaryTintSoft: string;
+  heroCardBg: readonly [string, string, string];
+  heroCardText: string;
+  heroCardSubtext: string;
+  heroInnerCardBg: string;
+  heroInnerCardBorder: string;
+  chartLine: string;
+  chartFillGradient: readonly [string, string];
+  matchBadgeBg: string;
+  matchBadgeText: string;
+  sidebarActiveBg: string;
+  sidebarActiveText: string;
   gradient: readonly [string, string];
   gradientBrand: readonly [string, string];
   gradientHero: readonly [string, string, string];
@@ -77,22 +88,33 @@ export type ThemeColors = {
 
 export const DarkColors: ThemeColors = {
   ...brand,
-  background: '#0b0c18',
-  backgroundLight: '#15172a',
-  surface: '#15172a',
-  surfaceLight: '#1c1f36',
-  card: '#15172a',
-  border: 'rgba(238,240,255,0.10)',
-  borderLight: 'rgba(238,240,255,0.06)',
-  text: '#eef0ff',
-  textSecondary: '#9aa0c0',
-  textMuted: '#6b6f8c',
+  background: '#0a0c16',
+  backgroundLight: '#131528',
+  surface: '#131528',
+  surfaceLight: '#1a1d36',
+  card: '#131528',
+  border: 'rgba(255,255,255,0.08)',
+  borderLight: 'rgba(255,255,255,0.04)',
+  text: '#ffffff',
+  textSecondary: '#9aa1c2',
+  textMuted: '#656b8a',
   textOnPrimary: '#ffffff',
-  textOnSecondary: '#0b0c18',
-  glass: 'rgba(21,23,42,0.92)',
-  bottomNavGlass: 'rgba(14,16,32,0.96)',
-  primaryTint: 'rgba(91,92,226,0.16)',
-  primaryTintSoft: 'rgba(91,92,226,0.10)',
+  textOnSecondary: '#0a0c16',
+  glass: 'rgba(19, 21, 40, 0.90)',
+  bottomNavGlass: 'rgba(12, 14, 28, 0.96)',
+  primaryTint: 'rgba(109, 94, 252, 0.18)',
+  primaryTintSoft: 'rgba(109, 94, 252, 0.10)',
+  heroCardBg: ['#161539', '#191845', '#1c174e'],
+  heroCardText: '#ffffff',
+  heroCardSubtext: '#b3b7dd',
+  heroInnerCardBg: '#131528',
+  heroInnerCardBorder: 'rgba(255, 255, 255, 0.12)',
+  chartLine: '#8a77ff',
+  chartFillGradient: ['rgba(138, 119, 255, 0.35)', 'rgba(138, 119, 255, 0.0)'],
+  matchBadgeBg: 'rgba(34, 197, 94, 0.14)',
+  matchBadgeText: '#22c55e',
+  sidebarActiveBg: '#6d5efc',
+  sidebarActiveText: '#ffffff',
   gradient: ['#6d5efc', '#4f46e5'],
   gradientBrand: ['#6d5efc', '#8f7dff'],
   gradientHero: ['#6d5efc', '#3b82f6', '#ff7a66'],
@@ -104,22 +126,33 @@ export const DarkColors: ThemeColors = {
 
 export const LightColors: ThemeColors = {
   ...brand,
-  background: '#f3f4fb',
+  background: '#f4f5fa',
   backgroundLight: '#ffffff',
   surface: '#ffffff',
-  surfaceLight: '#eef0fa',
+  surfaceLight: '#f0f2fb',
   card: '#ffffff',
-  border: 'rgba(30,34,70,0.10)',
-  borderLight: 'rgba(30,34,70,0.06)',
-  text: '#14162b',
-  textSecondary: '#4d5373',
-  textMuted: '#7a8099',
+  border: '#e4e7f3',
+  borderLight: '#edf0fa',
+  text: '#121633',
+  textSecondary: '#5a6080',
+  textMuted: '#8b92b0',
   textOnPrimary: '#ffffff',
-  textOnSecondary: '#0b0c18',
-  glass: 'rgba(255,255,255,0.92)',
-  bottomNavGlass: 'rgba(255,255,255,0.96)',
-  primaryTint: 'rgba(91,92,226,0.12)',
-  primaryTintSoft: 'rgba(91,92,226,0.07)',
+  textOnSecondary: '#0a0c16',
+  glass: 'rgba(255, 255, 255, 0.92)',
+  bottomNavGlass: 'rgba(255, 255, 255, 0.96)',
+  primaryTint: 'rgba(109, 94, 252, 0.10)',
+  primaryTintSoft: 'rgba(109, 94, 252, 0.05)',
+  heroCardBg: ['#6054f9', '#755ff5', '#9865f7'],
+  heroCardText: '#ffffff',
+  heroCardSubtext: '#e3dffd',
+  heroInnerCardBg: '#ffffff',
+  heroInnerCardBorder: 'rgba(255, 255, 255, 0.40)',
+  chartLine: '#6d5efc',
+  chartFillGradient: ['rgba(109, 94, 252, 0.25)', 'rgba(109, 94, 252, 0.0)'],
+  matchBadgeBg: '#e6f7ed',
+  matchBadgeText: '#16a34a',
+  sidebarActiveBg: '#6d5efc',
+  sidebarActiveText: '#ffffff',
   gradient: ['#6d5efc', '#8b5cf6'],
   gradientBrand: ['#6d5efc', '#9d95ff'],
   gradientHero: ['#6d5efc', '#3da9ff', '#ff9a66'],

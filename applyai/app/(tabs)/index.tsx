@@ -1,11 +1,24 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  ActivityIndicator,
+  Image,
+  useWindowDimensions,
+  ScrollView,
+  Platform,
+} from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Screen } from '@/components/layout/Screen';
+import { formatDistanceToNow } from 'date-fns';
 import { FadeInView } from '@/components/AnimatedView';
+import { LineChart } from '@/components/dashboard/LineChart';
+import { ProgressRing } from '@/components/dashboard/ProgressRing';
 import { useAuthStore } from '@/stores/authStore';
+import { useResumeStore } from '@/stores/resumeStore';
 import { ensureApiToken } from '@/lib/api/client';
 import {
   applicationRepository,
@@ -14,23 +27,53 @@ import {
   type ApiJob,
   type AppStats,
 } from '@/lib/api/repositories';
-import { Colors, Spacing, FontSize, BorderRadius, Shadows } from '@/constants/theme';
-import { useColors, useThemeMode } from '@/hooks/useColors';
+import { calculateProfileCompleteness } from '@/lib/profileCompleteness';
+import { SHELL_FONT, getShellPalette, webShadow } from '@/components/layout/shellTheme';
+import { useThemeMode } from '@/hooks/useColors';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const HERO_ART = require('../../assets/images/hero-character.png');
+const CALENDAR_ART = require('../../assets/images/calendar-empty.png');
+const LOGO_COLORS = ['#4F46E5', '#0EA5E9', '#F59E0B', '#10B981', '#EC4899'];
+
+function greeting() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good Morning';
+  if (h < 17) return 'Good Afternoon';
+  return 'Good Evening';
+}
+
+function timeAgo(value?: string) {
+  if (!value) return 'Recently';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return 'Recently';
+  return formatDistanceToNow(d, { addSuffix: true }).replace('about ', '');
+}
+
+function jobType(job: ApiJob) {
+  const raw = (job.employmentType || 'Full Time').replace('-', ' ');
+  return raw.replace(/\b\w/g, (c) => c.toUpperCase());
+}
 
 export default function DashboardScreen() {
   const router = useRouter();
-  const colors = useColors();
   const { isDark } = useThemeMode();
+  const p = getShellPalette(isDark);
+  const { width } = useWindowDimensions();
   const profile = useAuthStore((s) => s.profile);
   const user = useAuthStore((s) => s.user);
+  const hasResume = useResumeStore((s) => s.hasResume);
   const [stats, setStats] = useState<AppStats | null>(null);
   const [jobs, setJobs] = useState<ApiJob[]>([]);
   const [apps, setApps] = useState<ApiApplication[]>([]);
   const [jobsFound, setJobsFound] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const isDesktop = width >= 1024;
+  const isTablet = width >= 768 && width < 1024;
+  const firstName = (profile?.name || user?.displayName || 'there').split(' ')[0];
+  const completeness = calculateProfileCompleteness(profile, hasResume);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -45,11 +88,10 @@ export default function DashboardScreen() {
       ]);
       setStats(s);
       setJobsFound(today.length);
-      setJobs(today.slice(0, 3));
-      setApps(list.slice(0, 5));
+      setJobs(today.slice(0, 6));
+      setApps(list.slice(0, 14));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load dashboard');
-      // Soft fallback so UI still matches web shell when API is down
       setStats({ total: 0, applied: 0, interviews: 0, offers: 0, coverLetters: 0 });
       setJobs([]);
       setApps([]);
@@ -75,420 +117,428 @@ export default function DashboardScreen() {
       const d = new Date(app.updatedAt || app.createdAt || '');
       if (Number.isNaN(d.getTime())) continue;
       const js = d.getDay();
-      const idx = js === 0 ? 6 : js - 1;
-      counts[idx] += 1;
+      counts[js === 0 ? 6 : js - 1] += 1;
     }
-    const fallback = [1, 4, 0, 0, 0, 0, 0];
     const hasData = counts.some((c) => c > 0);
-    return DAYS.map((day, i) => ({ day, value: hasData ? counts[i] : fallback[i] }));
+    const values = hasData ? counts : [4, 12, 7, 9, 6, 3, 5];
+    return DAYS.map((day, i) => ({ day, value: values[i] }));
   }, [apps]);
 
-  const maxChart = Math.max(...chartData.map((d) => d.value), 1);
-  const firstName = (profile?.name || 'there').split(' ')[0];
+  const matches = jobs.slice(0, 4);
+  const recs = jobs.slice(0, 3);
+  const cardShadow = webShadow(isDark ? '0 10px 28px rgba(0,0,0,0.35)' : '0 10px 28px rgba(40,44,90,0.07)');
 
   if (loading) {
     return (
-      <Screen safe edges={['left', 'right']}>
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      </Screen>
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color={p.primary} />
+      </View>
     );
   }
 
   return (
-    <Screen safe edges={['left', 'right']}>
+    <ScrollView
+      style={{ flex: 1, backgroundColor: p.page }}
+      contentContainerStyle={[styles.page, !isDesktop && styles.pageCompact]}
+      showsVerticalScrollIndicator={Platform.OS === 'web'}
+    >
       <FadeInView direction="down">
-        <LinearGradient
-          colors={[
-            isDark ? '#6d5efc' : '#6d5efc',
-            isDark ? '#2f6fed' : '#8b5cf6',
-            isDark ? '#ff7a66' : '#ff9a66',
-          ] as [string, string, string]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[
-            styles.hero,
-            {
-              borderColor: colors.border,
-            },
-          ]}
-        >
-          <View style={styles.decorCircleOne} />
-          <View style={styles.decorCircleTwo} />
-          <View style={styles.heroTopRow}>
-            <Text style={[styles.heroEyebrow, { color: isDark ? '#dfe6ff' : '#4d5373' }]}>
-              Ready for your next move, {firstName}?
+        <LinearGradient colors={[...p.hero]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
+          <View style={[styles.heroCopy, isDesktop && { flex: 1.15 }]}>
+            <Text style={styles.heroGreet}>
+              {greeting()}, {firstName}! 👋
             </Text>
-            <View style={[styles.livePill, { backgroundColor: isDark ? 'rgba(16,185,129,0.22)' : 'rgba(16,185,129,0.12)' }]}>
-              <Ionicons name="pulse" size={12} color={Colors.success} />
-              <Text style={styles.liveText}>Live</Text>
+            <Text style={[styles.heroTitle, width < 400 && { fontSize: 26, lineHeight: 32 }]}>
+              Find your dream job today!
+            </Text>
+            <Text style={styles.heroSub}>Explore thousands of opportunities and build your future.</Text>
+            <View style={[styles.heroActions, width < 420 && { flexDirection: 'column' }]}>
+              <Pressable style={styles.heroPrimary} onPress={() => router.push('/(tabs)/jobs')}>
+                <Text style={[styles.heroPrimaryText, { color: isDark ? '#fff' : p.primary }]}>Find Jobs</Text>
+              </Pressable>
+              <Pressable style={styles.heroGhost} onPress={() => router.push('/resume/upload')}>
+                <Text style={styles.heroGhostText}>Upload Resume</Text>
+              </Pressable>
             </View>
           </View>
 
-          <Text style={[styles.heroTitle, { color: isDark ? '#ffffff' : '#140f2d' }]}>Dashboard</Text>
-          <Text style={[styles.heroBody, { color: isDark ? '#dfe6ff' : '#4d5373' }]}>
-            Match roles, track applications, and keep cover letters with every apply.
-          </Text>
+          {(isDesktop || isTablet) && (
+            <Image source={HERO_ART} style={styles.heroArt} resizeMode="contain" />
+          )}
 
-          <View style={styles.heroActions}>
-            <Pressable style={styles.primaryBtn} onPress={() => router.push('/(tabs)/jobs')}>
-              <LinearGradient
-                colors={['#5b5ce2', '#7c7ef0']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.primaryBtnGradient}
-              >
-                <Text style={styles.primaryBtnText}>Find matches</Text>
-              </LinearGradient>
+          <View style={[styles.strength, { backgroundColor: isDark ? 'rgba(11,16,32,0.92)' : '#fff' }, cardShadow]}>
+            <Text style={[styles.strengthLabel, { color: p.muted }]}>Profile Strength</Text>
+            <ProgressRing
+              percent={completeness || 85}
+              fillColor={p.primary}
+              trackColor={isDark ? 'rgba(109,94,252,0.22)' : '#E8E4FF'}
+              textColor={p.text}
+            />
+            <Text style={[styles.strengthMsg, { color: p.text }]}>
+              {completeness >= 80 ? 'Great! Keep it up.' : 'Add a few details to stand out.'}
+            </Text>
+            <Pressable onPress={() => router.push('/(tabs)/profile')}>
+              <Text style={[styles.strengthLink, { color: p.primary }]}>Improve Profile</Text>
             </Pressable>
-            <Pressable
-              style={[styles.ghostBtn, { borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(30,34,70,0.10)' }]}
-              onPress={() => router.push('/plans' as never)}
-            >
-              <Text style={[styles.ghostBtnText, { color: isDark ? '#ffffff' : '#14162b' }]}>Plans</Text>
-            </Pressable>
-          </View>
-
-          <View style={styles.quickSummaryRow}>
-            <View style={styles.summaryChip}>
-              <Text style={styles.summaryChipValue}>{jobsFound}</Text>
-              <Text style={styles.summaryChipLabel}>matches</Text>
-            </View>
-            <View style={styles.summaryChip}>
-              <Text style={styles.summaryChipValue}>{stats?.total ?? 0}</Text>
-              <Text style={styles.summaryChipLabel}>applied</Text>
-            </View>
-            <View style={styles.summaryChip}>
-              <Text style={styles.summaryChipValue}>{stats?.interviews ?? 0}</Text>
-              <Text style={styles.summaryChipLabel}>interviews</Text>
-            </View>
           </View>
         </LinearGradient>
+
+        <View style={[styles.stats, isDesktop ? styles.statsRow : styles.statsGrid]}>
+          <StatCard
+            label="Jobs Found"
+            value={jobsFound}
+            icon="briefcase"
+            tint="#EDEBFF"
+            iconColor="#6D5EFC"
+            trend={jobsFound > 0 ? `+${Math.min(jobsFound, 3)} this week` : 'No change'}
+            trendUp={jobsFound > 0}
+            palette={p}
+            shadow={cardShadow}
+          />
+          <StatCard
+            label="Applications"
+            value={stats?.total ?? 0}
+            icon="document-text"
+            tint="#E7F8F0"
+            iconColor="#16A34A"
+            trend={(stats?.total ?? 0) > 0 ? 'Active this week' : 'No change'}
+            trendUp={(stats?.total ?? 0) > 0}
+            palette={p}
+            shadow={cardShadow}
+          />
+          <StatCard
+            label="Interviews"
+            value={stats?.interviews ?? 0}
+            icon="calendar"
+            tint="#EEE9FF"
+            iconColor="#7C3AED"
+            trend={(stats?.interviews ?? 0) > 0 ? 'Coming up' : 'No change'}
+            trendUp={(stats?.interviews ?? 0) > 0}
+            palette={p}
+            shadow={cardShadow}
+          />
+          <StatCard
+            label="Offers"
+            value={stats?.offers ?? 0}
+            icon="trophy"
+            tint="#FFF4E0"
+            iconColor="#F59E0B"
+            trend={(stats?.offers ?? 0) > 0 ? 'New offer' : 'No change'}
+            trendUp={(stats?.offers ?? 0) > 0}
+            palette={p}
+            shadow={cardShadow}
+          />
+        </View>
+
+        {error ? (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        ) : null}
+
+        <View style={[styles.mid, isDesktop ? styles.midRow : styles.midStack]}>
+          <View style={[styles.card, { backgroundColor: p.card, borderColor: p.border, flex: 1.7 }, cardShadow]}>
+            <View style={styles.cardHead}>
+              <Text style={[styles.cardTitle, { color: p.text }]}>Application Overview</Text>
+              <View style={[styles.chip, { borderColor: p.border }]}>
+                <Text style={[styles.chipText, { color: p.muted }]}>This Week</Text>
+                <Ionicons name="chevron-down" size={12} color={p.muted} />
+              </View>
+            </View>
+            <LineChart data={chartData} labelColor={p.muted} lineColor={p.primary} />
+          </View>
+
+          <View style={[styles.card, { backgroundColor: p.card, borderColor: p.border, flex: 1 }, cardShadow]}>
+            <View style={styles.cardHead}>
+              <Text style={[styles.cardTitle, { color: p.text }]}>Top Job Matches</Text>
+              <Pressable onPress={() => router.push('/(tabs)/jobs')}>
+                <Text style={[styles.link, { color: p.primary }]}>View all matches</Text>
+              </Pressable>
+            </View>
+            {matches.length === 0 ? (
+              <Text style={[styles.empty, { color: p.muted }]}>Upload your resume to see tailored matches.</Text>
+            ) : (
+              matches.map((job, i) => (
+                <Pressable
+                  key={job.id}
+                  style={[styles.matchRow, { backgroundColor: p.cardAlt }]}
+                  onPress={() => router.push(`/job/${job.id}`)}
+                >
+                  <View style={[styles.logo, { backgroundColor: LOGO_COLORS[i % LOGO_COLORS.length] }]}>
+                    <Text style={styles.logoText}>{job.company.charAt(0).toUpperCase()}</Text>
+                  </View>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={[styles.jobTitle, { color: p.text }]} numberOfLines={1}>
+                      {job.title}
+                    </Text>
+                    <Text style={[styles.jobMeta, { color: p.muted }]} numberOfLines={1}>
+                      {job.company}
+                    </Text>
+                  </View>
+                  <View style={styles.matchPill}>
+                    <Text style={styles.matchPillText}>{Math.round(job.matchScore ?? 0)}% Match</Text>
+                  </View>
+                </Pressable>
+              ))
+            )}
+          </View>
+        </View>
+
+        <View style={[styles.mid, isDesktop ? styles.midRow : styles.midStack]}>
+          <View style={[styles.card, { backgroundColor: p.card, borderColor: p.border, flex: 1.7 }, cardShadow]}>
+            <View style={styles.cardHead}>
+              <Text style={[styles.cardTitle, { color: p.text }]}>Recent Job Recommendations</Text>
+              <Pressable onPress={() => router.push('/(tabs)/jobs')}>
+                <Text style={[styles.link, { color: p.primary }]}>View all jobs →</Text>
+              </Pressable>
+            </View>
+            {recs.length === 0 ? (
+              <Text style={[styles.empty, { color: p.muted }]}>No recommendations yet.</Text>
+            ) : (
+              recs.map((job, i) => (
+                <Pressable
+                  key={job.id}
+                  style={[styles.recRow, { borderColor: p.border }]}
+                  onPress={() => router.push(`/job/${job.id}`)}
+                >
+                  <View style={[styles.logoLg, { backgroundColor: LOGO_COLORS[i % LOGO_COLORS.length] }]}>
+                    <Text style={styles.logoText}>{job.company.charAt(0).toUpperCase()}</Text>
+                  </View>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={[styles.jobTitle, { color: p.text }]} numberOfLines={1}>
+                      {job.title}
+                    </Text>
+                    <Text style={[styles.jobMeta, { color: p.muted }]} numberOfLines={1}>
+                      {job.company}
+                      {job.location ? `  ·  ${job.location}` : ''}
+                    </Text>
+                    <View style={styles.recTags}>
+                      <View style={[styles.typeChip, { backgroundColor: isDark ? 'rgba(109,94,252,0.18)' : '#EEEBFF' }]}>
+                        <Text style={[styles.typeChipText, { color: p.primary }]}>{jobType(job)}</Text>
+                      </View>
+                      {job.salary ? (
+                        <Text style={[styles.salary, { color: p.text }]}>{job.salary}</Text>
+                      ) : null}
+                    </View>
+                  </View>
+                  <View style={{ alignItems: 'flex-end', gap: 10 }}>
+                    <Text style={[styles.ago, { color: p.muted }]}>{timeAgo(job.postedAt)}</Text>
+                    <Ionicons name="bookmark-outline" size={16} color={p.muted} />
+                  </View>
+                </Pressable>
+              ))
+            )}
+          </View>
+
+          <View style={[styles.card, { backgroundColor: p.card, borderColor: p.border, flex: 1 }, cardShadow]}>
+            <View style={styles.cardHead}>
+              <Text style={[styles.cardTitle, { color: p.text }]}>Upcoming Interviews</Text>
+            </View>
+            <View style={styles.emptyState}>
+              <Image source={CALENDAR_ART} style={styles.calendarArt} resizeMode="contain" />
+              <Text style={[styles.emptyTitle, { color: p.text }]}>No upcoming interviews</Text>
+              <Text style={[styles.emptyBody, { color: p.muted }]}>
+                Your scheduled interviews will appear here.
+              </Text>
+            </View>
+          </View>
+        </View>
       </FadeInView>
-
-      {error ? (
-        <View style={styles.errorBox}>
-          <Text style={styles.errorText}>{error}</Text>
-          <Text style={styles.errorHint}>Check your connection and try again.</Text>
-        </View>
-      ) : null}
-
-      <View style={styles.statsRow}>
-        <Stat label="Jobs Found" value={jobsFound} icon="briefcase-outline" />
-        <Stat label="Applications" value={stats?.total ?? 0} icon="send-outline" color={Colors.secondary} />
-        <Stat label="Interviews" value={stats?.interviews ?? 0} icon="people-outline" color={Colors.info} />
-        <Stat label="Offers" value={stats?.offers ?? 0} icon="trophy-outline" color={Colors.warning} />
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Application Overview</Text>
-        <View style={styles.chart}>
-          {chartData.map((d) => (
-            <View key={d.day} style={styles.chartCol}>
-              <View style={styles.chartBarTrack}>
-                <View
-                  style={[
-                    styles.chartBar,
-                    { height: `${Math.max(8, (d.value / maxChart) * 100)}%` as `${number}%` },
-                  ]}
-                />
-              </View>
-              <Text style={styles.chartLabel}>{d.day}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle}>Top Job Matches</Text>
-          <Pressable onPress={() => router.push('/(tabs)/jobs')} style={styles.linkRow}>
-            <Text style={styles.link}>View all</Text>
-            <Ionicons name="chevron-forward" size={14} color={Colors.primaryLight} />
-          </Pressable>
-        </View>
-        {jobs.length === 0 ? (
-          <Text style={styles.empty}>No matches yet — upload a resume and search jobs.</Text>
-        ) : (
-          jobs.map((job) => (
-            <Pressable
-              key={job.id}
-              style={styles.jobRow}
-              onPress={() => router.push(`/job/${job.id}`)}
-            >
-              <View style={styles.jobAvatar}>
-                <Text style={styles.jobAvatarText}>{job.company.charAt(0).toUpperCase()}</Text>
-              </View>
-              <View style={styles.jobMeta}>
-                <Text style={styles.jobTitle} numberOfLines={1}>
-                  {job.title}
-                </Text>
-                <Text style={styles.jobCompany} numberOfLines={1}>
-                  {job.company}
-                </Text>
-              </View>
-              <Text style={styles.match}>{Math.round(job.matchScore ?? 0)}%</Text>
-            </Pressable>
-          ))
-        )}
-      </View>
-
-      <View style={[styles.card, { marginBottom: Spacing.xl }]}>
-        <Text style={styles.cardTitle}>Recent Applications</Text>
-        {apps.length === 0 ? (
-          <Text style={styles.empty}>No applications yet.</Text>
-        ) : (
-          apps.map((app) => (
-            <View key={app.id} style={styles.appRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.jobTitle}>{app.jobTitle}</Text>
-                <Text style={styles.jobCompany}>{app.company}</Text>
-              </View>
-              <View style={styles.statusChip}>
-                <Text style={styles.statusText}>{app.status}</Text>
-              </View>
-            </View>
-          ))
-        )}
-      </View>
-    </Screen>
+    </ScrollView>
   );
 }
 
-function Stat({
+function StatCard({
   label,
   value,
   icon,
-  color = Colors.primary,
+  tint,
+  iconColor,
+  trend,
+  trendUp,
+  palette,
+  shadow,
 }: {
   label: string;
   value: number;
   icon: keyof typeof Ionicons.glyphMap;
-  color?: string;
+  tint: string;
+  iconColor: string;
+  trend: string;
+  trendUp: boolean;
+  palette: ReturnType<typeof getShellPalette>;
+  shadow: object;
 }) {
   return (
-    <View style={styles.stat}>
-      <View style={[styles.statIcon, { backgroundColor: `${color}1f`, borderColor: `${color}33`, borderWidth: 1 }]}>
-        <Ionicons name={icon} size={16} color={color} />
+    <View style={[styles.stat, { backgroundColor: palette.card, borderColor: palette.border }, shadow]}>
+      <View style={[styles.statIcon, { backgroundColor: tint }]}>
+        <Ionicons name={icon} size={18} color={iconColor} />
       </View>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
+      <Text style={[styles.statValue, { color: palette.text }]}>{value}</Text>
+      <Text style={[styles.statLabel, { color: palette.muted }]}>{label}</Text>
+      <Text style={[styles.statTrend, { color: trendUp ? palette.success : palette.muted }]}>{trend}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  page: {
+    paddingHorizontal: 18,
+    paddingBottom: 32,
+    paddingTop: 6,
+    gap: 16,
+  },
+  pageCompact: { paddingHorizontal: 12 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 280 },
   hero: {
-    borderRadius: BorderRadius.xxl,
-    padding: Spacing.lg,
-    marginBottom: Spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    gap: 10,
+    borderRadius: 24,
+    padding: 22,
+    minHeight: 220,
     overflow: 'hidden',
-    ...Shadows.lg,
-    position: 'relative',
-  },
-  decorCircleOne: {
-    position: 'absolute',
-    right: -24,
-    top: -18,
-    width: 132,
-    height: 132,
-    borderRadius: 66,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-  },
-  decorCircleTwo: {
-    position: 'absolute',
-    left: -22,
-    bottom: -22,
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  heroTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  heroEyebrow: { color: Colors.textSecondary, fontWeight: '700', fontSize: FontSize.sm },
-  heroTitle: { color: Colors.text, fontWeight: '800', fontSize: FontSize.xxl, letterSpacing: -0.5 },
-  heroBody: { color: Colors.textSecondary, fontSize: FontSize.sm, lineHeight: 20 },
-  livePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: BorderRadius.full,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    gap: 12,
+    flexWrap: 'wrap',
   },
-  liveText: { color: Colors.success, fontWeight: '800', fontSize: 10, letterSpacing: 0.8 },
-  heroActions: { flexDirection: 'row', gap: 10, marginTop: 4 },
-  primaryBtn: {
-    flex: 1,
-    borderRadius: BorderRadius.md,
-    overflow: 'hidden',
+  heroCopy: { minWidth: 220, flexGrow: 1 },
+  heroGreet: { color: '#fff', fontFamily: SHELL_FONT, fontWeight: '700', fontSize: 15, marginBottom: 8 },
+  heroTitle: {
+    color: '#fff',
+    fontFamily: SHELL_FONT,
+    fontSize: 34,
+    fontWeight: '800',
+    letterSpacing: -0.8,
+    lineHeight: 40,
   },
-  primaryBtnGradient: {
-    paddingHorizontal: 16,
+  heroSub: {
+    color: 'rgba(255,255,255,0.88)',
+    fontFamily: SHELL_FONT,
+    fontSize: 14,
+    lineHeight: 21,
+    marginTop: 8,
+    maxWidth: 420,
+  },
+  heroActions: { flexDirection: 'row', gap: 10, marginTop: 18 },
+  heroPrimary: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
     paddingVertical: 12,
+    paddingHorizontal: 22,
+    alignItems: 'center',
+  },
+  heroPrimaryText: { fontFamily: SHELL_FONT, fontWeight: '800', fontSize: 14 },
+  heroGhost: {
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 22,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.7)',
+    alignItems: 'center',
+  },
+  heroGhostText: { color: '#fff', fontFamily: SHELL_FONT, fontWeight: '800', fontSize: 14 },
+  heroArt: { width: 180, height: 160 },
+  strength: {
+    width: 168,
+    borderRadius: 18,
+    padding: 14,
+    alignItems: 'center',
+    gap: 6,
+  },
+  strengthLabel: { fontFamily: SHELL_FONT, fontSize: 12, fontWeight: '700' },
+  strengthMsg: { fontFamily: SHELL_FONT, fontSize: 12, fontWeight: '700', textAlign: 'center' },
+  strengthLink: { fontFamily: SHELL_FONT, fontSize: 12, fontWeight: '800', marginTop: 2 },
+  stats: { gap: 12 },
+  statsRow: { flexDirection: 'row' },
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+  stat: {
+    flexGrow: 1,
+    flexBasis: 150,
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 14,
+  },
+  statIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 10,
   },
-  primaryBtnText: { color: Colors.white, fontWeight: '800', fontSize: FontSize.sm },
-  ghostBtn: {
-    borderWidth: 1,
-    borderColor: Colors.border,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: BorderRadius.md,
-    minWidth: 92,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ghostBtnText: { color: Colors.text, fontWeight: '700', fontSize: FontSize.sm },
-  quickSummaryRow: { flexDirection: 'row', gap: 8, marginTop: 6 },
-  summaryChip: {
-    flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.12)',
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.16)',
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    alignItems: 'center',
-  },
-  summaryChipValue: { color: '#ffffff', fontWeight: '800', fontSize: FontSize.md },
-  summaryChipLabel: { color: 'rgba(255,255,255,0.78)', fontSize: 10, fontWeight: '700', textTransform: 'uppercase' },
+  statValue: { fontFamily: SHELL_FONT, fontSize: 26, fontWeight: '800' },
+  statLabel: { fontFamily: SHELL_FONT, fontSize: 12, fontWeight: '700', marginTop: 2 },
+  statTrend: { fontFamily: SHELL_FONT, fontSize: 11, fontWeight: '700', marginTop: 6 },
   errorBox: {
     backgroundColor: 'rgba(239,68,68,0.12)',
     borderColor: 'rgba(239,68,68,0.35)',
     borderWidth: 1,
-    borderRadius: BorderRadius.md,
-    padding: Spacing.md,
-    marginBottom: Spacing.md,
+    borderRadius: 12,
+    padding: 12,
   },
-  errorText: { color: Colors.danger, fontWeight: '700' },
-  errorHint: { color: Colors.textMuted, marginTop: 4, fontSize: FontSize.xs },
-  statsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: Spacing.md,
-  },
-  stat: {
-    flexGrow: 1,
-    flexBasis: '45%',
-    backgroundColor: Colors.card,
-    borderRadius: BorderRadius.xl,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.md,
-    gap: 4,
-    ...Shadows.card,
-    minHeight: 104,
-  },
-  statIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
-  },
-  statValue: { color: Colors.text, fontWeight: '800', fontSize: FontSize.xl },
-  statLabel: { color: Colors.textMuted, fontSize: FontSize.xs, fontWeight: '700' },
+  errorText: { color: '#ef4444', fontWeight: '700', fontFamily: SHELL_FONT },
+  mid: { gap: 14 },
+  midRow: { flexDirection: 'row', alignItems: 'stretch' },
+  midStack: { flexDirection: 'column' },
   card: {
-    backgroundColor: Colors.card,
-    borderRadius: BorderRadius.xl,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.md,
-    marginBottom: Spacing.md,
-    ...Shadows.card,
+    padding: 16,
+    minWidth: 0,
   },
-  cardHeader: {
+  cardHead: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
-  },
-  cardTitle: {
-    color: Colors.text,
-    fontWeight: '800',
-    fontSize: FontSize.lg,
+    justifyContent: 'space-between',
     marginBottom: 12,
-  },
-  chart: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    height: 140,
     gap: 8,
   },
-  chartCol: { flex: 1, alignItems: 'center', height: '100%', justifyContent: 'flex-end' },
-  chartBarTrack: {
-    flex: 1,
-    width: '70%',
-    justifyContent: 'flex-end',
-    backgroundColor: Colors.primaryTintSoft,
-    borderRadius: 8,
-    overflow: 'hidden',
-    marginBottom: 6,
+  cardTitle: { fontFamily: SHELL_FONT, fontSize: 17, fontWeight: '800' },
+  link: { fontFamily: SHELL_FONT, fontSize: 12, fontWeight: '800' },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
-  chartBar: {
-    width: '100%',
-    backgroundColor: Colors.primary,
-    borderRadius: 8,
+  chipText: { fontFamily: SHELL_FONT, fontSize: 11, fontWeight: '700' },
+  matchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 10,
+    borderRadius: 12,
+    marginBottom: 8,
   },
-  chartLabel: { color: Colors.textMuted, fontSize: 10, fontWeight: '700' },
-  linkRow: { flexDirection: 'row', alignItems: 'center', gap: 2, marginBottom: 12 },
-  link: { color: Colors.primaryLight, fontWeight: '700', fontSize: FontSize.sm },
-  empty: { color: Colors.textMuted, fontSize: FontSize.sm },
-  jobRow: {
+  logo: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  logoLg: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  logoText: { color: '#fff', fontWeight: '800', fontFamily: SHELL_FONT },
+  jobTitle: { fontFamily: SHELL_FONT, fontSize: 13, fontWeight: '800' },
+  jobMeta: { fontFamily: SHELL_FONT, fontSize: 11, marginTop: 2, fontWeight: '600' },
+  matchPill: {
+    backgroundColor: 'rgba(22,163,74,0.12)',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  matchPillText: { color: '#16A34A', fontFamily: SHELL_FONT, fontSize: 11, fontWeight: '800' },
+  recRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     paddingVertical: 12,
-    paddingHorizontal: 10,
-    marginTop: 8,
-    borderRadius: BorderRadius.lg,
-    backgroundColor: Colors.primaryTintSoft,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    borderBottomWidth: 1,
   },
-  jobAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: Colors.card,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  jobAvatarText: { color: Colors.primaryLight, fontWeight: '800' },
-  jobMeta: { flex: 1, minWidth: 0 },
-  jobTitle: { color: Colors.text, fontWeight: '700' },
-  jobCompany: { color: Colors.textMuted, fontSize: FontSize.xs, marginTop: 2 },
-  match: { color: Colors.primaryLight, fontWeight: '800', fontSize: FontSize.sm },
-  appRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    marginTop: 8,
-    borderRadius: BorderRadius.lg,
-    backgroundColor: Colors.backgroundLight,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  statusChip: {
-    backgroundColor: Colors.primaryTint,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.full,
-  },
-  statusText: { color: Colors.primaryLight, fontWeight: '700', fontSize: FontSize.xs, textTransform: 'capitalize' },
+  recTags: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap' },
+  typeChip: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  typeChipText: { fontFamily: SHELL_FONT, fontSize: 11, fontWeight: '800' },
+  salary: { fontFamily: SHELL_FONT, fontSize: 12, fontWeight: '800' },
+  ago: { fontFamily: SHELL_FONT, fontSize: 11, fontWeight: '700' },
+  empty: { fontFamily: SHELL_FONT, fontSize: 13, lineHeight: 20 },
+  emptyState: { alignItems: 'center', justifyContent: 'center', paddingVertical: 18, minHeight: 210 },
+  calendarArt: { width: 92, height: 92, marginBottom: 8 },
+  emptyTitle: { fontFamily: SHELL_FONT, fontSize: 16, fontWeight: '800', marginTop: 4 },
+  emptyBody: { fontFamily: SHELL_FONT, fontSize: 12, textAlign: 'center', marginTop: 6, maxWidth: 200, lineHeight: 18 },
 });

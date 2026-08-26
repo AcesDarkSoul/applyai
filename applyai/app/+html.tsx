@@ -10,6 +10,12 @@ export default function Root({ children }: { children: ReactNode }) {
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover" />
         <meta name="theme-color" content="#0b0c18" />
         <meta name="description" content="ApplyAI - Smart job applications on LinkedIn, Indeed & Naukri" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+          rel="stylesheet"
+        />
         <ScrollViewStyleReset />
         <style dangerouslySetInnerHTML={{ __html: globalStyles }} />
       </head>
@@ -27,7 +33,7 @@ const globalStyles = `
     padding: 0;
     background-color: #0b0c18;
     color: #eef0ff;
-    font-family: "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: "Plus Jakarta Sans", "PlusJakartaSans_400Regular", system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -38,7 +44,5 @@ const globalStyles = `
   ::-webkit-scrollbar-track { background: #15172a; }
   ::-webkit-scrollbar-thumb { background: rgba(91,92,226,0.35); border-radius: 4px; }
   ::-webkit-scrollbar-thumb:hover { background: rgba(91,92,226,0.5); }
-  @media (min-width: 1024px) {
-    body { display: flex; justify-content: center; }
-  }
+  #root { display: flex; flex-direction: column; }
 `;
