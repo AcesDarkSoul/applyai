@@ -43,7 +43,6 @@ export async function openRazorpayCheckout(input: {
   currency: string;
   planId: PlanId;
   name?: string;
-  email?: string;
   description: string;
   paymentLinkUrl?: string | null;
 }): Promise<RazorpaySuccess | { viaLink: true }> {
@@ -54,6 +53,10 @@ export async function openRazorpayCheckout(input: {
       throw new Error('Razorpay checkout failed to load');
     }
     return new Promise((resolve, reject) => {
+      // Do not pass email/contact — empty prefill makes Razorpay treat them as required.
+      const prefill: Record<string, string> = {};
+      if (input.name?.trim()) prefill.name = input.name.trim();
+
       const rzp = new Checkout({
         key: input.keyId,
         amount: input.amount,
@@ -61,10 +64,7 @@ export async function openRazorpayCheckout(input: {
         order_id: input.orderId,
         name: 'ApplyAI',
         description: input.description,
-        prefill: {
-          name: input.name || '',
-          email: input.email || '',
-        },
+        ...(Object.keys(prefill).length > 0 ? { prefill } : {}),
         theme: { color: '#5b5ce2' },
         handler: (response: RazorpaySuccess) => resolve(response),
         modal: {

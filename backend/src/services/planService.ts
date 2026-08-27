@@ -8,9 +8,9 @@ export function isRazorpayConfigured(): boolean {
   return Boolean(env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET);
 }
 
-/** When keys are missing, we still show plans but do not lock existing testers. */
+/** Lock paid features until the user has an active plan (Razorpay or demo). */
 export function isBillingEnforced(): boolean {
-  return isRazorpayConfigured();
+  return env.BILLING_REQUIRE_PLAN;
 }
 
 export function isSubscriptionActive(sub?: UserSubscription | null): boolean {

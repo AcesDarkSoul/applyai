@@ -84,6 +84,15 @@ const envSchema = z.object({
   DAILY_AUTOMATION_STARTUP_DELAY_MS: z.coerce.number().optional().default(12_000),
   DAILY_AUTO_APPLY_LIMIT: z.coerce.number().optional().default(8),
   DAILY_AUTO_APPLY_MIN_SCORE: z.coerce.number().optional().default(55),
+  /**
+   * When true, users need an active plan before paid features work.
+   * Independent of Razorpay: without keys, demo-activate still unlocks a plan.
+   */
+  BILLING_REQUIRE_PLAN: z
+    .string()
+    .optional()
+    .default('true')
+    .transform((v) => v !== 'false' && v !== '0'),
   /** Razorpay Dashboard → API Keys (Key Id is public; Key Secret stays on the server). */
   RAZORPAY_KEY_ID: z.string().optional().default(''),
   RAZORPAY_KEY_SECRET: z.string().optional().default(''),

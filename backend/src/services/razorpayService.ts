@@ -87,12 +87,12 @@ export async function createRazorpayPaymentLink(input: {
       currency: 'INR',
       accept_partial: false,
       description: input.description,
-      customer: { email: input.email || undefined },
+      // Do not set customer.email/contact — keeps checkout from requiring them.
       notify: { email: false, sms: false },
       reminder_enable: false,
       notes: {
         uid: input.uid,
-        email: input.email,
+        email: input.email || '',
         planId: input.planId,
         product: 'applyai',
       },

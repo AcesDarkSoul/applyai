@@ -7,6 +7,7 @@ import { Screen } from '@/components/layout/Screen';
 import { Shadows } from '@/constants/theme';
 import { PLAN_LIST, type PlanId } from '@/constants/plans';
 import { useColors, useThemeMode } from '@/hooks/useColors';
+import { useSubscriptionStore } from '@/stores/subscriptionStore';
 
 const PLAN_ART: Record<PlanId, { icon: keyof typeof Ionicons.glyphMap }> = {
   starter: { icon: 'rocket-outline' },
@@ -22,6 +23,8 @@ export default function PlansIndexScreen() {
   const { isDark } = useThemeMode();
   const { width } = useWindowDimensions();
   const isCompact = width < 700;
+  const active = useSubscriptionStore((s) => s.active);
+  const razorpayConfigured = useSubscriptionStore((s) => s.razorpayConfigured);
 
   const palette = {
     pageBackground: isDark ? '#0b0c18' : '#eef0ff',
@@ -487,7 +490,29 @@ export default function PlansIndexScreen() {
           <Text style={styles.title}>
             Choose a plan that fits your <Text style={styles.gradientText}>momentum</Text>
           </Text>
-          <Text style={styles.subtitle}>Start with the basics or upgrade to unlock smarter AI-powered job search.</Text>
+          <Text style={styles.subtitle}>
+            {!active
+              ? 'Pick a plan to unlock the dashboard, jobs, and auto-apply.'
+              : 'Start with the basics or upgrade to unlock smarter AI-powered job search.'}
+          </Text>
+          {!active ? (
+            <View
+              style={{
+                marginTop: 12,
+                padding: 12,
+                borderRadius: 14,
+                backgroundColor: isDark ? 'rgba(109,94,252,0.18)' : '#efeaff',
+                borderWidth: 1,
+                borderColor: isDark ? 'rgba(109,94,252,0.35)' : '#d9d0ff',
+              }}
+            >
+              <Text style={{ color: colors.text, fontWeight: '700', fontSize: 13, lineHeight: 18 }}>
+                {razorpayConfigured
+                  ? 'Secure checkout via Razorpay. Your account unlocks right after payment.'
+                  : 'Razorpay live keys are not on the server yet — tap a plan and use Activate (demo) to continue testing.'}
+              </Text>
+            </View>
+          ) : null}
 
           <View style={styles.badgeRow}>
             {FEATURE_BADGES.map((label) => (

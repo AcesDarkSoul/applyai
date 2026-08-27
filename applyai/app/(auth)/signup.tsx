@@ -52,7 +52,7 @@ export default function SignUpScreen() {
   const { signInWithGoogle, googleAuthReady } = useGoogleAuth(
     () => {
       setGoogleLoading(false);
-      router.replace('/(tabs)');
+      router.replace('/plans');
     },
     (msg) => {
       setError(msg);
@@ -83,7 +83,7 @@ export default function SignUpScreen() {
     setLoading(true);
     try {
       await signUp(email.trim(), password, name.trim());
-      router.replace('/(tabs)');
+      router.replace('/plans');
     } catch (e: unknown) {
       console.error('Sign up failed:', e);
       setError(formatAuthError(e));

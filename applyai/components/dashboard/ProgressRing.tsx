@@ -38,8 +38,7 @@ export function ProgressRing({
           strokeDasharray={`${c} ${c}`}
           strokeDashoffset={offset}
           strokeLinecap="round"
-          rotation="-90"
-          origin={`${size / 2}, ${size / 2}`}
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
         />
       </Svg>
       <Text style={[styles.value, { color: textColor }]}>{clamped}%</Text>

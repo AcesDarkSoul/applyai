@@ -30,6 +30,9 @@ export const apiRouter = Router();
 
 apiRouter.get('/health', healthController.health);
 
+// Public catalog (no auth) — app can show prices before / after login
+apiRouter.get('/billing/plans', billingController.listPlans);
+
 // n8n pushes normalized jobs here (X-Ingest-Key) — no user JWT required
 apiRouter.post('/jobs/ingest', jobController.ingestJobs);
 
@@ -38,7 +41,6 @@ apiRouter.post('/automation/daily/run', automationController.runDailyNow);
 
 apiRouter.use(authenticate);
 
-apiRouter.get('/billing/plans', billingController.listPlans);
 apiRouter.get('/billing/subscription', billingController.getSubscription);
 apiRouter.post('/billing/razorpay/order', billingController.createOrder);
 apiRouter.post('/billing/razorpay/verify', billingController.verifyPayment);

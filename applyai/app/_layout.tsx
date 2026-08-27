@@ -45,12 +45,17 @@ function ScreenTracker() {
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, initialized } = useAuthStore();
+  const active = useSubscriptionStore((s) => s.active);
+  const planHydrated = useSubscriptionStore((s) => s.hydrated);
+  const hydrateSubscription = useSubscriptionStore((s) => s.hydrate);
+  const resetSubscription = useSubscriptionStore((s) => s.reset);
   const segments = useSegments();
   const router = useRouter();
   const colors = useColors();
 
-  const root = segments[0];
-  const inAuthGroup = AUTH_ROUTES.has(String(root ?? ''));
+  const root = String(segments[0] ?? '');
+  const inAuthGroup = AUTH_ROUTES.has(root);
+  const inPlans = root === 'plans';
   const needsAuth = !inAuthGroup;
 
   useEffect(() => {
@@ -59,24 +64,47 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     }
   }, [initialized]);
 
-  // fontsLoaded is referenced so splash can wait on typefaces without blocking auth.
-
   useEffect(() => {
     if (!initialized) return;
 
-    if (!user && needsAuth) {
-      router.replace('/(auth)/login');
+    if (!user) {
+      resetSubscription();
+      if (needsAuth) {
+        router.replace('/(auth)/login');
+      }
       return;
     }
 
-    if (user && inAuthGroup) {
+    if (!planHydrated) {
+      void hydrateSubscription();
+      return;
+    }
+
+    // Logged-in users without a plan stay on the plans flow until they buy / activate.
+    if (!active && !inPlans) {
+      router.replace('/plans');
+      return;
+    }
+
+    if (active && inAuthGroup) {
       router.replace('/(tabs)');
     }
-  }, [user, initialized, needsAuth, inAuthGroup, router]);
+  }, [
+    user,
+    initialized,
+    needsAuth,
+    inAuthGroup,
+    inPlans,
+    active,
+    planHydrated,
+    hydrateSubscription,
+    resetSubscription,
+    router,
+  ]);
 
   // Only block before Firebase answers. Always keep the Stack mounted after that
   // (returning <Redirect /> without a navigator caused the blank screen).
-  if (!initialized) {
+  if (!initialized || (user && !planHydrated && !inAuthGroup)) {
     return (
       <View style={[styles.loading, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={colors.primary} />

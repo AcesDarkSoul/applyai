@@ -1,14 +1,17 @@
 import { Redirect } from 'expo-router';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { useAuthStore } from '@/stores/authStore';
+import { useSubscriptionStore } from '@/stores/subscriptionStore';
 import { useColors } from '@/hooks/useColors';
 
-/** Entry route: require Firebase login before app access. */
+/** Entry route: login first, then plan purchase, then the app. */
 export default function Index() {
   const { user, initialized } = useAuthStore();
+  const active = useSubscriptionStore((s) => s.active);
+  const planHydrated = useSubscriptionStore((s) => s.hydrated);
   const colors = useColors();
 
-  if (!initialized) {
+  if (!initialized || (user && !planHydrated)) {
     return (
       <View style={[styles.loading, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -16,11 +19,15 @@ export default function Index() {
     );
   }
 
-  if (user) {
-    return <Redirect href="/(tabs)" />;
+  if (!user) {
+    return <Redirect href="/(auth)/login" />;
   }
 
-  return <Redirect href="/(auth)/login" />;
+  if (!active) {
+    return <Redirect href="/plans" />;
+  }
+
+  return <Redirect href="/(tabs)" />;
 }
 
 const styles = StyleSheet.create({

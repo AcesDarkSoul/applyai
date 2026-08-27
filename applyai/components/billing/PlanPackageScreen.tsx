@@ -38,6 +38,7 @@ export function PlanPackageScreen({ planId }: { planId: PlanId }) {
   const active = useSubscriptionStore((s) => s.active);
   const razorpayConfigured = useSubscriptionStore((s) => s.razorpayConfigured);
   const catalog = useSubscriptionStore((s) => s.catalog);
+  const billingError = useSubscriptionStore((s) => s.error);
   const [busy, setBusy] = useState(false);
   const isCurrent = active && activePlanId === planId;
   const demoOk = catalog?.demoActivateEnabled ?? !razorpayConfigured;
@@ -168,11 +169,24 @@ export function PlanPackageScreen({ planId }: { planId: PlanId }) {
       if (!razorpayConfigured && demoOk) {
         await billingRepository.demoActivate(planId);
         await hydrate();
-        Alert.alert('Plan activated', `${plan.name} is active (demo — add Razorpay keys for live payments).`);
+        Alert.alert(
+          'Plan activated',
+          `${plan.name} is active. Add Razorpay Key Id + Secret on the server to take real payments.`,
+        );
         router.replace('/(tabs)');
         return;
       }
+
+      if (!razorpayConfigured) {
+        throw new Error(
+          'Razorpay is not configured on the API yet. Add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET, then redeploy.',
+        );
+      }
+
       const order = await billingRepository.createOrder(planId);
+      if (!order?.orderId || !order?.keyId) {
+        throw new Error('Could not create payment order. Check Razorpay keys on the server.');
+      }
       const result = await openRazorpayCheckout({
         keyId: order.keyId,
         orderId: order.orderId,
@@ -180,15 +194,23 @@ export function PlanPackageScreen({ planId }: { planId: PlanId }) {
         currency: order.currency,
         planId,
         name: user?.displayName || undefined,
-        email: user?.email || undefined,
         description: `ApplyAI ${plan.name}`,
         paymentLinkUrl: order.paymentLinkUrl,
       });
       if ('viaLink' in result) {
-        await hydrate();
+        // Native: payment link opened in browser; webhook / next hydrate unlocks the plan.
+        for (let i = 0; i < 6; i += 1) {
+          await new Promise((r) => setTimeout(r, 1500));
+          await hydrate();
+          if (useSubscriptionStore.getState().active) {
+            Alert.alert('You’re in', `${plan.name} is active.`);
+            router.replace('/(tabs)');
+            return;
+          }
+        }
         Alert.alert(
-          'Check your plan',
-          'If payment succeeded, your plan unlocks in a few seconds. Pull to refresh if needed.',
+          'Payment submitted',
+          'If Razorpay confirmed the charge, pull to refresh or reopen the app — your plan unlocks after webhook verify.',
         );
         return;
       }
@@ -247,6 +269,12 @@ export function PlanPackageScreen({ planId }: { planId: PlanId }) {
 
         {isCurrent ? <Text style={styles.current}>This is your current plan</Text> : null}
 
+        {billingError ? (
+          <Text style={[styles.hint, { color: colors.danger, marginBottom: Spacing.sm }]}>
+            Billing API: {billingError}
+          </Text>
+        ) : null}
+
         <Pressable style={styles.payBtn} onPress={() => void onPay()} disabled={busy || isCurrent}>
           <LinearGradient colors={plan.accent} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.payInner}>
             {busy ? (
@@ -267,9 +295,11 @@ export function PlanPackageScreen({ planId }: { planId: PlanId }) {
           <Text style={styles.ghostText}>Compare all plans</Text>
         </Pressable>
         <Text style={styles.hint}>
-          {Platform.OS === 'web'
-            ? 'Razorpay checkout opens on this page. GST invoice comes from Razorpay.'
-            : 'On phone, Razorpay opens in a secure browser window.'}
+          {!razorpayConfigured
+            ? 'Live Razorpay is not configured yet — this activates a demo plan so you can use the app.'
+            : Platform.OS === 'web'
+              ? 'Razorpay checkout opens on this page. GST invoice comes from Razorpay.'
+              : 'On phone, Razorpay opens in a secure browser window.'}
         </Text>
       </FadeInView>
     </Screen>
