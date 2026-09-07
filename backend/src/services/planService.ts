@@ -1,8 +1,9 @@
 import { env } from '../config/env';
 import type { PlanDefinition, PlanFeature, PlanId } from '../domain/plans';
-import { PLAN_PERIOD_DAYS, PLANS, getPlan } from '../domain/plans';
-import type { UserProfile, UserSubscription } from '../domain/user';
+import { PLAN_PERIOD_DAYS, PLANS, buildPlanFlags, getPlan, planIdFromFlags } from '../domain/plans';
+import type { UserPlanFlags, UserProfile, UserSubscription } from '../domain/user';
 import { AppError } from '../middleware/errorHandler';
+import { getAllPlanAmountsInr } from './appSettingsService';
 
 export function isRazorpayConfigured(): boolean {
   return Boolean(env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET);
@@ -13,15 +14,22 @@ export function isBillingEnforced(): boolean {
   return env.BILLING_REQUIRE_PLAN;
 }
 
-export function isSubscriptionActive(sub?: UserSubscription | null): boolean {
+export function isSubscriptionActive(
+  sub?: UserSubscription | null,
+  plans?: UserPlanFlags | null,
+): boolean {
+  if (planIdFromFlags(plans)) return true;
   if (!sub || (sub.status !== 'active' && sub.status !== 'past_due')) return false;
   if (!sub.currentPeriodEnd) return true;
   return new Date(sub.currentPeriodEnd).getTime() > Date.now();
 }
 
 export function getActivePlan(profile: UserProfile): PlanDefinition | null {
+  const fromFlags = planIdFromFlags(profile.plans);
+  if (fromFlags) return getPlan(fromFlags);
+
   const sub = profile.subscription;
-  if (!isSubscriptionActive(sub) || !sub?.planId) return null;
+  if (!isSubscriptionActive(sub, null) || !sub?.planId) return null;
   return getPlan(sub.planId);
 }
 
@@ -110,7 +118,12 @@ export function buildActivatedSubscription(
   };
 }
 
-export function publicPlansPayload() {
+export function activationPlanFlags(planId: PlanId): UserPlanFlags {
+  return buildPlanFlags(planId);
+}
+
+export async function publicPlansPayload() {
+  const amounts = await getAllPlanAmountsInr();
   return {
     currency: 'INR',
     periodDays: PLAN_PERIOD_DAYS,
@@ -118,18 +131,21 @@ export function publicPlansPayload() {
     razorpayConfigured: isRazorpayConfigured(),
     billingEnforced: isBillingEnforced(),
     demoActivateEnabled: !isRazorpayConfigured(),
-    plans: Object.values(PLANS).map((p) => ({
-      id: p.id,
-      name: p.name,
-      tagline: p.tagline,
-      priceInr: p.priceInr,
-      amountPaise: p.priceInr * 100,
-      periodLabel: p.periodLabel,
-      popular: Boolean(p.popular),
-      dailyAutoApplyQuota: p.dailyAutoApplyQuota,
-      features: p.features,
-      highlights: p.highlights,
-      includes: p.includes,
-    })),
+    plans: Object.values(PLANS).map((p) => {
+      const priceInr = amounts[p.id] ?? p.priceInr;
+      return {
+        id: p.id,
+        name: p.name,
+        tagline: p.tagline,
+        priceInr,
+        amountPaise: priceInr * 100,
+        periodLabel: p.periodLabel,
+        popular: Boolean(p.popular),
+        dailyAutoApplyQuota: p.dailyAutoApplyQuota,
+        features: p.features,
+        highlights: p.highlights,
+        includes: p.includes,
+      };
+    }),
   };
 }

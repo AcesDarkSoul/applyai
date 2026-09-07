@@ -89,7 +89,7 @@ export default function DashboardScreen() {
       setStats(s);
       setJobsFound(today.length);
       setJobs(today.slice(0, 6));
-      setApps(list.slice(0, 14));
+      setApps(list);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load dashboard');
       setStats({ total: 0, applied: 0, interviews: 0, offers: 0, coverLetters: 0 });
@@ -119,10 +119,17 @@ export default function DashboardScreen() {
       const js = d.getDay();
       counts[js === 0 ? 6 : js - 1] += 1;
     }
-    const hasData = counts.some((c) => c > 0);
-    const values = hasData ? counts : [4, 12, 7, 9, 6, 3, 5];
-    return DAYS.map((day, i) => ({ day, value: values[i] }));
+    return DAYS.map((day, i) => ({ day, value: counts[i] }));
   }, [apps]);
+
+  const upcomingInterviews = useMemo(
+    () =>
+      apps.filter((a) => {
+        const s = (a.status || '').toLowerCase();
+        return s === 'interview' || s === 'offer';
+      }),
+    [apps]
+  );
 
   const matches = jobs.slice(0, 4);
   const recs = jobs.slice(0, 3);
@@ -333,14 +340,46 @@ export default function DashboardScreen() {
           <View style={[styles.card, { backgroundColor: p.card, borderColor: p.border, flex: 1 }, cardShadow]}>
             <View style={styles.cardHead}>
               <Text style={[styles.cardTitle, { color: p.text }]}>Upcoming Interviews</Text>
+              {upcomingInterviews.length > 0 ? (
+                <Pressable onPress={() => router.push('/(tabs)/applications')}>
+                  <Text style={[styles.link, { color: p.primary }]}>View all</Text>
+                </Pressable>
+              ) : null}
             </View>
-            <View style={styles.emptyState}>
-              <Image source={CALENDAR_ART} style={styles.calendarArt} resizeMode="contain" />
-              <Text style={[styles.emptyTitle, { color: p.text }]}>No upcoming interviews</Text>
-              <Text style={[styles.emptyBody, { color: p.muted }]}>
-                Your scheduled interviews will appear here.
-              </Text>
-            </View>
+            {upcomingInterviews.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Image source={CALENDAR_ART} style={styles.calendarArt} resizeMode="contain" />
+                <Text style={[styles.emptyTitle, { color: p.text }]}>No upcoming interviews</Text>
+                <Text style={[styles.emptyBody, { color: p.muted }]}>
+                  When an application moves to Interview or Offer, it shows up here.
+                </Text>
+              </View>
+            ) : (
+              upcomingInterviews.slice(0, 4).map((app) => (
+                <Pressable
+                  key={app.id}
+                  style={[styles.matchRow, { backgroundColor: p.cardAlt }]}
+                  onPress={() => router.push('/(tabs)/applications')}
+                >
+                  <View style={[styles.logo, { backgroundColor: p.primary }]}>
+                    <Text style={styles.logoText}>{app.company.charAt(0).toUpperCase()}</Text>
+                  </View>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={[styles.jobTitle, { color: p.text }]} numberOfLines={1}>
+                      {app.jobTitle}
+                    </Text>
+                    <Text style={[styles.jobMeta, { color: p.muted }]} numberOfLines={1}>
+                      {app.company} · {timeAgo(app.updatedAt || app.createdAt)}
+                    </Text>
+                  </View>
+                  <View style={styles.matchPill}>
+                    <Text style={styles.matchPillText}>
+                      {(app.status || 'interview').replace(/\b\w/g, (c) => c.toUpperCase())}
+                    </Text>
+                  </View>
+                </Pressable>
+              ))
+            )}
           </View>
         </View>
       </FadeInView>

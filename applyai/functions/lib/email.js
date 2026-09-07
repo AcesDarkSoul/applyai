@@ -10,6 +10,7 @@ const firestore_1 = require("firebase-admin/firestore");
 const mail_1 = __importDefault(require("@sendgrid/mail"));
 const openai_1 = __importDefault(require("openai"));
 const secrets_1 = require("./secrets");
+const userDoc_1 = require("./userDoc");
 const EMAIL_PROMPT = `You are a professional career networking assistant. Write a brief, personalized outreach email to a recruiter.
 
 Rules:
@@ -51,9 +52,9 @@ exports.sendOutreachEmail = (0, https_1.onCall)({ maxInstances: 5, timeoutSecond
     if (emailCount.data().count >= 10) {
         throw new https_1.HttpsError("resource-exhausted", "Daily email limit reached (10/day). Try again tomorrow.");
     }
-    // Get user profile
-    const userDoc = await index_1.db.collection("users").doc(request.auth.uid).get();
-    const profile = userDoc.data();
+    // Get user profile (email-keyed)
+    const userProfile = await (0, userDoc_1.getUserProfileDoc)(request.auth);
+    const profile = userProfile?.data;
     if (!profile) {
         throw new https_1.HttpsError("not-found", "User profile not found");
     }

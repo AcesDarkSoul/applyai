@@ -14,7 +14,7 @@ export type SubscriptionStatus = 'none' | 'active' | 'past_due' | 'cancelled' | 
 export interface UserSubscription {
   planId: PlanId;
   status: SubscriptionStatus;
-  provider: 'razorpay' | 'demo';
+  provider: 'razorpay' | 'demo' | 'manual';
   razorpayOrderId?: string;
   razorpayPaymentId?: string;
   razorpaySignature?: string;
@@ -23,6 +23,16 @@ export interface UserSubscription {
   currentPeriodEnd?: string;
   activatedAt?: string;
 }
+
+/**
+ * Admin / Console toggles on users/{uid}.
+ * Set any plan to true in Firebase to grant access (highest true wins: elite > pro > starter).
+ */
+export type UserPlanFlags = {
+  starter?: boolean;
+  pro?: boolean;
+  elite?: boolean;
+};
 
 export interface AuthUser {
   uid: string;
@@ -104,6 +114,8 @@ export interface UserProfile {
   smartApplyConsentAt?: string;
   /** Paid access. Enforced when Razorpay keys are configured. */
   subscription?: UserSubscription;
+  /** True/false plan activation flags editable from Firebase Console. */
+  plans?: UserPlanFlags;
   createdAt: string;
   updatedAt: string;
 }

@@ -24,11 +24,20 @@ function completeness(p: Omit<UserProfile, 'profileCompleteness'>): number {
 
 export class ProfileService {
   async getOrCreate(auth: AuthUser): Promise<UserProfile> {
-    const existing = await userRepository.getById(auth.uid);
+    const byEmail =
+      typeof (userRepository as { getByEmail?: (email: string) => Promise<UserProfile | null> })
+        .getByEmail === 'function' && auth.email
+        ? await (
+            userRepository as { getByEmail: (email: string) => Promise<UserProfile | null> }
+          ).getByEmail(auth.email)
+        : null;
+    const existing = byEmail || (await userRepository.getById(auth.uid));
     if (existing) {
       // Normalize older/corrupt docs missing array fields
       const normalized: UserProfile = {
         ...existing,
+        uid: existing.uid || auth.uid,
+        email: (existing.email || auth.email || '').toLowerCase(),
         skills: existing.skills ?? [],
         education: existing.education ?? [],
         preferredLocations: existing.preferredLocations ?? [],
@@ -36,10 +45,14 @@ export class ProfileService {
       if (
         !existing.skills ||
         !existing.education ||
-        !existing.preferredLocations
+        !existing.preferredLocations ||
+        existing.uid !== auth.uid ||
+        (existing.email || '').toLowerCase() !== (auth.email || '').toLowerCase()
       ) {
         return userRepository.upsert({
           ...normalized,
+          uid: auth.uid,
+          email: (auth.email || normalized.email).toLowerCase(),
           profileCompleteness: completeness(normalized),
           updatedAt: new Date().toISOString(),
         });
@@ -48,15 +61,17 @@ export class ProfileService {
     }
 
     const now = new Date().toISOString();
+    const email = (auth.email || '').toLowerCase();
     const base = {
       uid: auth.uid,
-      email: auth.email,
-      displayName: auth.email.split('@')[0] || 'Candidate',
+      email,
+      displayName: email.split('@')[0] || 'Candidate',
       role: auth.role,
       skills: [] as string[],
       education: [],
       preferredLocations: [],
       remotePreference: 'any' as const,
+      plans: { starter: false, pro: false, elite: false },
       createdAt: now,
       updatedAt: now,
     };

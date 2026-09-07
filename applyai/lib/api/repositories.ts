@@ -71,11 +71,19 @@ export type NotificationPrefs = {
   pushEnabled?: boolean;
 };
 
+export type LearningStep = {
+  skill: string;
+  why: string;
+  estimatedHours: number;
+  resources: Array<{ title: string; url: string }>;
+};
+
 export type SkillGapResult = {
   missing: string[];
   matched: string[];
   score?: number;
   summary?: string;
+  learningRoadmap?: LearningStep[];
 };
 
 export type SmartApplyPlatformPrefs = {
@@ -90,7 +98,7 @@ export type PlanId = 'starter' | 'pro' | 'elite';
 export type ApiSubscription = {
   planId?: PlanId;
   status?: 'none' | 'active' | 'past_due' | 'cancelled' | 'expired';
-  provider?: 'razorpay' | 'demo';
+  provider?: 'razorpay' | 'demo' | 'manual';
   dailyAutoApplyQuota?: number;
   currentPeriodEnd?: string;
   activatedAt?: string;
@@ -350,10 +358,28 @@ export const aiRepository = {
     return data.data;
   },
   async skillGap(jobId: string): Promise<SkillGapResult> {
-    const { data } = await api.get<ApiResponse<SkillGapResult>>(`/ai/skill-gap/${jobId}`, {
+    const { data } = await api.get<
+      ApiResponse<{
+        missing?: string[];
+        matched?: string[];
+        missingSkills?: string[];
+        matchedSkills?: string[];
+        matchScore?: number;
+        score?: number;
+        summary?: string;
+        learningRoadmap?: LearningStep[];
+      }>
+    >(`/ai/skill-gap/${jobId}`, {
       timeout: 90_000,
     });
-    return data.data;
+    const raw = data.data;
+    return {
+      missing: raw.missing || raw.missingSkills || [],
+      matched: raw.matched || raw.matchedSkills || [],
+      score: raw.score ?? raw.matchScore,
+      summary: raw.summary,
+      learningRoadmap: raw.learningRoadmap || [],
+    };
   },
 };
 
@@ -433,6 +459,7 @@ export const billingRepository = {
     const { data } = await api.get<
       ApiResponse<{
         subscription: ApiSubscription;
+        plans?: { starter?: boolean; pro?: boolean; elite?: boolean };
         active: boolean;
         plan: { id: PlanId; name: string; dailyAutoApplyQuota: number } | null;
         dailyAutoApplyQuota: number;

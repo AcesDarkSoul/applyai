@@ -4,20 +4,24 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Screen } from '@/components/layout/Screen';
 import { AppTopBar } from '@/components/layout/AppTopBar';
 import {
+  complianceRepository,
   notificationRepository,
   type AppNotification,
   type NotificationPrefs,
 } from '@/lib/api/repositories';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 
+const DEFAULT_PREFS: NotificationPrefs = {
+  emailEnabled: true,
+  highMatchJobs: true,
+  interviewUpdates: true,
+  weeklySummary: true,
+  inAppEnabled: true,
+};
+
 export default function NotificationsScreen() {
   const [items, setItems] = useState<AppNotification[]>([]);
-  const [prefs, setPrefs] = useState<NotificationPrefs>({
-    emailEnabled: true,
-    highMatchJobs: true,
-    interviewUpdates: true,
-    weeklySummary: true,
-  });
+  const [prefs, setPrefs] = useState<NotificationPrefs>(DEFAULT_PREFS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,8 +29,14 @@ export default function NotificationsScreen() {
     setLoading(true);
     setError(null);
     try {
-      const res = await notificationRepository.list();
+      const [res, settings] = await Promise.all([
+        notificationRepository.list(),
+        complianceRepository.settings().catch(() => null),
+      ]);
       setItems(res.items);
+      if (settings?.notificationPrefs) {
+        setPrefs({ ...DEFAULT_PREFS, ...settings.notificationPrefs });
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load notifications');
       setItems([]);
@@ -40,26 +50,29 @@ export default function NotificationsScreen() {
   }, [load]);
 
   const togglePref = async (key: keyof NotificationPrefs) => {
+    const prev = prefs;
     const next = { ...prefs, [key]: !prefs[key] };
     setPrefs(next);
     try {
-      await notificationRepository.updatePrefs(next);
+      const saved = await notificationRepository.updatePrefs(next);
+      setPrefs({ ...DEFAULT_PREFS, ...saved });
     } catch {
-      // keep optimistic UI
+      setPrefs(prev);
     }
   };
 
   return (
     <View style={styles.root}>
-<AppTopBar title="Notifications" subtitle="Push + email alerts" />
+      <AppTopBar title="Notifications" subtitle="In-app alerts & email prefs" />
       <Screen safe edges={['left', 'right', 'bottom']}>
         <View style={styles.hero}>
           <Ionicons name="notifications" size={22} color={Colors.primaryLight} />
-          <Text style={styles.heroMeta}>Module 10 · Push + email alerts</Text>
+          <Text style={styles.heroMeta}>Module 10 · Alerts</Text>
           <Text style={styles.title}>Notifications</Text>
           <Text style={styles.body}>
-            High-match jobs, interview updates, and weekly summaries — in-app now, email when
-            SendGrid/SMTP is configured.
+            High-match jobs, interview updates, and weekly summaries show in this inbox. Email digests
+            send only when the server has SendGrid/SMTP configured. Device push is not enabled in this
+            build yet.
           </Text>
         </View>
 

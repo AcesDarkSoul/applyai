@@ -3,13 +3,56 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Users can only read/write their own profile
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    function signedIn() {
+      return request.auth != null;
+    }
 
-      // Shortlist / saved jobs (save for later without applying)
+    function authEmail() {
+      return request.auth.token.email != null
+        ? request.auth.token.email.lower()
+        : '';
+    }
+
+    // users/{email} preferred; legacy users/{uid} still readable by owner
+    function isUserDocOwner(userKey) {
+      return signedIn() && (
+        request.auth.uid == userKey
+        || (authEmail() != '' && authEmail() == userKey.lower())
+        || (resource != null && resource.data.uid == request.auth.uid)
+        || (request.resource != null && request.resource.data.uid == request.auth.uid)
+      );
+    }
+
+    function validNewPlans() {
+      return !('plans' in request.resource.data)
+        || (
+          request.resource.data.plans.keys().hasOnly(['starter', 'pro', 'elite'])
+          && request.resource.data.plans.starter == false
+          && request.resource.data.plans.pro == false
+          && request.resource.data.plans.elite == false
+        );
+    }
+
+    match /users/{userKey} {
+      allow read: if isUserDocOwner(userKey);
+
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && (
+          (authEmail() != '' && authEmail() == userKey.lower())
+          || request.auth.uid == userKey
+        )
+        && !('subscription' in request.resource.data)
+        && validNewPlans();
+
+      allow update: if isUserDocOwner(userKey)
+        && !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['plans', 'subscription']);
+
+      allow delete: if false;
+
       match /savedJobs/{jobId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read, write: if isUserDocOwner(userKey);
       }
     }
 
@@ -23,23 +66,52 @@ service cloud.firestore {
     // Cover letters: users can only access their own
     match /coverLetters/{docId} {
       allow read: if request.auth != null && resource.data.userId == request.auth.uid;
-      // Only Cloud Functions can create (no client write)
       allow write: if false;
     }
 
     // Outreach emails: users can read their own
     match /outreachEmails/{docId} {
       allow read: if request.auth != null && resource.data.userId == request.auth.uid;
-      // Only Cloud Functions can create
       allow write: if false;
     }
 
-    // Job cache: only Cloud Functions can read/write
+    // Job cache: only Cloud Functions / Admin
     match /jobCache/{docId} {
       allow read, write: if false;
     }
 
-    // Deny all other collections by default
+    // Daily auth counters: stats/{YYYY-MM-DD}
+    match /stats/{date} {
+      allow create, update: if request.auth != null
+        && date.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')
+        && request.resource.data.keys().hasOnly(['numberOfUsers', 'userLogin', 'updatedAt'])
+        && (!('numberOfUsers' in request.resource.data)
+            || request.resource.data.numberOfUsers is int)
+        && (!('userLogin' in request.resource.data)
+            || request.resource.data.userLogin is int);
+      allow read, delete: if false;
+    }
+
+    // Plan prices: appSettings/amount/plan/{starter|pro|elite}
+    match /appSettings/{docId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+
+      match /plan/{planId} {
+        allow read: if request.auth != null;
+        allow write: if false;
+      }
+    }
+
+    // Successful payments: payment/{YYYY-MM-DD}/transactions/{txnId}
+    match /payment/{date} {
+      allow read, write: if false;
+
+      match /transactions/{txnId} {
+        allow read, write: if false;
+      }
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

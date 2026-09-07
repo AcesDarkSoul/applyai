@@ -4,6 +4,7 @@ import type { UserProfile } from '../domain/user';
 
 export interface IUserRepository {
   getById(uid: string): Promise<UserProfile | null>;
+  getByEmail?(email: string): Promise<UserProfile | null>;
   upsert(profile: UserProfile): Promise<UserProfile>;
   listAll?(): Promise<UserProfile[]>;
 }

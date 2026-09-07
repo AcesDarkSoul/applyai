@@ -25,6 +25,12 @@ export default function PlansIndexScreen() {
   const isCompact = width < 700;
   const active = useSubscriptionStore((s) => s.active);
   const razorpayConfigured = useSubscriptionStore((s) => s.razorpayConfigured);
+  const catalog = useSubscriptionStore((s) => s.catalog);
+
+  const priceFor = (planId: PlanId) =>
+    catalog?.plans?.find((p) => p.id === planId)?.priceInr ??
+    PLAN_LIST.find((p) => p.id === planId)?.priceInr ??
+    0;
 
   const palette = {
     pageBackground: isDark ? '#0b0c18' : '#eef0ff',
@@ -563,7 +569,7 @@ export default function PlansIndexScreen() {
 
                     <View style={styles.priceRow}>
                       <Text style={styles.rupee}>₹</Text>
-                      <Text style={styles.price}>{plan.priceInr.toLocaleString('en-IN')}</Text>
+                      <Text style={styles.price}>{priceFor(plan.id).toLocaleString('en-IN')}</Text>
                       <Text style={styles.perMonth}>/ month</Text>
                     </View>
 

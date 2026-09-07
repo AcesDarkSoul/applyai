@@ -51,7 +51,7 @@ function profileReady(p: UserProfile): boolean {
 function dailyApplyEnabled(p: UserProfile): boolean {
   // Default ON when resume/profile is ready; user can opt out in AI Tools
   if (p.outreach?.dailyAutoApplyEnabled === false) return false;
-  if (isBillingEnforced() && !isSubscriptionActive(p.subscription)) return false;
+  if (isBillingEnforced() && !isSubscriptionActive(p.subscription, p.plans)) return false;
   return profileReady(p);
 }
 

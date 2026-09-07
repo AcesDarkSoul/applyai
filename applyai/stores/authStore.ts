@@ -28,7 +28,7 @@ async function hydrateSignedInUser(user: User) {
   }
 
   try {
-    const profile = await getUserProfile(user.uid);
+    const profile = await getUserProfile(user.uid, { email: user.email, uid: user.uid });
     useAuthStore.setState({ profile });
     void setCrashlyticsUser({
       uid: user.uid,
@@ -60,7 +60,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return;
     }
     try {
-      const profile = await getUserProfile(user.uid);
+      const profile = await getUserProfile(user.uid, { email: user.email, uid: user.uid });
       set({ profile });
     } catch (e) {
       console.warn('refreshProfile failed:', e);

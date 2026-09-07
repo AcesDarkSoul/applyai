@@ -17,9 +17,11 @@ import { FadeInView } from '@/components/AnimatedView';
 import { Button } from '@/components/ui';
 import { useAuthStore } from '@/stores/authStore';
 import { useDrawerStore } from '@/stores/drawerStore';
+import { useSubscriptionStore } from '@/stores/subscriptionStore';
 import { profileRepository, type ApiUserProfile } from '@/lib/api/repositories';
 import { Spacing, FontSize, BorderRadius, Shadows } from '@/constants/theme';
 import { useColors } from '@/hooks/useColors';
+import { PLANS } from '@/constants/plans';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -28,6 +30,12 @@ export default function ProfileScreen() {
   const isWide = width >= 768;
   const openAccountMenu = useDrawerStore((s) => s.setProfileOpen);
   const { profile, refreshProfile, user } = useAuthStore();
+  const catalog = useSubscriptionStore((s) => s.catalog);
+  const priceHint = useMemo(() => {
+    const amount = (id: 'starter' | 'pro' | 'elite') =>
+      catalog?.plans?.find((p) => p.id === id)?.priceInr ?? PLANS[id].priceInr;
+    return `Starter ₹${amount('starter')} · Pro ₹${amount('pro')} · Elite ₹${amount('elite')}`;
+  }, [catalog]);
   const [apiProfile, setApiProfile] = useState<ApiUserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -389,7 +397,7 @@ export default function ProfileScreen() {
           </View>
           <View style={styles.shortcutText}>
             <Text style={styles.shortcutTitle}>Plans & billing</Text>
-            <Text style={styles.shortcutSub}>Starter ₹599 · Pro ₹1499 · Elite ₹2999</Text>
+            <Text style={styles.shortcutSub}>{priceHint}</Text>
           </View>
           <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
         </Pressable>

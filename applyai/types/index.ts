@@ -96,7 +96,7 @@ export interface DashboardStats {
   profileCompleteness: number;
 }
 
-/** Job saved to shortlist (Firestore users/{uid}/savedJobs). */
+/** Job saved to shortlist (Firestore users/{email}/savedJobs). */
 export interface SavedJobRecord {
   id: string;
   jobId: string;

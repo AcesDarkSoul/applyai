@@ -2,6 +2,7 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import OpenAI from "openai";
 import { db } from "./index";
 import { openaiApiKey } from "./secrets";
+import { getUserProfileDoc } from "./userDoc";
 
 type Platform = "linkedin" | "reddit" | "twitter";
 type PostType = "opentowork" | "career_update" | "job_share" | "reddit_forhire";
@@ -42,8 +43,8 @@ export const generateSocialPost = onCall(
       customPrompt?: string;
     };
 
-    const userDoc = await db.collection("users").doc(request.auth.uid).get();
-    const profile = userDoc.data();
+    const userProfile = await getUserProfileDoc(request.auth);
+    const profile = userProfile?.data;
     if (!profile) {
       throw new HttpsError("not-found", "User profile not found");
     }

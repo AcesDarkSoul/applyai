@@ -1,29 +1,29 @@
-import { useEffect } from 'react';
+import {
+    PlusJakartaSans_400Regular,
+    PlusJakartaSans_500Medium,
+    PlusJakartaSans_600SemiBold,
+    PlusJakartaSans_700Bold,
+    PlusJakartaSans_800ExtraBold,
+    useFonts,
+} from '@expo-google-fonts/plus-jakarta-sans';
 import { Stack, usePathname, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import {
-  useFonts,
-  PlusJakartaSans_400Regular,
-  PlusJakartaSans_500Medium,
-  PlusJakartaSans_600SemiBold,
-  PlusJakartaSans_700Bold,
-  PlusJakartaSans_800ExtraBold,
-} from '@expo-google-fonts/plus-jakarta-sans';
+import { useEffect } from 'react';
+import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
 import 'react-native-reanimated';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { useAuthStore } from '@/stores/authStore';
-import { useResumeStore } from '@/stores/resumeStore';
-import { useThemeStore } from '@/stores/themeStore';
-import { useSubscriptionStore } from '@/stores/subscriptionStore';
-import { useColors, useThemeMode } from '@/hooks/useColors';
-import { AppTopBar } from '@/components/layout/AppTopBar';
 import { AppDrawer } from '@/components/layout/AppDrawer';
+import { AppTopBar } from '@/components/layout/AppTopBar';
 import { ProfileDrawer } from '@/components/layout/ProfileDrawer';
+import { useColors, useThemeMode } from '@/hooks/useColors';
 import { trackScreen } from '@/lib/firebase/analytics';
 import { initTelemetry } from '@/lib/firebase/telemetry';
+import { useAuthStore } from '@/stores/authStore';
+import { useResumeStore } from '@/stores/resumeStore';
+import { useSubscriptionStore } from '@/stores/subscriptionStore';
+import { useThemeStore } from '@/stores/themeStore';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -127,6 +127,7 @@ export default function RootLayout() {
   const refreshResume = useResumeStore((s) => s.refresh);
   const hydrateTheme = useThemeStore((s) => s.hydrate);
   const hydrateSubscription = useSubscriptionStore((s) => s.hydrate);
+  const watchUserPlans = useSubscriptionStore((s) => s.watchUserPlans);
   const user = useAuthStore((s) => s.user);
   const colors = useColors();
   const { isDark } = useThemeMode();
@@ -152,9 +153,13 @@ export default function RootLayout() {
   }, [refreshResume]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      watchUserPlans(null);
+      return;
+    }
+    watchUserPlans((user.email || user.uid).toLowerCase());
     void hydrateSubscription();
-  }, [user, hydrateSubscription]);
+  }, [user, hydrateSubscription, watchUserPlans]);
 
   useEffect(() => {
     const t = setTimeout(() => {

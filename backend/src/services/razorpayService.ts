@@ -1,7 +1,8 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 import { env } from '../config/env';
-import { planAmountPaise, type PlanId } from '../domain/plans';
+import type { PlanId } from '../domain/plans';
 import { AppError } from '../middleware/errorHandler';
+import { planAmountPaiseFromSettings } from './appSettingsService';
 
 const RAZORPAY_ORDERS = 'https://api.razorpay.com/v1/orders';
 
@@ -31,7 +32,7 @@ export async function createRazorpayOrder(input: {
     );
   }
 
-  const amount = planAmountPaise(input.planId);
+  const amount = await planAmountPaiseFromSettings(input.planId);
   const receipt = `aa_${input.planId}_${Date.now().toString(36)}`.slice(0, 40);
   const res = await fetch(RAZORPAY_ORDERS, {
     method: 'POST',

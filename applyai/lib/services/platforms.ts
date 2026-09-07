@@ -5,6 +5,16 @@ import { hasLocalResume, shareLocalResume } from '@/lib/local/resumeStorage';
 
 export type JobPlatform = PlatformKey;
 
+/** Minimal job shape for LinkedIn share (API jobs or full Job). */
+export type ShareableJob = {
+  title: string;
+  company: string;
+  location: string;
+  salary?: string;
+  url: string;
+  remote?: boolean;
+};
+
 export function detectPlatform(url: string, source?: string): JobPlatform {
   const lower = (url + ' ' + (source || '')).toLowerCase();
   if (lower.includes('linkedin.com')) return 'linkedin';
@@ -74,7 +84,7 @@ export async function openSmartApply(pkg: ApplyPackage): Promise<boolean> {
   });
 }
 
-export function buildLinkedInShareUrl(job: Job, _profile?: Partial<UserProfile>): string {
+export function buildLinkedInShareUrl(job: ShareableJob, _profile?: Partial<UserProfile>): string {
   const text = encodeURIComponent(
     `🚀 Excited to explore the ${job.title} role at ${job.company}!\n\n` +
       `📍 ${job.location}${job.remote ? ' (Remote)' : ''}\n` +
@@ -89,7 +99,7 @@ export function buildLinkedInShareUrl(job: Job, _profile?: Partial<UserProfile>)
   return `https://www.linkedin.com/feed/?shareActive=true&text=${text}%20${url}`;
 }
 
-export function buildLinkedInPostText(job: Job, profile?: Partial<UserProfile>): string {
+export function buildLinkedInPostText(job: ShareableJob, profile?: Partial<UserProfile>): string {
   const skills = profile?.skills?.slice(0, 3).join(', ') || '';
   return (
     `🎯 I'm actively exploring new opportunities!\n\n` +
@@ -101,7 +111,7 @@ export function buildLinkedInPostText(job: Job, profile?: Partial<UserProfile>):
   );
 }
 
-export async function shareOnLinkedIn(job: Job, profile?: Partial<UserProfile>): Promise<void> {
+export async function shareOnLinkedIn(job: ShareableJob, profile?: Partial<UserProfile>): Promise<void> {
   const shareUrl = buildLinkedInShareUrl(job, profile);
   const postText = buildLinkedInPostText(job, profile);
 

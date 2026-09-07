@@ -5,7 +5,10 @@ import { isPlanId, PLANS } from '../domain/plans';
 import { AppError } from '../middleware/errorHandler';
 import { logger } from '../config/logger';
 import { profileService } from '../services/profileService';
+import { getPlanAmountInr } from '../services/appSettingsService';
+import { recordSuccessfulPayment } from '../services/paymentService';
 import {
+  activationPlanFlags,
   buildActivatedSubscription,
   getActivePlan,
   getDailyAutoApplyQuota,
@@ -35,19 +38,24 @@ const demoSchema = z.object({
   planId: z.enum(['starter', 'pro', 'elite']),
 });
 
-export function listPlans(_req: Request, res: Response): void {
-  res.json({ success: true, data: publicPlansPayload() });
+export async function listPlans(_req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    res.json({ success: true, data: await publicPlansPayload() });
+  } catch (err) {
+    next(err);
+  }
 }
 
 export async function getSubscription(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const profile = await profileService.getOrCreate(req.user!);
-    const active = isSubscriptionActive(profile.subscription);
+    const active = isSubscriptionActive(profile.subscription, profile.plans);
     const plan = getActivePlan(profile);
     res.json({
       success: true,
       data: {
         subscription: profile.subscription || { status: 'none' },
+        plans: profile.plans || { starter: false, pro: false, elite: false },
         active,
         plan: plan
           ? {
@@ -59,7 +67,7 @@ export async function getSubscription(req: Request, res: Response, next: NextFun
           : null,
         dailyAutoApplyQuota: getDailyAutoApplyQuota(profile),
         razorpayConfigured: isRazorpayConfigured(),
-        catalog: publicPlansPayload(),
+        catalog: await publicPlansPayload(),
       },
     });
   } catch (err) {
@@ -76,12 +84,13 @@ export async function createOrder(req: Request, res: Response, next: NextFunctio
       email: req.user!.email,
     });
     const plan = PLANS[planId];
+    const amountInr = await getPlanAmountInr(planId);
     const paymentLinkUrl = await createRazorpayPaymentLink({
       planId,
       uid: req.user!.uid,
       email: req.user!.email,
       amount: order.amount,
-      description: `ApplyAI ${plan.name} — ₹${plan.priceInr}/month`,
+      description: `ApplyAI ${plan.name} — ₹${amountInr}/month`,
     });
     res.json({
       success: true,
@@ -111,6 +120,7 @@ export async function verifyPayment(req: Request, res: Response, next: NextFunct
       throw new AppError(400, 'Payment signature mismatch', 'RAZORPAY_VERIFY_FAILED');
     }
 
+    const amountInr = await getPlanAmountInr(body.planId);
     const subscription = buildActivatedSubscription(body.planId, {
       provider: 'razorpay',
       razorpayOrderId: body.razorpay_order_id,
@@ -120,10 +130,22 @@ export async function verifyPayment(req: Request, res: Response, next: NextFunct
 
     const profile = await profileService.update(req.user!, {
       subscription,
+      plans: activationPlanFlags(body.planId),
       outreach: {
         dailyAutoApplyLimit: subscription.dailyAutoApplyQuota,
         dailyAutoApplyEnabled: true,
       },
+    });
+
+    await recordSuccessfulPayment({
+      uid: req.user!.uid,
+      email: req.user!.email,
+      planId: body.planId,
+      amountInr,
+      provider: 'razorpay',
+      razorpayOrderId: body.razorpay_order_id,
+      razorpayPaymentId: body.razorpay_payment_id,
+      razorpaySignature: body.razorpay_signature,
     });
 
     logger.info('Plan activated via Razorpay', {
@@ -136,6 +158,7 @@ export async function verifyPayment(req: Request, res: Response, next: NextFunct
       success: true,
       data: {
         subscription: profile.subscription,
+        plans: profile.plans,
         dailyAutoApplyQuota: subscription.dailyAutoApplyQuota,
       },
     });
@@ -151,18 +174,30 @@ export async function demoActivate(req: Request, res: Response, next: NextFuncti
       throw new AppError(403, 'Demo activate is disabled when Razorpay is configured', 'FORBIDDEN');
     }
     const { planId } = demoSchema.parse(req.body);
+    const amountInr = await getPlanAmountInr(planId);
     const subscription = buildActivatedSubscription(planId, { provider: 'demo' });
     const profile = await profileService.update(req.user!, {
       subscription,
+      plans: activationPlanFlags(planId),
       outreach: {
         dailyAutoApplyLimit: subscription.dailyAutoApplyQuota,
         dailyAutoApplyEnabled: true,
       },
     });
+
+    await recordSuccessfulPayment({
+      uid: req.user!.uid,
+      email: req.user!.email,
+      planId,
+      amountInr,
+      provider: 'demo',
+    });
+
     res.json({
       success: true,
       data: {
         subscription: profile.subscription,
+        plans: profile.plans,
         dailyAutoApplyQuota: subscription.dailyAutoApplyQuota,
       },
     });
@@ -192,12 +227,13 @@ export async function razorpayWebhook(req: Request, res: Response, next: NextFun
           entity?: {
             id?: string;
             order_id?: string;
-            notes?: { uid?: string; planId?: string };
+            amount?: number;
+            notes?: { uid?: string; planId?: string; email?: string };
           };
         };
         payment_link?: {
           entity?: {
-            notes?: { uid?: string; planId?: string };
+            notes?: { uid?: string; planId?: string; email?: string };
           };
         };
       };
@@ -212,16 +248,34 @@ export async function razorpayWebhook(req: Request, res: Response, next: NextFun
       uid &&
       isPlanId(planId)
     ) {
+      const amountPaise = payload.payload?.payment?.entity?.amount;
+      const amountInr =
+        typeof amountPaise === 'number' && amountPaise > 0
+          ? Math.round(amountPaise / 100)
+          : await getPlanAmountInr(planId);
+
       await profileService.update(
-        { uid, email: '', role: 'user' },
+        { uid, email: notes?.email || '', role: 'user' },
         {
           subscription: buildActivatedSubscription(planId, {
             provider: 'razorpay',
             razorpayOrderId: payload.payload?.payment?.entity?.order_id,
             razorpayPaymentId: payload.payload?.payment?.entity?.id,
           }),
+          plans: activationPlanFlags(planId),
         },
       );
+
+      await recordSuccessfulPayment({
+        uid,
+        email: notes?.email,
+        planId,
+        amountInr,
+        provider: 'razorpay',
+        razorpayOrderId: payload.payload?.payment?.entity?.order_id,
+        razorpayPaymentId: payload.payload?.payment?.entity?.id,
+      });
+
       logger.info('Plan activated via Razorpay webhook', {
         uid,
         planId,

@@ -6,7 +6,8 @@ import {
   setDoc,
   serverTimestamp,
 } from 'firebase/firestore';
-import { db } from './config';
+import { auth, db } from './config';
+import { userDocIdFromEmail } from './userDocId';
 import type { Job, JobMatchScore } from '@/types';
 
 export interface SavedJob {
@@ -24,8 +25,17 @@ export interface SavedJob {
   savedAt: string;
 }
 
-function savedJobsCol(userId: string) {
-  return collection(db, 'users', userId, 'savedJobs');
+function resolveUserDocId(userIdOrEmail: string): string {
+  if (userIdOrEmail.includes('@')) {
+    return userDocIdFromEmail(userIdOrEmail);
+  }
+  const email = auth.currentUser?.email;
+  if (email) return userDocIdFromEmail(email);
+  throw new Error('Signed-in email is required for saved jobs.');
+}
+
+function savedJobsCol(userIdOrEmail: string) {
+  return collection(db, 'users', resolveUserDocId(userIdOrEmail), 'savedJobs');
 }
 
 export async function listSavedJobs(userId: string): Promise<SavedJob[]> {
@@ -65,8 +75,9 @@ export async function getSavedJobIds(userId: string): Promise<Set<string>> {
 }
 
 export async function saveJob(userId: string, job: Job): Promise<void> {
+  const docId = resolveUserDocId(userId);
   await setDoc(
-    doc(db, 'users', userId, 'savedJobs', job.id),
+    doc(db, 'users', docId, 'savedJobs', job.id),
     {
       jobId: job.id,
       title: job.title,
@@ -85,7 +96,7 @@ export async function saveJob(userId: string, job: Job): Promise<void> {
 }
 
 export async function unsaveJob(userId: string, jobId: string): Promise<void> {
-  await deleteDoc(doc(db, 'users', userId, 'savedJobs', jobId));
+  await deleteDoc(doc(db, 'users', resolveUserDocId(userId), 'savedJobs', jobId));
 }
 
 export async function toggleSaveJob(

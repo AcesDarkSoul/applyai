@@ -207,9 +207,31 @@ export default function JobDetailScreen() {
       {skillGap ? (
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Skill Gap</Text>
+          {skillGap.score != null ? (
+            <Text style={styles.match}>{Math.round(skillGap.score)}% skill fit</Text>
+          ) : null}
           <Text style={styles.body}>Matched: {(skillGap.matched || []).join(', ') || '—'}</Text>
           <Text style={styles.body}>Missing: {(skillGap.missing || []).join(', ') || '—'}</Text>
           {skillGap.summary ? <Text style={styles.body}>{skillGap.summary}</Text> : null}
+          {(skillGap.learningRoadmap || []).length > 0 ? (
+            <View style={{ gap: 10, marginTop: 8 }}>
+              <Text style={styles.cardTitle}>Learning roadmap</Text>
+              {skillGap.learningRoadmap!.map((step) => (
+                <View key={step.skill} style={styles.roadmapStep}>
+                  <Text style={styles.roadmapSkill}>
+                    {step.skill}
+                    {step.estimatedHours ? ` · ~${step.estimatedHours}h` : ''}
+                  </Text>
+                  {step.why ? <Text style={styles.body}>{step.why}</Text> : null}
+                  {(step.resources || []).slice(0, 2).map((r) => (
+                    <Pressable key={r.url} onPress={() => void Linking.openURL(r.url)}>
+                      <Text style={styles.resourceLink}>{r.title}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              ))}
+            </View>
+          ) : null}
         </View>
       ) : null}
 
@@ -291,5 +313,13 @@ const styles = StyleSheet.create({
   cardTitle: { color: Colors.text, fontWeight: '800', fontSize: FontSize.lg },
   cover: { color: Colors.textSecondary, fontSize: FontSize.sm, lineHeight: 20 },
   body: { color: Colors.textSecondary, fontSize: FontSize.sm, lineHeight: 20 },
+  roadmapStep: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    paddingTop: 8,
+    gap: 4,
+  },
+  roadmapSkill: { color: Colors.text, fontWeight: '800', fontSize: FontSize.sm },
+  resourceLink: { color: Colors.primaryLight, fontWeight: '700', fontSize: FontSize.xs },
   error: { color: Colors.danger },
 });

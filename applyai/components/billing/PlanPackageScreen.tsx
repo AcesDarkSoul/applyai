@@ -43,6 +43,8 @@ export function PlanPackageScreen({ planId }: { planId: PlanId }) {
   const isCurrent = active && activePlanId === planId;
   const demoOk = catalog?.demoActivateEnabled ?? !razorpayConfigured;
   const iconMeta = PLAN_ICON[planId];
+  const priceInr =
+    catalog?.plans?.find((p) => p.id === planId)?.priceInr ?? plan.priceInr;
 
   const styles = useMemo(
     () =>
@@ -249,7 +251,7 @@ export function PlanPackageScreen({ planId }: { planId: PlanId }) {
           <Text style={styles.name}>{plan.name}</Text>
           <Text style={styles.tagline}>{plan.tagline}</Text>
           <View style={styles.priceRow}>
-            <Text style={styles.price}>{formatInr(plan.priceInr)}</Text>
+            <Text style={styles.price}>{formatInr(priceInr)}</Text>
             <Text style={styles.period}>{plan.periodLabel}</Text>
           </View>
           <View style={styles.quota}>
@@ -284,7 +286,7 @@ export function PlanPackageScreen({ planId }: { planId: PlanId }) {
                 {isCurrent
                   ? 'Active'
                   : razorpayConfigured
-                    ? `Pay ${formatInr(plan.priceInr)} with Razorpay`
+                    ? `Pay ${formatInr(priceInr)} with Razorpay`
                     : `Activate ${plan.name} (demo)`}
               </Text>
             )}

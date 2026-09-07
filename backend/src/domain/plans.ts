@@ -153,3 +153,21 @@ export function getPlan(planId: PlanId): PlanDefinition {
 export function planAmountPaise(planId: PlanId): number {
   return PLANS[planId].priceInr * 100;
 }
+
+/** Exclusive true/false flags for Firebase Console activation. */
+export function buildPlanFlags(planId: PlanId): Record<PlanId, boolean> {
+  return {
+    starter: planId === 'starter',
+    pro: planId === 'pro',
+    elite: planId === 'elite',
+  };
+}
+
+/** Highest active flag wins: elite > pro > starter. */
+export function planIdFromFlags(flags?: Partial<Record<PlanId, boolean>> | null): PlanId | null {
+  if (!flags) return null;
+  if (flags.elite) return 'elite';
+  if (flags.pro) return 'pro';
+  if (flags.starter) return 'starter';
+  return null;
+}

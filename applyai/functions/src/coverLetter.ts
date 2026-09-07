@@ -3,6 +3,7 @@ import { db } from "./index";
 import { FieldValue } from "firebase-admin/firestore";
 import OpenAI from "openai";
 import { openaiApiKey } from "./secrets";
+import { getUserProfileDoc } from "./userDoc";
 
 const COVER_LETTER_PROMPT = `You are an expert career consultant. Write a professional, personalized cover letter.
 
@@ -38,9 +39,9 @@ export const generateCoverLetter = onCall(
       throw new HttpsError("invalid-argument", "jobTitle and company are required");
     }
 
-    // Get user profile
-    const userDoc = await db.collection("users").doc(request.auth.uid).get();
-    const profile = userDoc.data();
+    // Get user profile (email-keyed)
+    const userProfile = await getUserProfileDoc(request.auth);
+    const profile = userProfile?.data;
 
     if (!profile) {
       throw new HttpsError("not-found", "User profile not found");
