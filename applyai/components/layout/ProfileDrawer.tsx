@@ -17,7 +17,9 @@ import { Spacing, FontSize, BorderRadius, Shadows } from '@/constants/theme';
 import { useColors, useThemeMode } from '@/hooks/useColors';
 import { useDrawerStore } from '@/stores/drawerStore';
 import { useAuthStore } from '@/stores/authStore';
+import { useSubscriptionStore } from '@/stores/subscriptionStore';
 import { logOut } from '@/lib/firebase/auth';
+import { PLANS } from '@/constants/plans';
 
 type ActionItem = {
   label: string;
@@ -63,8 +65,17 @@ export function ProfileDrawer() {
   const displayName = profile?.name || user?.displayName || user?.email || 'Your account';
   const displayEmail = profile?.email || user?.email || '';
   const initial = (displayName || 'A').trim().charAt(0).toUpperCase();
+  const catalog = useSubscriptionStore((s) => s.catalog);
+  const amount = (id: 'starter' | 'pro' | 'elite') =>
+    catalog?.plans?.find((p) => p.id === id)?.priceInr ?? PLANS[id].priceInr;
 
   const actions: ActionItem[] = [
+    {
+      label: 'Plans & billing',
+      hint: `Starter ₹${amount('starter')} · Pro ₹${amount('pro')} · Elite ₹${amount('elite')}`,
+      icon: 'diamond-outline',
+      href: '/plans',
+    },
     {
       label: 'Profile',
       hint: 'Name, skills, summary',

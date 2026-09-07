@@ -422,3 +422,65 @@ export const automationRepository = {
     return data.data;
   },
 };
+
+export type PlanId = 'starter' | 'pro' | 'elite';
+
+export const billingRepository = {
+  async catalog() {
+    const { data } = await api.get<
+      ApiResponse<{
+        razorpayKeyId: string;
+        razorpayConfigured: boolean;
+        demoActivateEnabled: boolean;
+        plans: Array<{
+          id: PlanId;
+          name: string;
+          tagline: string;
+          priceInr: number;
+          periodLabel: string;
+          popular: boolean;
+          dailyAutoApplyQuota: number;
+          highlights: string[];
+          includes: string[];
+        }>;
+      }>
+    >('/billing/plans');
+    return data.data;
+  },
+  async subscription() {
+    const { data } = await api.get('/billing/subscription');
+    return data.data as {
+      active: boolean;
+      plan: { id: PlanId; name: string; dailyAutoApplyQuota: number } | null;
+      dailyAutoApplyQuota: number;
+      razorpayConfigured: boolean;
+      subscription: { planId?: PlanId; status?: string; currentPeriodEnd?: string };
+    };
+  },
+  async createOrder(planId: PlanId) {
+    const { data } = await api.post<
+      ApiResponse<{
+        keyId: string;
+        orderId: string;
+        amount: number;
+        currency: string;
+        planId: PlanId;
+        paymentLinkUrl?: string | null;
+      }>
+    >('/billing/razorpay/order', { planId });
+    return data.data;
+  },
+  async verify(input: {
+    planId: PlanId;
+    razorpay_order_id: string;
+    razorpay_payment_id: string;
+    razorpay_signature: string;
+  }) {
+    const { data } = await api.post('/billing/razorpay/verify', input);
+    return data.data;
+  },
+  async demoActivate(planId: PlanId) {
+    const { data } = await api.post('/billing/demo-activate', { planId });
+    return data.data;
+  },
+};

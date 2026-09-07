@@ -10,6 +10,7 @@ import { notificationService } from '../services/notificationService';
 import { outreachApply } from '../services/outreachService';
 import { profileService } from '../services/profileService';
 import { syncApplicationStatuses } from '../services/statusSyncService';
+import { clampAutoApplyLimit } from '../services/planService';
 
 const smartApplySchema = z.object({
   jobId: z.string().min(1),
@@ -34,7 +35,7 @@ const autoApplySchema = z.object({
   confirmed: z.literal(true),
   confirmedAssistiveOnly: z.literal(true),
   minScore: z.number().min(0).max(100).optional().default(55),
-  limit: z.number().min(1).max(20).optional().default(8),
+  limit: z.number().min(1).max(50).optional(),
   boardOnly: z.boolean().optional().default(true),
 });
 
@@ -248,9 +249,10 @@ export async function autoApplyHandler(
     const body = autoApplySchema.parse(req.body);
     assertAssistiveConsent(body);
     const profile = await profileService.getOrCreate(req.user!);
+    const limit = clampAutoApplyLimit(body.limit, profile);
     const result = await applicationService.autoApplyFromResume(req.user!, profile, {
       minScore: body.minScore,
-      limit: body.limit,
+      limit,
       boardOnly: body.boardOnly,
     });
 

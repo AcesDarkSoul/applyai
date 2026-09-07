@@ -17,19 +17,25 @@ import { FadeInView } from '@/components/AnimatedView';
 import { Button } from '@/components/ui';
 import { useAuthStore } from '@/stores/authStore';
 import { useDrawerStore } from '@/stores/drawerStore';
-import { useThemeMode } from '@/hooks/useColors';
+import { useSubscriptionStore } from '@/stores/subscriptionStore';
 import { profileRepository, type ApiUserProfile } from '@/lib/api/repositories';
 import { Spacing, FontSize, BorderRadius, Shadows } from '@/constants/theme';
 import { useColors } from '@/hooks/useColors';
+import { PLANS } from '@/constants/plans';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const colors = useColors();
-  const { mode } = useThemeMode();
   const { width } = useWindowDimensions();
   const isWide = width >= 768;
   const openAccountMenu = useDrawerStore((s) => s.setProfileOpen);
   const { profile, refreshProfile, user } = useAuthStore();
+  const catalog = useSubscriptionStore((s) => s.catalog);
+  const priceHint = useMemo(() => {
+    const amount = (id: 'starter' | 'pro' | 'elite') =>
+      catalog?.plans?.find((p) => p.id === id)?.priceInr ?? PLANS[id].priceInr;
+    return `Starter ₹${amount('starter')} · Pro ₹${amount('pro')} · Elite ₹${amount('elite')}`;
+  }, [catalog]);
   const [apiProfile, setApiProfile] = useState<ApiUserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -276,13 +282,9 @@ export default function ProfileScreen() {
               <Ionicons name="document-text-outline" size={18} color={colors.primaryLight} />
               <Text style={styles.actionText}>Resume studio</Text>
             </Pressable>
-            <Pressable style={styles.actionChip} onPress={() => openAccountMenu(true)}>
-              <Ionicons
-                name={mode === 'dark' ? 'moon-outline' : 'sunny-outline'}
-                size={18}
-                color={colors.primaryLight}
-              />
-              <Text style={styles.actionText}>Theme & account</Text>
+            <Pressable style={styles.actionChip} onPress={() => router.push('/plans' as never)}>
+              <Ionicons name="diamond-outline" size={18} color={colors.primaryLight} />
+              <Text style={styles.actionText}>Plans</Text>
             </Pressable>
           </View>
         </LinearGradient>
@@ -385,6 +387,17 @@ export default function ProfileScreen() {
           <View style={styles.shortcutText}>
             <Text style={styles.shortcutTitle}>Manage resume file</Text>
             <Text style={styles.shortcutSub}>Upload, ATS score, optimize</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+        </Pressable>
+
+        <Pressable style={styles.shortcut} onPress={() => router.push('/plans' as never)}>
+          <View style={styles.shortcutIcon}>
+            <Ionicons name="diamond-outline" size={18} color={colors.primaryLight} />
+          </View>
+          <View style={styles.shortcutText}>
+            <Text style={styles.shortcutTitle}>Plans & billing</Text>
+            <Text style={styles.shortcutSub}>{priceHint}</Text>
           </View>
           <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
         </Pressable>

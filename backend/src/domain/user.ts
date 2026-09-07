@@ -1,5 +1,6 @@
 import type { SmartApplyPlatformPrefs } from './audit';
 import type { NotificationPrefs } from './notification';
+import type { PlanId } from './plans';
 import type {
   EducationEntry,
   ExperienceEntry,
@@ -7,6 +8,31 @@ import type {
 } from './resume';
 
 export type UserRole = 'user' | 'admin';
+
+export type SubscriptionStatus = 'none' | 'active' | 'past_due' | 'cancelled' | 'expired';
+
+export interface UserSubscription {
+  planId: PlanId;
+  status: SubscriptionStatus;
+  provider: 'razorpay' | 'demo' | 'manual';
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
+  razorpaySignature?: string;
+  dailyAutoApplyQuota?: number;
+  currentPeriodStart?: string;
+  currentPeriodEnd?: string;
+  activatedAt?: string;
+}
+
+/**
+ * Admin / Console toggles on users/{uid}.
+ * Set any plan to true in Firebase to grant access (highest true wins: elite > pro > starter).
+ */
+export type UserPlanFlags = {
+  starter?: boolean;
+  pro?: boolean;
+  elite?: boolean;
+};
 
 export interface AuthUser {
   uid: string;
@@ -86,6 +112,10 @@ export interface UserProfile {
    * Required UX gate before batch automation.
    */
   smartApplyConsentAt?: string;
+  /** Paid access. Enforced when Razorpay keys are configured. */
+  subscription?: UserSubscription;
+  /** True/false plan activation flags editable from Firebase Console. */
+  plans?: UserPlanFlags;
   createdAt: string;
   updatedAt: string;
 }

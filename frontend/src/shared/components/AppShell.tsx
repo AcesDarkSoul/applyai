@@ -19,6 +19,7 @@ import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined';
 import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import NotificationsNoneRoundedIcon from '@mui/icons-material/NotificationsNoneRounded';
+import WorkspacePremiumOutlinedIcon from '@mui/icons-material/WorkspacePremiumOutlined';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useMemo, useState } from 'react';
 import { Link as RouterLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
@@ -60,6 +61,12 @@ const nav = [
     label: 'Notifications',
     icon: <NotificationsNoneRoundedIcon />,
     match: (p: string) => p.startsWith('/notifications'),
+  },
+  {
+    to: '/plans',
+    label: 'Plans',
+    icon: <WorkspacePremiumOutlinedIcon />,
+    match: (p: string) => p.startsWith('/plans'),
   },
   {
     to: '/ai-tools',

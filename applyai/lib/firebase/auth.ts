@@ -9,11 +9,13 @@ import {
   signInWithCredential,
   User,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp, type DocumentData } from 'firebase/firestore';
 import { Platform } from 'react-native';
 import { auth, db } from './config';
 import { trackLogin, trackSignUp } from './analytics';
 import { recordError } from './crashlytics';
+import { recordNewUser, recordUserLogin } from './stats';
+import { tryUserDocIdFromEmail, userDocIdFromEmail } from './userDocId';
 import { setApiToken } from '@/lib/api/client';
 import type { UserProfile } from '@/types';
 
@@ -24,6 +26,28 @@ async function persistApiToken(user: User) {
   } catch (e) {
     console.warn('persistApiToken failed:', e);
   }
+}
+
+function baseProfileFields(input: {
+  uid: string;
+  email: string;
+  name: string;
+}): DocumentData {
+  return {
+    uid: input.uid,
+    email: input.email,
+    name: input.name,
+    skills: [],
+    experience: 0,
+    education: [],
+    certifications: [],
+    projects: [],
+    languages: [],
+    preferredLocation: 'Remote',
+    plans: { starter: false, pro: false, elite: false },
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
 }
 
 /** Map Firebase Auth errors to clear user-facing messages */
@@ -73,19 +97,16 @@ export async function signUp(email: string, password: string, name: string): Pro
   }
 
   try {
-    await setDoc(doc(db, 'users', credential.user.uid), {
-      email,
-      name,
-      skills: [],
-      experience: 0,
-      education: [],
-      certifications: [],
-      projects: [],
-      languages: [],
-      preferredLocation: 'Remote',
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
+    const emailKey = userDocIdFromEmail(credential.user.email || email);
+    await setDoc(
+      doc(db, 'users', emailKey),
+      baseProfileFields({
+        uid: credential.user.uid,
+        email: emailKey,
+        name,
+      }),
+    );
+    void recordNewUser();
   } catch (e) {
     // Auth succeeded — profile can be created later. Don't block signup.
     console.warn('Profile create failed (check Firestore rules):', e);
@@ -93,13 +114,16 @@ export async function signUp(email: string, password: string, name: string): Pro
   }
 
   void trackSignUp('password');
+  void recordUserLogin();
   await persistApiToken(credential.user);
   return credential.user;
 }
 
 export async function signIn(email: string, password: string): Promise<User> {
   const credential = await signInWithEmailAndPassword(auth, email, password);
+  await ensureUserProfile(credential.user);
   void trackLogin('password');
+  void recordUserLogin();
   await persistApiToken(credential.user);
   return credential.user;
 }
@@ -107,8 +131,10 @@ export async function signIn(email: string, password: string): Promise<User> {
 export async function signInWithGoogleIdToken(idToken: string): Promise<User> {
   const credential = GoogleAuthProvider.credential(idToken);
   const result = await signInWithCredential(auth, credential);
-  await ensureUserProfile(result.user);
+  const isNewUser = await ensureUserProfile(result.user);
+  if (isNewUser) void recordNewUser();
   void trackLogin('google');
+  void recordUserLogin();
   await persistApiToken(result.user);
   return result.user;
 }
@@ -119,8 +145,10 @@ export async function signInWithGoogle(): Promise<User> {
 
   if (Platform.OS === 'web') {
     const credential = await signInWithPopup(auth, provider);
-    await ensureUserProfile(credential.user);
+    const isNewUser = await ensureUserProfile(credential.user);
+    if (isNewUser) void recordNewUser();
     void trackLogin('google');
+    void recordUserLogin();
     await persistApiToken(credential.user);
     return credential.user;
   }
@@ -128,29 +156,64 @@ export async function signInWithGoogle(): Promise<User> {
   throw new Error('Use signInWithGoogleIdToken on mobile via useGoogleAuth hook.');
 }
 
-async function ensureUserProfile(user: User): Promise<void> {
+/**
+ * Ensure users/{email} exists. Migrates legacy users/{uid} docs when found.
+ * Returns true when a new email-keyed profile was created.
+ */
+async function ensureUserProfile(user: User): Promise<boolean> {
   try {
-    const userRef = doc(db, 'users', user.uid);
-    const snap = await getDoc(userRef);
-
-    if (!snap.exists()) {
-      await setDoc(userRef, {
-        email: user.email,
-        name: user.displayName || 'User',
-        skills: [],
-        experience: 0,
-        education: [],
-        certifications: [],
-        projects: [],
-        languages: [],
-        preferredLocation: 'Remote',
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
+    const emailKey = tryUserDocIdFromEmail(user.email);
+    if (!emailKey) {
+      console.warn('ensureUserProfile: missing email on auth user');
+      return false;
     }
+
+    const emailRef = doc(db, 'users', emailKey);
+    const emailSnap = await getDoc(emailRef);
+    if (emailSnap.exists()) {
+      // Keep uid in sync if missing
+      const data = emailSnap.data();
+      if (data?.uid !== user.uid) {
+        await setDoc(
+          emailRef,
+          { uid: user.uid, email: emailKey, updatedAt: serverTimestamp() },
+          { merge: true },
+        );
+      }
+      return false;
+    }
+
+    // Migrate legacy UID-keyed document into email-keyed document
+    const legacyRef = doc(db, 'users', user.uid);
+    const legacySnap = await getDoc(legacyRef);
+    if (legacySnap.exists()) {
+      const legacy = legacySnap.data() || {};
+      await setDoc(
+        emailRef,
+        {
+          ...legacy,
+          uid: user.uid,
+          email: emailKey,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+      return true;
+    }
+
+    await setDoc(
+      emailRef,
+      baseProfileFields({
+        uid: user.uid,
+        email: emailKey,
+        name: user.displayName || 'User',
+      }),
+    );
+    return true;
   } catch (e) {
     console.warn('ensureUserProfile failed (check Firestore rules):', e);
   }
+  return false;
 }
 
 export async function resetPassword(email: string): Promise<void> {
@@ -162,8 +225,54 @@ export async function logOut(): Promise<void> {
   await signOut(auth);
 }
 
-export async function getUserProfile(userId: string): Promise<UserProfile | null> {
+export async function getUserProfile(
+  userId: string,
+  opts?: { email?: string | null; uid?: string },
+): Promise<UserProfile | null> {
   try {
+    const emailKey = tryUserDocIdFromEmail(opts?.email) || tryUserDocIdFromEmail(userId);
+    const uid = opts?.uid || (!userId.includes('@') ? userId : undefined);
+
+    if (emailKey) {
+      const byEmail = await getDoc(doc(db, 'users', emailKey));
+      if (byEmail.exists()) {
+        const data = byEmail.data();
+        return {
+          id: byEmail.id,
+          ...data,
+          email: emailKey,
+          createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
+          updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt,
+        } as UserProfile;
+      }
+
+      // Migrate legacy UID doc on read when possible
+      if (uid) {
+        const legacy = await getDoc(doc(db, 'users', uid));
+        if (legacy.exists()) {
+          const data = legacy.data() || {};
+          await setDoc(
+            doc(db, 'users', emailKey),
+            {
+              ...data,
+              uid,
+              email: emailKey,
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true },
+          );
+          return {
+            id: emailKey,
+            ...data,
+            email: emailKey,
+            createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
+            updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt,
+          } as UserProfile;
+        }
+      }
+    }
+
+    // Last resort: treat userId as document id (legacy UID)
     const snap = await getDoc(doc(db, 'users', userId));
     if (!snap.exists()) return null;
 

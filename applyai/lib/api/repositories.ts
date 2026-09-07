@@ -71,11 +71,19 @@ export type NotificationPrefs = {
   pushEnabled?: boolean;
 };
 
+export type LearningStep = {
+  skill: string;
+  why: string;
+  estimatedHours: number;
+  resources: Array<{ title: string; url: string }>;
+};
+
 export type SkillGapResult = {
   missing: string[];
   matched: string[];
   score?: number;
   summary?: string;
+  learningRoadmap?: LearningStep[];
 };
 
 export type SmartApplyPlatformPrefs = {
@@ -83,6 +91,38 @@ export type SmartApplyPlatformPrefs = {
   indeed?: boolean;
   naukri?: boolean;
   other?: boolean;
+};
+
+export type PlanId = 'starter' | 'pro' | 'elite';
+
+export type ApiSubscription = {
+  planId?: PlanId;
+  status?: 'none' | 'active' | 'past_due' | 'cancelled' | 'expired';
+  provider?: 'razorpay' | 'demo' | 'manual';
+  dailyAutoApplyQuota?: number;
+  currentPeriodEnd?: string;
+  activatedAt?: string;
+};
+
+export type BillingCatalog = {
+  currency: string;
+  periodDays: number;
+  razorpayKeyId: string;
+  razorpayConfigured: boolean;
+  billingEnforced: boolean;
+  demoActivateEnabled: boolean;
+  plans: Array<{
+    id: PlanId;
+    name: string;
+    tagline: string;
+    priceInr: number;
+    amountPaise: number;
+    periodLabel: string;
+    popular: boolean;
+    dailyAutoApplyQuota: number;
+    highlights: string[];
+    includes: string[];
+  }>;
 };
 
 export type ApiUserProfile = {
@@ -111,6 +151,7 @@ export type ApiUserProfile = {
     dailyMinScore?: number;
     autoSendEnabled?: boolean;
   };
+  subscription?: ApiSubscription;
 };
 
 export const profileRepository = {
@@ -317,10 +358,28 @@ export const aiRepository = {
     return data.data;
   },
   async skillGap(jobId: string): Promise<SkillGapResult> {
-    const { data } = await api.get<ApiResponse<SkillGapResult>>(`/ai/skill-gap/${jobId}`, {
+    const { data } = await api.get<
+      ApiResponse<{
+        missing?: string[];
+        matched?: string[];
+        missingSkills?: string[];
+        matchedSkills?: string[];
+        matchScore?: number;
+        score?: number;
+        summary?: string;
+        learningRoadmap?: LearningStep[];
+      }>
+    >(`/ai/skill-gap/${jobId}`, {
       timeout: 90_000,
     });
-    return data.data;
+    const raw = data.data;
+    return {
+      missing: raw.missing || raw.missingSkills || [],
+      matched: raw.matched || raw.matchedSkills || [],
+      score: raw.score ?? raw.matchScore,
+      summary: raw.summary,
+      learningRoadmap: raw.learningRoadmap || [],
+    };
   },
 };
 
@@ -388,6 +447,53 @@ export const automationRepository = {
   async runDailyNow() {
     const { data } = await api.post('/automation/daily/run-auth', {}, { timeout: 300_000 });
     return data.data;
+  },
+};
+
+export const billingRepository = {
+  async catalog(): Promise<BillingCatalog> {
+    const { data } = await api.get<ApiResponse<BillingCatalog>>('/billing/plans');
+    return data.data;
+  },
+  async subscription() {
+    const { data } = await api.get<
+      ApiResponse<{
+        subscription: ApiSubscription;
+        plans?: { starter?: boolean; pro?: boolean; elite?: boolean };
+        active: boolean;
+        plan: { id: PlanId; name: string; dailyAutoApplyQuota: number } | null;
+        dailyAutoApplyQuota: number;
+        razorpayConfigured: boolean;
+        catalog: BillingCatalog;
+      }>
+    >('/billing/subscription');
+    return data.data;
+  },
+  async createOrder(planId: PlanId) {
+    const { data } = await api.post<
+      ApiResponse<{
+        keyId: string;
+        orderId: string;
+        amount: number;
+        currency: string;
+        planId: PlanId;
+        paymentLinkUrl?: string | null;
+      }>
+    >('/billing/razorpay/order', { planId });
+    return data.data;
+  },
+  async verify(input: {
+    planId: PlanId;
+    razorpay_order_id: string;
+    razorpay_payment_id: string;
+    razorpay_signature: string;
+  }) {
+    const { data } = await api.post('/billing/razorpay/verify', input);
+    return data.data as { subscription: ApiSubscription; dailyAutoApplyQuota: number };
+  },
+  async demoActivate(planId: PlanId) {
+    const { data } = await api.post('/billing/demo-activate', { planId });
+    return data.data as { subscription: ApiSubscription; dailyAutoApplyQuota: number };
   },
 };
 

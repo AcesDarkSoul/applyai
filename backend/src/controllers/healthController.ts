@@ -11,6 +11,8 @@ export function health(_req: Request, res: Response): void {
       env: env.NODE_ENV,
       demoMode: isDemoMode,
       repository: repositoryMode(),
+      razorpayConfigured: Boolean(env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET),
+      billingRequirePlan: env.BILLING_REQUIRE_PLAN,
       timestamp: new Date().toISOString(),
     },
   });

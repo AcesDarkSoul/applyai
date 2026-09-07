@@ -110,6 +110,13 @@ export interface UserProfile {
   notificationPrefs?: NotificationPrefs;
   smartApplyPlatforms?: SmartApplyPlatformPrefs;
   smartApplyConsentAt?: string;
+  subscription?: {
+    planId?: 'starter' | 'pro' | 'elite';
+    status?: 'none' | 'active' | 'past_due' | 'cancelled' | 'expired';
+    provider?: 'razorpay' | 'demo';
+    dailyAutoApplyQuota?: number;
+    currentPeriodEnd?: string;
+  };
 }
 
 export interface NotificationPrefs {

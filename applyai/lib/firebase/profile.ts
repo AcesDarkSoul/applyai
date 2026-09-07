@@ -12,10 +12,20 @@ import {
 } from 'firebase/firestore';
 import * as DocumentPicker from 'expo-document-picker';
 import { auth, db } from './config';
+import { userDocIdFromEmail } from './userDocId';
 import { saveResumeLocally, readLocalResumeAsBase64 } from '@/lib/local/resumeStorage';
 import { parseResumeFromLocalAPI } from './functions';
 import { formDataToProfileUpdate, type ProfileFormData } from '@/components/profile/ProfileReviewForm';
 import type { UserProfile, Application, ApplicationStatus } from '@/types';
+
+function resolveUserDocId(userIdOrEmail: string): string {
+  if (userIdOrEmail.includes('@')) {
+    return userDocIdFromEmail(userIdOrEmail);
+  }
+  const email = auth.currentUser?.email;
+  if (email) return userDocIdFromEmail(email);
+  throw new Error('Signed-in email is required to update the user profile.');
+}
 
 export function formatFirebaseError(error: unknown): string {
   if (error instanceof Error) {
@@ -41,18 +51,21 @@ export async function saveResumeForUser(
   if (!auth.currentUser) {
     throw new Error('You must be signed in to save a resume');
   }
-  if (auth.currentUser.uid !== userId) {
+  if (auth.currentUser.uid !== userId && auth.currentUser.email?.toLowerCase() !== userId.toLowerCase()) {
     throw new Error('Session mismatch. Please sign out and sign in again.');
   }
 
   const meta = await saveResumeLocally(file);
+  const docId = resolveUserDocId(userId);
 
   // Firestore: metadata only — file stays on device
   await setDoc(
-    doc(db, 'users', userId),
+    doc(db, 'users', docId),
     {
       hasResume: true,
       resumeFileName: meta.fileName,
+      uid: auth.currentUser.uid,
+      email: docId,
       updatedAt: serverTimestamp(),
     },
     { merge: true }
@@ -65,7 +78,7 @@ export async function updateUserProfile(
   userId: string,
   data: Partial<UserProfile>
 ): Promise<void> {
-  await updateDoc(doc(db, 'users', userId), {
+  await updateDoc(doc(db, 'users', resolveUserDocId(userId)), {
     ...data,
     updatedAt: serverTimestamp(),
   });
@@ -77,13 +90,17 @@ export async function saveUserProfileFromForm(
   extra?: Partial<UserProfile>
 ): Promise<void> {
   const data = { ...formDataToProfileUpdate(form), ...extra, parseStatus: 'complete' as const };
-  await setDoc(doc(db, 'users', userId), { ...data, updatedAt: serverTimestamp() }, { merge: true });
+  await setDoc(
+    doc(db, 'users', resolveUserDocId(userId)),
+    { ...data, updatedAt: serverTimestamp() },
+    { merge: true },
+  );
 }
 
 /** When AI unavailable — mark profile for manual entry, no fake data */
 export async function markProfileForManualEntry(userId: string): Promise<void> {
   await setDoc(
-    doc(db, 'users', userId),
+    doc(db, 'users', resolveUserDocId(userId)),
     { parseStatus: 'manual', updatedAt: serverTimestamp() },
     { merge: true }
   );

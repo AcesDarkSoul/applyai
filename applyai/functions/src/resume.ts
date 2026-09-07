@@ -3,6 +3,7 @@ import { db } from "./index";
 import { FieldValue } from "firebase-admin/firestore";
 import OpenAI from "openai";
 import { openaiApiKey } from "./secrets";
+import { emailDocId, userDocRef } from "./userDoc";
 
 const RESUME_PARSE_PROMPT = `You are a professional resume parser. Extract ALL personal and professional information from the resume text.
 Return ONLY valid JSON with this exact structure:
@@ -57,6 +58,7 @@ export const parseResume = onCall(
     }
 
     const userId = request.auth.uid;
+    const profileDocId = emailDocId(request.auth.token.email) || userId;
     const { resumeBase64, fileName, resumeUrl } = request.data as {
       resumeBase64?: string;
       fileName?: string;
@@ -137,7 +139,14 @@ export const parseResume = onCall(
         profileUpdate.linkedin = parsed.linkedin.trim().substring(0, 200);
       }
 
-      await db.collection("users").doc(userId).set(profileUpdate, { merge: true });
+      await userDocRef(request.auth).set(
+        {
+          ...profileUpdate,
+          uid: userId,
+          email: profileDocId.includes("@") ? profileDocId : profileUpdate.email,
+        },
+        { merge: true },
+      );
 
       return { success: true, profile: profileUpdate, parsedRaw: parsed };
     } catch (error: unknown) {

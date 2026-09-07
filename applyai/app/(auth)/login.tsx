@@ -28,7 +28,8 @@ export default function LoginScreen() {
   const { signInWithGoogle, googleAuthReady } = useGoogleAuth(
     () => {
       setGoogleLoading(false);
-      router.replace('/(tabs)');
+      // AuthGuard sends users without a plan to /plans
+      router.replace('/plans');
     },
     (msg) => {
       setError(msg);
@@ -52,7 +53,7 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       await signIn(email.trim(), password);
-      router.replace('/(tabs)');
+      router.replace('/plans');
     } catch (e: unknown) {
       console.error('Login failed:', e);
       setError(formatAuthError(e));

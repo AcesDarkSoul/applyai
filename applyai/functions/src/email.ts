@@ -4,6 +4,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import sgMail from "@sendgrid/mail";
 import OpenAI from "openai";
 import { openaiApiKey, sendgridApiKey, fromEmail } from "./secrets";
+import { getUserProfileDoc } from "./userDoc";
 
 const EMAIL_PROMPT = `You are a professional career networking assistant. Write a brief, personalized outreach email to a recruiter.
 
@@ -70,9 +71,9 @@ export const sendOutreachEmail = onCall(
       );
     }
 
-    // Get user profile
-    const userDoc = await db.collection("users").doc(request.auth.uid).get();
-    const profile = userDoc.data();
+    // Get user profile (email-keyed)
+    const userProfile = await getUserProfileDoc(request.auth);
+    const profile = userProfile?.data;
 
     if (!profile) {
       throw new HttpsError("not-found", "User profile not found");

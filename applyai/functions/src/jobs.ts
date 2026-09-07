@@ -2,6 +2,7 @@ import { onCall, HttpsError, CallableRequest } from "firebase-functions/v2/https
 import { db } from "./index";
 import { FieldValue } from "firebase-admin/firestore";
 import { rapidApiKey } from "./secrets";
+import { getUserProfileDoc } from "./userDoc";
 
 const JSEARCH_API_HOST = "jsearch.p.rapidapi.com";
 
@@ -79,7 +80,7 @@ function calculateMatchScore(
 }
 
 async function executeJobSearch(
-  uid: string,
+  auth: { uid: string; token: { email?: string } },
   apiKey: string,
   params: SearchParams
 ) {
@@ -90,8 +91,8 @@ async function executeJobSearch(
     employmentType,
   } = params;
 
-  const userDoc = await db.collection("users").doc(uid).get();
-  const userData = userDoc.data() || {};
+  const userProfile = await getUserProfileDoc(auth);
+  const userData = userProfile?.data || {};
   const userSkills: string[] = userData.skills || [];
   const userExp: number = userData.experience || 0;
   const userLocation: string = userData.preferredLocation || "Remote";
@@ -200,7 +201,7 @@ export const searchJobs = onCall(
       throw new HttpsError("failed-precondition", "RapidAPI key not configured");
     }
 
-    return executeJobSearch(request.auth.uid, apiKey, request.data as SearchParams);
+    return executeJobSearch(request.auth, apiKey, request.data as SearchParams);
   }
 );
 
@@ -216,8 +217,8 @@ export const getRecommendedJobs = onCall(
       throw new HttpsError("failed-precondition", "RapidAPI key not configured");
     }
 
-    const userDoc = await db.collection("users").doc(request.auth.uid).get();
-    const userData = userDoc.data() || {};
+    const userProfile = await getUserProfileDoc(request.auth);
+    const userData = userProfile?.data || {};
     const skills: string[] = userData.skills || [];
     const location: string = userData.preferredLocation || "Remote";
 
@@ -225,7 +226,7 @@ export const getRecommendedJobs = onCall(
       ? skills.slice(0, 3).join(" ") + " developer"
       : "software developer " + location;
 
-    return executeJobSearch(request.auth.uid, apiKey, {
+    return executeJobSearch(request.auth, apiKey, {
       query: searchQuery,
       page: 1,
       remote: true,

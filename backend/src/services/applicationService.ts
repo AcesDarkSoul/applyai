@@ -156,7 +156,7 @@ export class ApplicationService {
     }
 
     const minScore = opts?.minScore ?? 55;
-    const limit = Math.min(Math.max(opts?.limit ?? 8, 1), 20);
+    const limit = Math.min(Math.max(opts?.limit ?? 8, 1), 50);
     let jobs = await jobService.recommended(profile, { minScore, limit: limit * 3 });
     if (opts?.boardOnly) {
       jobs = jobs.filter((j) => !isHiringPost(j));

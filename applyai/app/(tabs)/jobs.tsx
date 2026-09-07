@@ -16,6 +16,7 @@ import { Screen } from '@/components/layout/Screen';
 import { FadeInView } from '@/components/AnimatedView';
 import { useAuthStore } from '@/stores/authStore';
 import { applicationRepository, jobRepository, type ApiJob } from '@/lib/api/repositories';
+import { useSubscriptionStore } from '@/stores/subscriptionStore';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 
 type SourceFilter = 'all' | 'naukri' | 'indeed' | 'other';
@@ -30,6 +31,7 @@ const FILTERS: Array<{ id: SourceFilter; label: string; color: string }> = [
 export default function JobsScreen() {
   const router = useRouter();
   const profile = useAuthStore((s) => s.profile);
+  const quota = useSubscriptionStore((s) => s.dailyAutoApplyQuota);
   const resumeQuery = profile?.title || (profile?.skills || []).slice(0, 3).join(' ') || '';
 
   const [q, setQ] = useState('');
@@ -101,7 +103,7 @@ export default function JobsScreen() {
     setApplying(true);
     setAutoResult(null);
     try {
-      const res = await applicationRepository.autoApply({ minScore: 55, limit: 8 });
+      const res = await applicationRepository.autoApply({ minScore: 55, limit: quota });
       setAutoResult(
         `Applied to ${res.applied.length} roles · skipped ${res.skipped.length}. ${res.complianceNote || ''}`
       );
@@ -239,8 +241,8 @@ export default function JobsScreen() {
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Auto Apply</Text>
             <Text style={styles.modalBody}>
-              Assistive auto-apply ranks board jobs to your resume, drafts cover letters, and opens
-              apply URLs. You confirm each platform action — no silent portal submissions.
+              Assistive auto-apply ranks board jobs to your resume (up to {quota} today on your plan), drafts cover
+              letters, and opens apply URLs. You confirm each platform action — no silent portal submissions.
             </Text>
             <View style={styles.consentRow}>
               <Switch

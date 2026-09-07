@@ -1,20 +1,29 @@
-import { useEffect } from 'react';
+import {
+    PlusJakartaSans_400Regular,
+    PlusJakartaSans_500Medium,
+    PlusJakartaSans_600SemiBold,
+    PlusJakartaSans_700Bold,
+    PlusJakartaSans_800ExtraBold,
+    useFonts,
+} from '@expo-google-fonts/plus-jakarta-sans';
 import { Stack, usePathname, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { useEffect } from 'react';
+import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
 import 'react-native-reanimated';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { useAuthStore } from '@/stores/authStore';
-import { useResumeStore } from '@/stores/resumeStore';
-import { useThemeStore } from '@/stores/themeStore';
-import { useColors, useThemeMode } from '@/hooks/useColors';
-import { AppTopBar } from '@/components/layout/AppTopBar';
 import { AppDrawer } from '@/components/layout/AppDrawer';
+import { AppTopBar } from '@/components/layout/AppTopBar';
 import { ProfileDrawer } from '@/components/layout/ProfileDrawer';
+import { useColors, useThemeMode } from '@/hooks/useColors';
 import { trackScreen } from '@/lib/firebase/analytics';
 import { initTelemetry } from '@/lib/firebase/telemetry';
+import { useAuthStore } from '@/stores/authStore';
+import { useResumeStore } from '@/stores/resumeStore';
+import { useSubscriptionStore } from '@/stores/subscriptionStore';
+import { useThemeStore } from '@/stores/themeStore';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -36,12 +45,17 @@ function ScreenTracker() {
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, initialized } = useAuthStore();
+  const active = useSubscriptionStore((s) => s.active);
+  const planHydrated = useSubscriptionStore((s) => s.hydrated);
+  const hydrateSubscription = useSubscriptionStore((s) => s.hydrate);
+  const resetSubscription = useSubscriptionStore((s) => s.reset);
   const segments = useSegments();
   const router = useRouter();
   const colors = useColors();
 
-  const root = segments[0];
-  const inAuthGroup = AUTH_ROUTES.has(String(root ?? ''));
+  const root = String(segments[0] ?? '');
+  const inAuthGroup = AUTH_ROUTES.has(root);
+  const inPlans = root === 'plans';
   const needsAuth = !inAuthGroup;
 
   useEffect(() => {
@@ -53,19 +67,44 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!initialized) return;
 
-    if (!user && needsAuth) {
-      router.replace('/(auth)/login');
+    if (!user) {
+      resetSubscription();
+      if (needsAuth) {
+        router.replace('/(auth)/login');
+      }
       return;
     }
 
-    if (user && inAuthGroup) {
+    if (!planHydrated) {
+      void hydrateSubscription();
+      return;
+    }
+
+    // Logged-in users without a plan stay on the plans flow until they buy / activate.
+    if (!active && !inPlans) {
+      router.replace('/plans');
+      return;
+    }
+
+    if (active && inAuthGroup) {
       router.replace('/(tabs)');
     }
-  }, [user, initialized, needsAuth, inAuthGroup, router]);
+  }, [
+    user,
+    initialized,
+    needsAuth,
+    inAuthGroup,
+    inPlans,
+    active,
+    planHydrated,
+    hydrateSubscription,
+    resetSubscription,
+    router,
+  ]);
 
   // Only block before Firebase answers. Always keep the Stack mounted after that
   // (returning <Redirect /> without a navigator caused the blank screen).
-  if (!initialized) {
+  if (!initialized || (user && !planHydrated && !inAuthGroup)) {
     return (
       <View style={[styles.loading, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -77,9 +116,19 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 }
 
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    PlusJakartaSans_400Regular,
+    PlusJakartaSans_500Medium,
+    PlusJakartaSans_600SemiBold,
+    PlusJakartaSans_700Bold,
+    PlusJakartaSans_800ExtraBold,
+  });
   const initialize = useAuthStore((s) => s.initialize);
   const refreshResume = useResumeStore((s) => s.refresh);
   const hydrateTheme = useThemeStore((s) => s.hydrate);
+  const hydrateSubscription = useSubscriptionStore((s) => s.hydrate);
+  const watchUserPlans = useSubscriptionStore((s) => s.watchUserPlans);
+  const user = useAuthStore((s) => s.user);
   const colors = useColors();
   const { isDark } = useThemeMode();
 
@@ -102,6 +151,15 @@ export default function RootLayout() {
     }, 300);
     return () => clearTimeout(t);
   }, [refreshResume]);
+
+  useEffect(() => {
+    if (!user) {
+      watchUserPlans(null);
+      return;
+    }
+    watchUserPlans((user.email || user.uid).toLowerCase());
+    void hydrateSubscription();
+  }, [user, hydrateSubscription, watchUserPlans]);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -127,6 +185,7 @@ export default function RootLayout() {
           <Stack.Screen name="index" />
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="plans" />
           <Stack.Screen name="posts/index" />
           <Stack.Screen name="posts/[id]" />
           <Stack.Screen name="notifications" />

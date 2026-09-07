@@ -5,6 +5,7 @@ const https_1 = require("firebase-functions/v2/https");
 const index_1 = require("./index");
 const firestore_1 = require("firebase-admin/firestore");
 const secrets_1 = require("./secrets");
+const userDoc_1 = require("./userDoc");
 const JSEARCH_API_HOST = "jsearch.p.rapidapi.com";
 function mapEmploymentType(type) {
     const map = {
@@ -41,10 +42,10 @@ function calculateMatchScore(userSkills, jobSkills, userExp, jobRemote, userLoca
     const overall = Math.round((skills + experience + education + location + salary) / 5);
     return { overall, skills, experience, education, location, salary };
 }
-async function executeJobSearch(uid, apiKey, params) {
+async function executeJobSearch(auth, apiKey, params) {
     const { query = "software developer", page = 1, remote, employmentType, } = params;
-    const userDoc = await index_1.db.collection("users").doc(uid).get();
-    const userData = userDoc.data() || {};
+    const userProfile = await (0, userDoc_1.getUserProfileDoc)(auth);
+    const userData = userProfile?.data || {};
     const userSkills = userData.skills || [];
     const userExp = userData.experience || 0;
     const userLocation = userData.preferredLocation || "Remote";
@@ -122,7 +123,7 @@ exports.searchJobs = (0, https_1.onCall)({ maxInstances: 20, timeoutSeconds: 30,
     if (!apiKey) {
         throw new https_1.HttpsError("failed-precondition", "RapidAPI key not configured");
     }
-    return executeJobSearch(request.auth.uid, apiKey, request.data);
+    return executeJobSearch(request.auth, apiKey, request.data);
 });
 exports.getRecommendedJobs = (0, https_1.onCall)({ maxInstances: 20, timeoutSeconds: 30, secrets: [secrets_1.rapidApiKey] }, async (request) => {
     if (!request.auth) {
@@ -132,14 +133,14 @@ exports.getRecommendedJobs = (0, https_1.onCall)({ maxInstances: 20, timeoutSeco
     if (!apiKey) {
         throw new https_1.HttpsError("failed-precondition", "RapidAPI key not configured");
     }
-    const userDoc = await index_1.db.collection("users").doc(request.auth.uid).get();
-    const userData = userDoc.data() || {};
+    const userProfile = await (0, userDoc_1.getUserProfileDoc)(request.auth);
+    const userData = userProfile?.data || {};
     const skills = userData.skills || [];
     const location = userData.preferredLocation || "Remote";
     const searchQuery = skills.length > 0
         ? skills.slice(0, 3).join(" ") + " developer"
         : "software developer " + location;
-    return executeJobSearch(request.auth.uid, apiKey, {
+    return executeJobSearch(request.auth, apiKey, {
         query: searchQuery,
         page: 1,
         remote: true,

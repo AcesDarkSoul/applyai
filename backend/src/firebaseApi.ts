@@ -1,11 +1,18 @@
 import type { Express } from 'express';
 import { onRequest } from 'firebase-functions/v2/https';
 import { setGlobalOptions } from 'firebase-functions/v2/options';
+import { defineSecret } from 'firebase-functions/params';
 
 setGlobalOptions({
   region: 'us-central1',
   maxInstances: 10,
 });
+
+/** Live keys live in Secret Manager — do not also put them in .env / .env.petcare-* */
+const openaiApiKey = defineSecret('OPENAI_API_KEY');
+const razorpayKeyId = defineSecret('RAZORPAY_KEY_ID');
+const razorpayKeySecret = defineSecret('RAZORPAY_KEY_SECRET');
+const razorpayWebhookSecret = defineSecret('RAZORPAY_WEBHOOK_SECRET');
 
 let app: Express | undefined;
 
@@ -29,6 +36,7 @@ export const api = onRequest(
     timeoutSeconds: 180,
     concurrency: 40,
     invoker: 'public',
+    secrets: [openaiApiKey, razorpayKeyId, razorpayKeySecret, razorpayWebhookSecret],
   },
   (req, res) => {
     getApp()(req, res);

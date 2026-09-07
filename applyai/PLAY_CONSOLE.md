@@ -102,10 +102,10 @@ Update these **together** on every release:
 
 | Location | Field | Current value |
 |----------|-------|---------------|
-| `android/app/build.gradle` → `defaultConfig` | `versionCode` | **8** (integer; must increase every Play upload) |
-| `android/app/build.gradle` → `defaultConfig` | `versionName` | **1.0.7** (user-visible) |
-| `app.json` → `expo.version` | version | **1.0.7** |
-| `package.json` → `version` | version | **1.0.7** |
+| `android/app/build.gradle` → `defaultConfig` | `versionCode` | **10** (integer; must increase every Play upload) |
+| `android/app/build.gradle` → `defaultConfig` | `versionName` | **1.0.9** (user-visible) |
+| `app.json` → `expo.version` | version | **1.0.9** |
+| `package.json` → `version` | version | **1.0.9** |
 
 **Rule:** Every new AAB uploaded to Play must have a **higher `versionCode`** than any previous upload (including internal / closed / open tracks).
 
@@ -211,7 +211,7 @@ Copy for archive / upload (optional):
 ```powershell
 Copy-Item `
   "d:\jobportal project\applyai\android\app\build\outputs\bundle\release\app-release.aab" `
-  "d:\jobportal project\applyai\ApplyAI-v1.0.7-vc8.aab"
+  "d:\jobportal project\applyai\ApplyAI-v1.0.8-vc9.aab"
 ```
 
 ### Local APK (testing only — not for Play upload)
@@ -391,9 +391,10 @@ Firebase project: **petcare-9f4e6**. Package: `com.applyai.app`.
 
 | Key | SHA-1 | Status |
 |-----|-------|--------|
-| Upload (`applyai.keystore`) | `B0:BC:B8:A9:06:DF:B6:A9:11:A2:1C:41:9D:26:C4:3B:89:CC:C3:E1` | Add in Firebase (still missing) |
+| Upload (`applyai.keystore`) | `B0:BC:B8:A9:06:DF:B6:A9:11:A2:1C:41:9D:26:C4:3B:89:CC:C3:E1` | In Firebase |
 | Debug | `5E:8F:16:06:2E:A3:CD:2C:4A:0D:54:78:76:BA:A6:F3:8C:AB:F6:25` | In Firebase — do not delete |
-| **Play App signing** | `3B:A0:4B:8C:11:47:33:FF:2B:54:D7:19:00:13:65:82:19:FC:AA:67` | In Firebase — confirm it matches Play Console **App signing** SHA-1 |
+| **Play App signing** | `66:99:5A:39:99:4B:82:9E:3E:14:01:7C:56:2C:C4:5A:A3:B9:57:E2` | In Firebase, OAuth client created 2026-09-06 — `google-services.json` refreshed |
+| Unused (`7B:3C:1B:DD:A7:BE:4E:8D:78:5F:23:66:4C:77:34:F2:78:40:EB:08`) | auto-created Android OAuth client of unknown origin, harmless to leave in place |
 
 Fix (once):
 
@@ -461,6 +462,8 @@ What's new in 1.x.x:
 |------|-------------|-------------|-------|-----------|--------|
 | 2026-08-11 | 1.0.0 | 1 | — | Signed AAB (~44 MB); ABIs armeabi-v7a + arm64-v8a; build via `D:\aa` junction | Ready to upload |
 | 2026-08-15 | 1.0.7 | 8 | Closed testing | Resume JSON upload + auto-apply after resume; ABIs armeabi-v7a + arm64-v8a | Ready to upload |
+| 2026-09-04 | 1.0.8 | 9 | Closed testing | (bad upload path — D:\aa copy still vc8) | Do not use |
+| 2026-09-04 | 1.0.9 | 10 | Closed testing | Real project build; Smart Apply/Razorpay/OpenAI fixes | Ready to upload |
 
 Add a row every time you upload.
 

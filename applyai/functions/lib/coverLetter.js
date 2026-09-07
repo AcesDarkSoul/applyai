@@ -9,6 +9,7 @@ const index_1 = require("./index");
 const firestore_1 = require("firebase-admin/firestore");
 const openai_1 = __importDefault(require("openai"));
 const secrets_1 = require("./secrets");
+const userDoc_1 = require("./userDoc");
 const COVER_LETTER_PROMPT = `You are an expert career consultant. Write a professional, personalized cover letter.
 
 Rules:
@@ -32,9 +33,9 @@ exports.generateCoverLetter = (0, https_1.onCall)({ maxInstances: 10, timeoutSec
     if (!jobTitle || !company) {
         throw new https_1.HttpsError("invalid-argument", "jobTitle and company are required");
     }
-    // Get user profile
-    const userDoc = await index_1.db.collection("users").doc(request.auth.uid).get();
-    const profile = userDoc.data();
+    // Get user profile (email-keyed)
+    const userProfile = await (0, userDoc_1.getUserProfileDoc)(request.auth);
+    const profile = userProfile?.data;
     if (!profile) {
         throw new https_1.HttpsError("not-found", "User profile not found");
     }

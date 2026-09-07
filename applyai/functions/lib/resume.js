@@ -5,10 +5,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.parseResume = void 0;
 const https_1 = require("firebase-functions/v2/https");
-const index_1 = require("./index");
 const firestore_1 = require("firebase-admin/firestore");
 const openai_1 = __importDefault(require("openai"));
 const secrets_1 = require("./secrets");
+const userDoc_1 = require("./userDoc");
 const RESUME_PARSE_PROMPT = `You are a professional resume parser. Extract ALL personal and professional information from the resume text.
 Return ONLY valid JSON with this exact structure:
 {
@@ -56,6 +56,7 @@ exports.parseResume = (0, https_1.onCall)({ maxInstances: 10, timeoutSeconds: 90
         throw new https_1.HttpsError("unauthenticated", "Must be logged in");
     }
     const userId = request.auth.uid;
+    const profileDocId = (0, userDoc_1.emailDocId)(request.auth.token.email) || userId;
     const { resumeBase64, fileName, resumeUrl } = request.data;
     const openaiKey = secrets_1.openaiApiKey.value();
     if (!openaiKey) {
@@ -122,7 +123,11 @@ exports.parseResume = (0, https_1.onCall)({ maxInstances: 10, timeoutSeconds: 90
         if (typeof parsed.linkedin === "string" && parsed.linkedin.trim()) {
             profileUpdate.linkedin = parsed.linkedin.trim().substring(0, 200);
         }
-        await index_1.db.collection("users").doc(userId).set(profileUpdate, { merge: true });
+        await (0, userDoc_1.userDocRef)(request.auth).set({
+            ...profileUpdate,
+            uid: userId,
+            email: profileDocId.includes("@") ? profileDocId : profileUpdate.email,
+        }, { merge: true });
         return { success: true, profile: profileUpdate, parsedRaw: parsed };
     }
     catch (error) {

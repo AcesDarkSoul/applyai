@@ -6,8 +6,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.generateSocialPost = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const openai_1 = __importDefault(require("openai"));
-const index_1 = require("./index");
 const secrets_1 = require("./secrets");
+const userDoc_1 = require("./userDoc");
 const PLATFORM_RULES = {
     linkedin: `Write a LinkedIn post. Use line breaks, 2-4 emojis, 3-5 hashtags at the end.
 Tone: professional, confident, human. Max 1300 characters. Include #OpenToWork if job searching.`,
@@ -24,8 +24,8 @@ exports.generateSocialPost = (0, https_1.onCall)({ maxInstances: 10, timeoutSeco
         throw new https_1.HttpsError("failed-precondition", "OpenAI API key not configured");
     }
     const { platform = "linkedin", postType = "opentowork", jobTitle, company, jobUrl, customPrompt, } = request.data;
-    const userDoc = await index_1.db.collection("users").doc(request.auth.uid).get();
-    const profile = userDoc.data();
+    const userProfile = await (0, userDoc_1.getUserProfileDoc)(request.auth);
+    const profile = userProfile?.data;
     if (!profile) {
         throw new https_1.HttpsError("not-found", "User profile not found");
     }
